@@ -2,7 +2,12 @@ Source: openerp
 Section: net
 Priority: optional
 Maintainer: Zaber Technologies <donkirkby+launpd@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), babel, python, python-setuptools, rsync
+Build-Depends:
+ debhelper (>= 7.0.50~),
+ python, 
+ python-babel, 
+ python-setuptools, 
+ rsync
 Standards-Version: 3.9.1
 Homepage: http://www.openerp.com/
 Vcs-Bzr: https://launchpad.net/openobject
