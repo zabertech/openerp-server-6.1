@@ -19,7 +19,9 @@ case "${1}" in
         mkdir -p /var/lib/openerp/filestore
         chown openerp:openerp -R /var/lib/openerp
         # update-python-modules NOW otherwise invoke-rc.d openerp start will fail
-        update-python-modules -p openerp.public
+        # commmented out for now, because it failed with this error:
+        # update-python-modules: error: openerp.public is not a recognized python-support module
+        #update-python-modules -p openerp.public
         ;;
     *)
         ;;
