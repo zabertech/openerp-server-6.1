@@ -90,7 +90,7 @@ class TinySocketClientThread(threading.Thread):
         
 def netrpc_handle_exception_legacy(e):
     if isinstance(e, openerp.osv.osv.except_osv):
-        return 'warning -- ' + e.name + '\n\n' + e.value
+        return 'warning -- %s\n\n%s' % (e.name, e.value)
     if isinstance(e, openerp.exceptions.Warning):
         return 'warning -- Warning\n\n' + str(e)
     if isinstance(e, openerp.exceptions.AccessError):
