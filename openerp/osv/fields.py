@@ -43,7 +43,7 @@ from psycopg2 import Binary
 import openerp
 import openerp.tools as tools
 from openerp.tools.translate import _
-from openerp.tools import float_round, float_repr
+from openerp.tools import float_round, float_repr, DEFAULT_SERVER_DATE_FORMAT
 import simplejson
 
 _logger = logging.getLogger(__name__)
@@ -346,6 +346,33 @@ class datetime(_column):
                               "using the UTC value",
                               exc_info=True)
         return timestamp
+
+    @staticmethod
+    def context_timestamp_from_business_date(cr, 
+                                             uid, 
+                                             business_date, 
+                                             context):
+        """ With time zone support, the conversion from a business date with
+        no time component to a datetime is confusing, because it uses UTC 
+        midnight. That means that users in PST will see a datetime for
+        5pm the day before the business date.
+        Instead, we calculate a local datetime by combining the current local 
+        time with the business date, and convert that to UTC. 
+        """
+        utc = pytz.timezone('UTC')
+        date_parsed = DT.datetime.strptime(business_date, 
+                                        DEFAULT_SERVER_DATE_FORMAT)
+        now = DT.datetime.now()
+        local_now = datetime.context_timestamp(
+            cr, 
+            uid, 
+            now, 
+            context)
+        local_datetime = local_now.replace(year=date_parsed.year, 
+                                           month=date_parsed.month, 
+                                           day=date_parsed.day)
+        utc_datetime = local_datetime.astimezone(utc)
+        return utc_datetime
 
 class time(_column):
     _type = 'time'
