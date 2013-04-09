@@ -764,7 +764,15 @@ class expression(object):
                     str_utf8 = right.encode('utf-8')
                 else:
                     str_utf8 = str(right)
-                params = '%%%s%%' % str_utf8
+                params = str_utf8
+                if str_utf8.startswith('^'):
+                    params = params[1:]
+                else:
+                    params = '%' + params
+                if str_utf8.endswith('$'):
+                    params = params[:-1]
+                else:
+                    params = params + '%'
                 add_null = not str_utf8
             elif left in table._columns:
                 params = table._columns[left]._symbol_set[1](right)
