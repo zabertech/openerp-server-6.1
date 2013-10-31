@@ -2081,8 +2081,17 @@ class BaseModel(object):
                 are applied
 
             """
-            sql_inherit = self.pool.get('ir.ui.view').get_inheriting_views_arch(cr, user, inherit_id, self._name)
+            view_obj = self.pool.get('ir.ui.view')
+            sql_inherit = view_obj.get_inheriting_views_arch(cr, user, inherit_id, self._name)
             for (view_arch, view_id) in sql_inherit:
+                if config['debug_show_views']:
+                    view = view_obj.browse(cr,user,view_id)
+                    print "#########################################################"
+                    print "View ID: ", view.id
+                    print "Name: ", view.name
+                    print view.arch
+                    print "#########################################################"
+
                 source = apply_inheritance_specs(source, view_arch, view_id)
                 source = apply_view_inheritance(cr, user, source, view_id)
             return source
@@ -2153,6 +2162,21 @@ class BaseModel(object):
         xarch, xfields = self.__view_look_dom_arch(cr, user, result['arch'], view_id, context=ctx)
         result['arch'] = xarch
         result['fields'] = xfields
+
+        if config['debug_show_views']:
+            print "#########[ FINAL ]#######################################"
+            ir_data_obj = self.pool.get('ir.model.data')
+            ir_data_ids = ir_data_obj.search(
+                                  cr,
+                                  0,
+                                  [('model','=','ir.ui.view'),
+                                   ('res_id','=',result['view_id'])])
+            ir_data_rec = ir_data_obj.browse(cr, 0,ir_data_ids[0])
+            print "ID: ", result['view_id']
+            print "Name: ", ir_data_rec['module']+"."+ir_data_rec['name']
+            print "Arch:"
+            print result['arch'].replace('\t','  ').replace('    ','  ')
+            print "#########################################################"
 
         if toolbar:
             def clean(x):
