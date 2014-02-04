@@ -70,10 +70,8 @@ _schema = logging.getLogger(__name__ + '.schema')
 # TODO remove logging
 crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
-if config.get('crud_log_path'):
-    crud_file = logging.FileHandler(config.get('crud_log_path'))
-else:
-    crud_file = logging.FileHandler('/var/log/openerp/crudlogger.csv')
+crud_logger.propagate = False
+crud_file = logging.FileHandler('crudlogger.csv')
 crud_logger.addHandler(crud_file)
 
 
