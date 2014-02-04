@@ -4288,21 +4288,24 @@ class BaseModel(object):
         return id_new
 
     def CRUDlogger(self, oper, user=None, ids=None, vals=None, context=None):
-        def ignoreList(moduleName):
-            namesToIgnore=[
+        def ignoreList(moduleName,user):
+            modulesToIgnore=[
                 'zerp.solr.update.queue',
                 'ir.module.module',
                 'ir.actions.act_window',
                 'crud.logger'
                 ]
+            userToIgnore=[0,1]
             acc_bool=True
-            for redundantName in namesToIgnore:
+            for redundantName in modulesToIgnore:
                 acc_bool = acc_bool and moduleName != redundantName
+            for redundantName in userToIgnore:
+                acc_bool = acc_bool and user != redundantName
             return acc_bool
 
         if context is None:
             context = {}
-        if context.get('crudlogger') is None and ignoreList(self._name) and config.get('crud_logger'):
+        if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
             context['crudlogger'] = True
             # Operation: user, ids, name,vals
             strOut = '%s;%d;' % (oper,user)
