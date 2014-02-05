@@ -71,7 +71,7 @@ _schema = logging.getLogger(__name__ + '.schema')
 crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
 crud_logger.propagate = False
-crud_file = logging.FileHandler('crudlogger.csv')
+crud_file = logging.FileHandler('/var/log/openerp/crudlogger.csv')
 crud_logger.addHandler(crud_file)
 
 
