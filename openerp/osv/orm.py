@@ -65,16 +65,15 @@ from openerp.tools.translate import _
 from openerp import SUPERUSER_ID
 from query import Query
 
+# TODO remove logging
 _logger = logging.getLogger(__name__)
 _schema = logging.getLogger(__name__ + '.schema')
-# TODO remove logging
 crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
 crud_logger.propagate = False
-crud_file = logging.FileHandler('crudlogger.csv')
-crud_logger.addHandler(crud_file)
 
 
+        #if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
 
 # List of etree._Element subclasses that we choose to ignore when parsing XML.
 from openerp.tools import SKIPPED_ELEMENT_TYPES
@@ -4306,6 +4305,9 @@ class BaseModel(object):
 
         if context is None:
             context = {}
+        if len(crud_logger.handlers) == 0: 
+            crud_file = logging.FileHandler(config.get('crud_file_loc'))
+            crud_logger.addHandler(crud_file)
         if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
             context['crudlogger'] = True
             # Operation: user, ids, name,vals
