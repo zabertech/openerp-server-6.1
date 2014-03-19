@@ -4293,7 +4293,11 @@ class BaseModel(object):
                 'zerp.solr.update.queue',
                 'ir.module.module',
                 'ir.actions.act_window',
-                'crud.logger'
+                'crud.logger',
+                'ir.ui.view',
+                'res.users',
+                'ir.rule',
+                'ir.ui.view',
                 ]
             userToIgnore=[0,1]
             acc_bool=True
