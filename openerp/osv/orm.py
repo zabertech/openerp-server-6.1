@@ -4310,8 +4310,12 @@ class BaseModel(object):
         if context is None:
             context = {}
         if len(crud_logger.handlers) == 0: 
-            crud_file = logging.FileHandler(config.get('crud_file_loc'))
-            crud_logger.addHandler(crud_file)
+            try:
+                crud_file = logging.FileHandler(config.get('crud_file_loc'))
+                crud_logger.addHandler(crud_file)
+            except:
+                _logger.warning('The CRUD logger needs a file location path. Please add crud_file_loc to the server config file')
+                crud_logger.addHandler(logging.NullHandler())
         if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
             context['crudlogger'] = True
             # Operation: user, ids, name,vals
