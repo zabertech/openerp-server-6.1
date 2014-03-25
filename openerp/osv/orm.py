@@ -71,12 +71,6 @@ _schema = logging.getLogger(__name__ + '.schema')
 crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
 crud_logger.propagate = False
-<<<<<<< HEAD
-=======
-
-
-        #if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
->>>>>>> 396--Log-all-models-crud
 
 # List of etree._Element subclasses that we choose to ignore when parsing XML.
 from openerp.tools import SKIPPED_ELEMENT_TYPES
