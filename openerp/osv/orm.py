@@ -44,6 +44,7 @@
 import calendar
 import copy
 import datetime
+import pytz
 import itertools
 import logging
 import operator
@@ -64,8 +65,12 @@ from openerp.tools.translate import _
 from openerp import SUPERUSER_ID
 from query import Query
 
+# TODO remove logging
 _logger = logging.getLogger(__name__)
 _schema = logging.getLogger(__name__ + '.schema')
+crud_logger = logging.getLogger('crud')
+crud_logger.setLevel(logging.INFO)
+crud_logger.propagate = False
 
 # List of etree._Element subclasses that we choose to ignore when parsing XML.
 from openerp.tools import SKIPPED_ELEMENT_TYPES
@@ -3728,7 +3733,9 @@ class BaseModel(object):
                                          _('Operation prohibited by access rules, or performed on an already deleted document (Operation: %s, Document type: %s).')
                                          % (operation, self._description))
 
-    def unlink(self, cr, uid, ids, context=None):
+    def unlink(self, cr, uid, ids, context=None, log=True):
+        if config.get('crud_delete') is not None and config.get('crud_delete'):
+            self.CRUDlogger(oper='unlink',user=uid,ids=ids, context=context)
         """
         Delete records with given ids
 
@@ -3809,6 +3816,8 @@ class BaseModel(object):
     # TODO: Validate
     #
     def write(self, cr, user, ids, vals, context=None):
+        if config.get('crud_write') is not None and config.get('crud_write'):
+            self.CRUDlogger(oper='write',user=user,ids=ids , vals=vals, context=context)
         """
         Update records with given ids with the given field values
 
@@ -4079,6 +4088,8 @@ class BaseModel(object):
     # TODO: Should set perm to user.xxx
     #
     def create(self, cr, user, vals, context=None):
+        if config.get('crud_create') is not None and config.get('crud_create'):
+            self.CRUDlogger(oper='create',user=user, vals=vals, context=context)
         """
         Create a new record for the model.
 
@@ -4092,7 +4103,7 @@ class BaseModel(object):
         :type vals: dictionary
         :param context: optional context arguments, e.g. {'lang': 'en_us', 'tz': 'UTC', ...}
         :type context: dictionary
-        :return: id of new record created
+        :valsrn: id of new record created
         :raise AccessError: * if user has no create rights on the requested object
                             * if user tries to bypass access rules for create on the requested object
         :raise ValidateError: if user tries to enter invalid value for a field that is not in selection
@@ -4273,7 +4284,60 @@ class BaseModel(object):
         wf_service.trg_create(user, self._name, id_new, cr)
         return id_new
 
-    def browse(self, cr, uid, select, context=None, list_class=None, fields_process=None):
+    def CRUDlogger(self, oper, user=None, ids=None, vals=None, context=None):
+        def ignoreList(moduleName,user):
+            modulesToIgnore=[
+                'zerp.solr.update.queue',
+                'ir.module.module',
+                'ir.actions.act_window',
+                'crud.logger',
+                'ir.ui.view',
+                'res.users',
+                'ir.rule',
+                'ir.ui.view',
+                ]
+            userToIgnore=[0,1]
+            acc_bool=True
+            for redundantName in modulesToIgnore:
+                acc_bool = acc_bool and moduleName != redundantName
+            for redundantName in userToIgnore:
+                acc_bool = acc_bool and user != redundantName
+            return acc_bool
+
+        if context is None:
+            context = {}
+        if len(crud_logger.handlers) == 0: 
+            try:
+                crud_file = logging.FileHandler(config.get('crud_file_loc'))
+                crud_logger.addHandler(crud_file)
+            except:
+                _logger.warning('The CRUD logger needs a file location path. Please add crud_file_loc to the server config file')
+                crud_logger.addHandler(logging.NullHandler())
+        if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
+            context['crudlogger'] = True
+            # Operation: user, ids, name,vals
+            strOut = '%s;%d;' % (oper,user)
+            strOut += str(ids) + ';'
+            strOut += self._name + ';'
+            if config.get('crud_vals'):
+                strOut += str(vals) + ';'
+            else:
+                strOut += ';'
+            if config.get('crud_context'):
+                strOut += str(context) + ';'
+            else:
+                strOut += ';'
+            ## OpenERP defaults to running in UTC time so .today will give a time in utc
+            ## We then convert that time to the local time of the context
+            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            strOut += now + ';' 
+            crud_logger.info(strOut)
+        return None
+    
+    
+    def browse(self, cr, uid, select, context=None, list_class=None, fields_process=None, log=False):
+        if config.get('crud_read') is not None and config.get('crud_read'):
+            self.CRUDlogger(oper='browse', user=uid, ids=select, context=context)
         """Fetch records as objects allowing to use dot notation to browse fields and relations
 
         :param cr: database cursor
