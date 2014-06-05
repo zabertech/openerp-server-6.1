@@ -72,6 +72,9 @@ crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
 crud_logger.propagate = False
 
+
+        #if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
+
 # List of etree._Element subclasses that we choose to ignore when parsing XML.
 from openerp.tools import SKIPPED_ELEMENT_TYPES
 
