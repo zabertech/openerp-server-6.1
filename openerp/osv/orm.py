@@ -3496,16 +3496,15 @@ class BaseModel(object):
             if rule_clause:
                 query += " AND " + (' OR '.join(rule_clause))
             query += " ORDER BY " + order_by
-            for sub_ids in cr.split_for_in_conditions(ids):
-                if rule_clause:
-                    cr.execute(query, [tuple(sub_ids)] + rule_params)
-                    if cr.rowcount != len(sub_ids):
-                        raise except_orm(_('AccessError'),
-                                         _('Operation prohibited by access rules, or performed on an already deleted document (Operation: read, Document type: %s).')
-                                         % (self._description,))
-                else:
-                    cr.execute(query, (tuple(sub_ids),))
-                res.extend(cr.dictfetchall())
+            if rule_clause:
+                cr.execute(query, [tuple(ids)] + rule_params)
+                if cr.rowcount != len(set(ids)):
+                    raise except_orm(_('AccessError'),
+                                     _('Operation prohibited by access rules, or performed on an already deleted document (Operation: read, Document type: %s).')
+                                     % (self._description,))
+            else:
+                cr.execute(query, (tuple(ids),))
+            res.extend(cr.dictfetchall())
         else:
             res = map(lambda x: {'id': x}, ids)
 
