@@ -2172,18 +2172,24 @@ class BaseModel(object):
         result['fields'] = xfields
 
         if config['debug_show_views']:
-            print "#########[ FINAL ]#######################################"
+            print "#########[ FINAL/{model}/{type} ]#######################################".format(**result)
             ir_data_obj = self.pool.get('ir.model.data')
-            ir_data_ids = ir_data_obj.search(
-                                  cr,
-                                  0,
-                                  [('model','=','ir.ui.view'),
-                                   ('res_id','=',result['view_id'])])
-            ir_data_rec = ir_data_obj.browse(cr, 0,ir_data_ids[0])
-            print "ID: ", result['view_id']
-            print "Name: ", ir_data_rec['module']+"."+ir_data_rec['name']
-            print "Arch:"
-            print result['arch'].replace('\t','  ').replace('    ','  ')
+            if result['view_id']:
+                ir_data_ids = ir_data_obj.search(
+                                      cr,
+                                      0,
+                                      [('model','=','ir.ui.view'),
+                                       ('res_id','=',result['view_id'])])
+                ir_data_rec = ir_data_obj.browse(cr, 0,ir_data_ids[0])
+                print "ID: ", result['view_id']
+                print "Name: ", ir_data_rec['module']+"."+ir_data_rec['name']
+                print "Arch:"
+                print result['arch'].replace('\t','  ').replace('    ','  ')
+            else:
+                print "Model: ", result['model']
+                print "Name: ", result['name']
+                print "Arch:"
+                print result['arch'].replace('\t','  ').replace('    ','  ')
             print "#########################################################"
 
         if toolbar:
