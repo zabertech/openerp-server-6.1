@@ -234,6 +234,46 @@ def init_logger():
     for logconfig_item in default_config + pseudo_config + logconfig:
         _logger.debug('logger level set: "%s"', logconfig_item)
 
+    # Special configuration for log_user_rpc
+    log_rpc_user_handler_stdout = False
+    log_rpc_user_path = tools.config.get('log_rpc_user_path')
+    log_rpc_user_format = tools.config.get('log_rpc_user_format', format)
+
+    log_rpc_user_formatter = DBFormatter(log_rpc_user_format)
+
+    if log_rpc_user_path:
+        try:
+            dirname = os.path.dirname(log_rpc_user_path)
+            if dirname and not os.path.isdir(dirname):
+                os.makedirs(dirname)
+        except Exception:
+            sys.stderr.write("ERROR: couldn't create the logfile directory. Logging to the standard output.\n")
+            log_rpc_user_handler_stdout = logging.StreamHandler(sys.stdout)
+
+    log_rpc_user = tools.config.get('log_rpc_user')
+    if log_rpc_user:
+        for uid in log_rpc_user.split(','):
+            if log_rpc_user_handler_stdout:
+                log_rpc_user_handler = log_rpc_user_handler_stdout
+            else:
+                logf = os.path.join(log_rpc_user_path, uid)
+                if tools.config['logrotate'] is not False:
+                    log_rpc_user_handler = logging.handlers.TimedRotatingFileHandler(logf,'D',1,30)
+                elif os.name == 'posix':
+                    log_rpc_user_handler = logging.handlers.WatchedFileHandler(logf)
+                else:
+                    log_rpc_user_handler = logging.handlers.FileHandler(logf)
+            log_rpc_user_handler.setFormatter(log_rpc_user_formatter)
+            logger = logging.getLogger('openerp.netsvc.rpc.user.{}'.format(uid))
+            logger.handlers = []
+            logger.setLevel('DEBUG')
+            logger.addHandler(log_rpc_user_handler)
+            logger.propagate = False
+
+            _logger.info('logging rpc session for user_id: %s path: %s', uid, log_rpc_user_path)
+
+
+
 # A alternative logging scheme for automated runs of the
 # server intended to test it.
 def init_alternative_logger():
@@ -350,21 +390,40 @@ def dispatch_rpc(service_name, method, params):
     try:
         rpc_request = logging.getLogger(__name__ + '.rpc.request')
         rpc_response = logging.getLogger(__name__ + '.rpc.response')
+
+        # Add a new RPC logger targetting a specific user
+        try:
+            uid = params[1]
+        except:
+            uid = 0
+
+        rpc_user = logging.getLogger(__name__ + '.rpc.user.{}'.format(uid))
+
         rpc_request_flag = rpc_request.isEnabledFor(logging.DEBUG)
         rpc_response_flag = rpc_response.isEnabledFor(logging.DEBUG)
-        if rpc_request_flag or rpc_response_flag:
+
+        # Add a new RPC logger targetting a specific user
+        rpc_user_flag = rpc_user.isEnabledFor(logging.DEBUG)
+
+        if rpc_request_flag or rpc_response_flag or rpc_user_flag:
             start_time = time.time()
             if rpc_request and rpc_response_flag:
                 log(rpc_request,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
 
+            if rpc_user_flag:
+                log(rpc_user,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
+
         result = ExportService.getService(service_name).dispatch(method, params)
 
-        if rpc_request_flag or rpc_response_flag:
+        if (rpc_request_flag or rpc_response_flag) or rpc_user_flag:
             end_time = time.time()
             if rpc_response_flag:
                 log(rpc_response,logging.DEBUG,'%s.%s time:%.3fs '%(service_name,method,end_time - start_time), result)
             else:
                 log(rpc_request,logging.DEBUG,'%s.%s time:%.3fs '%(service_name,method,end_time - start_time), replace_request_password(params), depth=1)
+
+            if rpc_user_flag:
+                log(rpc_user,logging.DEBUG,'%s.%s time:%.3fs '%(service_name,method,end_time - start_time), result)
 
         return result
     except openerp.exceptions.AccessError:
