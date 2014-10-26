@@ -1082,6 +1082,11 @@ class function(_column):
         self._fnct_search = fnct_search
         self.store = store
 
+        # Flag to explicitely prevent _update_store on fields which explicitely
+        # ask for it.
+        # Added 2014-10-02 by Colin Ligertwood <colin@zaber.com>
+        self.noupdatestore = args.get('noupdatestore', False)
+
         if not fnct_search and not store:
             self.selectable = False
 
@@ -1284,6 +1289,11 @@ class related(function):
         if self.store is True:
             # TODO: improve here to change self.store = {...} according to related objects
             pass
+
+        # New flag to prevent update_store on fields that explicitely ask
+        # for it.
+        # Added 2014-10-02 by Colin Ligertwood <colin@zaber.com>
+        self.noupdatestore = args.get('noupdatestore', False)
 
     def _field_get2(self, cr, uid, obj, context=None):
         if self._relations:

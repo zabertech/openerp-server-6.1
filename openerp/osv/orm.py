@@ -3049,7 +3049,12 @@ class BaseModel(object):
                                 order = 10
                                 if f.store is not True: # i.e. if f.store is a dict
                                     order = f.store[f.store.keys()[0]][2]
-                                todo_end.append((order, self._update_store, (f, k)))
+                                # Condition to prevent _update_store if field explicitely requests it not happen
+                                # Added by Colin Ligertwood 2014-10-02 <colin@zaber.com>
+                                if not config.get('noupdatestore', False) or f.noupdatestore == False:
+                                    todo_end.append((order, self._update_store, (f, k)))
+                                else:
+                                    _logger.info("Skipping update of stored values of fields.function '%s'", k)
 
                             # and add constraints if needed
                             if isinstance(f, fields.many2one):
