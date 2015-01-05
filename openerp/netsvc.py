@@ -433,11 +433,11 @@ def dispatch_rpc(service_name, method, params):
     except openerp.exceptions.Warning:
         raise
     except openerp.exceptions.DeferredException, e:
-        _logger.error(tools.exception_to_unicode(e))
+        _logger.error(u"uid {}: ".format(int(uid))+tools.exception_to_unicode(e))
         post_mortem(e.traceback)
         raise
     except Exception, e:
-        _logger.error(tools.exception_to_unicode(e))
+        _logger.error(u"uid {}: ".format(int(uid))+tools.exception_to_unicode(e))
         post_mortem(sys.exc_info())
         raise
 
