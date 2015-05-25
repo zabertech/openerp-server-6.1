@@ -50,7 +50,7 @@ class view(osv.osv):
     _columns = {
         'name': fields.char('View Name',size=64,  required=True),
         'model': fields.char('Object', size=64, required=True, select=True),
-        'priority': fields.integer('Sequence', required=True),
+        'priority': fields.integer('Sequence', required=True,help="Higher the number the later this view will be applied during inheritance"),
         'type': fields.selection((
             ('tree','Tree'),
             ('form','Form'),
@@ -106,9 +106,16 @@ class view(osv.osv):
            :rtype: list of tuples
            :return: [(view_arch,view_id), ...]
         """
-        cr.execute("""SELECT arch, id FROM ir_ui_view WHERE inherit_id=%s AND model=%s
-                      ORDER BY priority""",
-                      (view_id, model))
+        cr.execute("""
+                      SELECT    
+                                arch, 
+                                id 
+                      FROM      
+                                ir_ui_view 
+                      WHERE 
+                                inherit_id=%s AND model=%s
+                      ORDER BY  priority, name, create_date desc
+                  """,(view_id, model))
         return cr.fetchall()
 
     def write(self, cr, uid, ids, vals, context=None):
