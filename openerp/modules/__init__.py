@@ -29,6 +29,7 @@ import openerp.modules.graph
 import openerp.modules.loading
 import openerp.modules.migration
 import openerp.modules.module
+import openerp.modules.locking
 
 # TODO temporarily expose those things
 from openerp.modules.module import \
