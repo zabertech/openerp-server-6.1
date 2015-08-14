@@ -1295,6 +1295,11 @@ class related(function):
         # Added 2014-10-02 by Colin Ligertwood <colin@zaber.com>
         self.noupdatestore = args.get('noupdatestore', False)
 
+        # Added 2015-08-11 by Colin Ligertwood <colin@zaber.com>
+        # http://bugs/issues/1333 prevent overwriting of related field values
+        # by defaulting all related fields to be readonly.
+        self.readonly = args.get('readonly', True)
+
     def _field_get2(self, cr, uid, obj, context=None):
         if self._relations:
             return
