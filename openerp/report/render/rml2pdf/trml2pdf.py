@@ -125,11 +125,7 @@ class PageCount(platypus.Flowable):
     def draw(self):
         self.canv.beginForm("pageCount%d" % (self.story_count))
         self.canv.setFont("Helvetica", utils.unit_get(str(8)))
-        # #1289 add the total page count to outgoing document footer
-        # by default, this will draw the total count centered on the page
-        # HACK add whitespace so that the count appears after "Page x of" in
-        # the template
-        self.canv.drawString(0, 0, "         " + str(self.canv.getPageNumber()))
+        self.canv.drawString(0, 0, str(self.canv.getPageNumber()))
         self.canv.endForm()
 
 class PageReset(platypus.Flowable):
