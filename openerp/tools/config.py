@@ -490,7 +490,7 @@ class configmanager(object):
         if opt.server_wide_modules:
             openerp.conf.server_wide_modules = map(lambda m: m.strip(), opt.server_wide_modules.split(','))
         else:
-            openerp.conf.server_wide_modules = ['web']
+            openerp.conf.server_wide_modules = ['web', 'zerp_ddp']
         if complete:
             openerp.modules.module.initialize_sys_path()
             openerp.modules.loading.open_openerp_namespace()
