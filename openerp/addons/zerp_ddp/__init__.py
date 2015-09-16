@@ -21,6 +21,7 @@
 import ddp
 import zerp_ddp
 import threading
+import Queue
 from openerp.osv import osv, orm
 from openerp import pooler
 from pprint import pprint
@@ -28,12 +29,15 @@ from pprint import pprint
 server = None
 server_thread = None
 
+ddp_subscriptions = []
 ddp_temp_message_queues = {}
-ddp_message_queue = []
+ddp_message_queue = Queue.Queue()
 
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
     def inner_write(self, cr, user, ids, vals, context=None):
+        if type(ids) in [int, long]:
+            ids = [ids]
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
@@ -45,8 +49,43 @@ def ddp_decorated_write(fn):
         for id in ids:
             message = ddp.ddp.Changed(model, id, vals)
             ddp_temp_message_queues[cr].append(message)
-        pprint(ddp_temp_message_queues)
         return fn(self, cr, user, ids, vals, context)
+    return inner_write
+
+def ddp_decorated_create(fn):
+    global ddp_temp_message_queues
+    def inner_create(self, cr, user, vals, context=None):
+        global ddp_temp_message_queues
+        if not cr in ddp_temp_message_queues:
+            ddp_temp_message_queues[cr] = []
+        print "inner create"
+        model = self._name
+    
+        id = fn(self, cr, user, ids, vals, context)
+        
+        # Create a new changed message for each id of this
+        # model which gets changed
+        message = ddp.ddp.Added(model, id, vals)
+        ddp_temp_message_queues[cr].append(message)
+        return id
+    return inner_write
+
+def ddp_decorated_unlink(fn):
+    global ddp_temp_message_queues
+    def inner_unlink(self, cr, user, ids, context=None):
+        if type(ids) in [int, long]:
+            ids = [ids]
+        global ddp_temp_message_queues
+        if not cr in ddp_temp_message_queues:
+            ddp_temp_message_queues[cr] = []
+        print "inner create"
+        model = self._name
+    
+        # Create a new changed message for each id of this
+        # model which gets changed
+        message = ddp.ddp.Removed(model, id)
+        ddp_temp_message_queues[cr].append(message)
+        return fn(self, cr, user, ids, context)
     return inner_write
 
 def execute(self, db, uid, obj, method, *args, **kw):
@@ -68,7 +107,8 @@ def execute(self, db, uid, obj, method, *args, **kw):
 
             # Pass the messages on the temporary queue for this cursor on to the
             # main message queue to be forwarded on to subscribers
-            ddp_message_queue = ddp_message_queue + ddp_temp_message_queues[cr]
+            for item in ddp_temp_message_queues[cr]:
+                ddp_message_queue.put(item)
             cr.commit()
         except Exception:
 
@@ -79,7 +119,6 @@ def execute(self, db, uid, obj, method, *args, **kw):
             raise
     finally:
         cr.close()
-    pprint(ddp_message_queue)
     return res
 
 def launch_ddp():
@@ -95,5 +134,7 @@ def launch_ddp():
     server_thread = threading.Thread(target=lambda *a: server.start())  
     server_thread.daemon = False
     server_thread.start()
+
+    # Create then start the message queue processor
 
 
