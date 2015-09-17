@@ -41,7 +41,7 @@ def ddp_decorated_write(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "inner write"
+        print "write, {ids}, {vals}".format(ids=ids, vals=vals)
         model = self._name
     
         # Create a new changed message for each id of this
@@ -58,7 +58,7 @@ def ddp_decorated_create(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "inner create"
+        print "create, {vals}".format(vals=vals)
         model = self._name
     
         id = fn(self, cr, user, ids, vals, context)
@@ -78,7 +78,7 @@ def ddp_decorated_unlink(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "inner create"
+        print "unlink, {ids}".format(ids=ids)
         model = self._name
     
         # Create a new changed message for each id of this
@@ -91,7 +91,7 @@ def ddp_decorated_unlink(fn):
 def execute(self, db, uid, obj, method, *args, **kw):
     global ddp_temp_message_queues
     global ddp_message_queue
-    print "my execute"
+    print "{method}, {args}, {kw}".format(method=method, args=args, kw=kw)
     cr = pooler.get_db(db).cursor()
 
     # Create a new temporary message queue for the cursor to collect messages
@@ -128,6 +128,8 @@ def launch_ddp():
     # Monkeypatch osv and orm methods
     osv.object_proxy.execute = execute
     orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
+    orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
+    orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
 
     # Create then start the server
     server = ddp.Server(zerp_ddp.ZerpDDPHandler)
