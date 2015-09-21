@@ -41,8 +41,8 @@ def ddp_decorated_write(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "write, {ids}, {vals}".format(ids=ids, vals=vals)
         model = self._name
+        print "write, {model}, {ids}, {vals}".format(model=model, ids=ids, vals=vals)
     
         # Create a new changed message for each id of this
         # model which gets changed
@@ -58,17 +58,17 @@ def ddp_decorated_create(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "create, {vals}".format(vals=vals)
         model = self._name
+        print "create, {model}, {vals}".format(model=model, vals=vals)
     
-        id = fn(self, cr, user, ids, vals, context)
+        id = fn(self, cr, user, vals, context)
         
         # Create a new changed message for each id of this
         # model which gets changed
         message = ddp.ddp.Added(model, id, vals)
         ddp_temp_message_queues[cr].append(message)
         return id
-    return inner_write
+    return inner_create
 
 def ddp_decorated_unlink(fn):
     global ddp_temp_message_queues
@@ -78,15 +78,15 @@ def ddp_decorated_unlink(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        print "unlink, {ids}".format(ids=ids)
         model = self._name
+        print "unlink, {model}, {ids}".format(model=model, ids=ids)
     
         # Create a new changed message for each id of this
         # model which gets changed
         message = ddp.ddp.Removed(model, id)
         ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, context)
-    return inner_write
+    return inner_unlink
 
 def execute(self, db, uid, obj, method, *args, **kw):
     global ddp_temp_message_queues
