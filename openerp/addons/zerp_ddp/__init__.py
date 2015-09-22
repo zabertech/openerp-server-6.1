@@ -42,7 +42,6 @@ def ddp_decorated_write(fn):
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
         model = self._name
-        print "write, {model}, {ids}, {vals}".format(model=model, ids=ids, vals=vals)
     
         # Create a new changed message for each id of this
         # model which gets changed
@@ -59,7 +58,6 @@ def ddp_decorated_create(fn):
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
         model = self._name
-        print "create, {model}, {vals}".format(model=model, vals=vals)
     
         id = fn(self, cr, user, vals, context)
         
@@ -79,7 +77,6 @@ def ddp_decorated_unlink(fn):
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
         model = self._name
-        print "unlink, {model}, {ids}".format(model=model, ids=ids)
     
         # Create a new changed message for each id of this
         # model which gets changed
@@ -91,7 +88,6 @@ def ddp_decorated_unlink(fn):
 def execute(self, db, uid, obj, method, *args, **kw):
     global ddp_temp_message_queues
     global ddp_message_queue
-    print "{method}, {args}, {kw}".format(method=method, args=args, kw=kw)
     cr = pooler.get_db(db).cursor()
 
     # Create a new temporary message queue for the cursor to collect messages
@@ -104,20 +100,23 @@ def execute(self, db, uid, obj, method, *args, **kw):
             res = self.execute_cr(cr, uid, obj, method, *args, **kw)
             if res is None:
                 _logger.warning('The method %s of the object %s can not return `None` !', method, obj)
-
-            # Pass the messages on the temporary queue for this cursor on to the
-            # main message queue to be forwarded on to subscribers
-            for item in ddp_temp_message_queues[cr]:
-                ddp_message_queue.put(item)
+            
             cr.commit()
-        except Exception:
+        except Exception as err:
 
             # Remove this cursor and its temporary message queue from the temporary
             # queues pool since we're about to roll back its changes and destroy it
             del(ddp_temp_message_queues[cr])
+            
             cr.rollback()
             raise
     finally:
+        # Copy all messages from the temporary queue to the main queue for processing
+        # TODO: rewrite as something like ddp.enqueue_messages(messages_list)
+        if cr in ddp_temp_message_queues:
+            for item in ddp_temp_message_queues[cr]:
+                ddp_message_queue.put(item)
+        
         cr.close()
     return res
 
