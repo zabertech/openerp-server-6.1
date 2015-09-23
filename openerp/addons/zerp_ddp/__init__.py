@@ -18,7 +18,7 @@
 #
 #################################################################################
 
-import ddp
+from ddp import *
 import zerp_ddp
 import threading
 import Queue
@@ -26,12 +26,7 @@ from openerp.osv import osv, orm
 from openerp import pooler
 from pprint import pprint
 
-server = None
-server_thread = None
-
-ddp_subscriptions = []
-ddp_temp_message_queues = {}
-ddp_message_queue = Queue.Queue()
+from globals import *
 
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
@@ -46,7 +41,7 @@ def ddp_decorated_write(fn):
         # Create a new changed message for each id of this
         # model which gets changed
         for id in ids:
-            message = ddp.ddp.Changed(model, id, vals)
+            message = ddp.Changed(model, id, vals)
             ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, vals, context)
     return inner_write
@@ -63,7 +58,7 @@ def ddp_decorated_create(fn):
         
         # Create a new changed message for each id of this
         # model which gets changed
-        message = ddp.ddp.Added(model, id, vals)
+        message = ddp.Added(model, id, vals)
         ddp_temp_message_queues[cr].append(message)
         return id
     return inner_create
@@ -80,7 +75,7 @@ def ddp_decorated_unlink(fn):
     
         # Create a new changed message for each id of this
         # model which gets changed
-        message = ddp.ddp.Removed(model, id)
+        message = ddp.Removed(model, id)
         ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, context)
     return inner_unlink
@@ -124,6 +119,10 @@ def launch_ddp():
     global server
     global server_thread
 
+    # globals created from ddp/globals.py
+    global ddp_message_queue
+    global ddp_subscriptions
+
     # Monkeypatch osv and orm methods
     osv.object_proxy.execute = execute
     orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
@@ -131,11 +130,14 @@ def launch_ddp():
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
 
     # Create then start the server
-    server = ddp.Server(zerp_ddp.ZerpDDPHandler)
+    server = Server(zerp_ddp.ZerpDDPHandler)
     server_thread = threading.Thread(target=lambda *a: server.start())  
     server_thread.daemon = False
     server_thread.start()
 
     # Create then start the message queue processor
-
+    worker = Worker()
+    worker_thread = threading.Thread(target=lambda *a: worker.start())
+    worker_thread.daemon = False
+    worker_thread.start()
 

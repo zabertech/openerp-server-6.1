@@ -1,37 +1,69 @@
-import ddp
-import openerp.osv.orm
+from ddp import *
+import openerp.osv
 import pooler
 
-from pprint import pprint
-
-class ZerpDDPHandler(ddp.Handler):
+class ZerpDDPHandler(Handler):
     """
     """
+    uid = 96
+    db_name = 'today'
+    session_id = 'blee'
 
-    def on_sub(self, message):
+    def on_sub(self, rcvd):
         """
         """
-
-    def on_unsub(self, message):
-        """
-        """
-
-    def on_method(self, message):
-        """
-        """
-        orm_model = message.params[0]
-        orm_method = message.params[1]
-        args = message.params[2]
-        kwargs = message.params[3]
-        db_name = 'today'
-        uid = 96
-        db, pool = pooler.get_db_and_pool(db_name)
-        fn = getattr(openerp.osv.osv.service, message.method)
+        global ddp_message_queue
+        global ddp_subscriptions
+        model = rcvd.params['model']
+        fields = rcvd.params['fields']
+        domain = rcvd.params['domain']
+        args = {}
+        db, pool = pooler.get_db_and_pool(self.db_name)
+        cr = db.cursor()
         try:
-            res = fn(db_name, uid, orm_model, orm_method, *args, **kwargs)
-            message = ddp.ddp.Result(message.id, error=None, result=res)
+            obj = pool.get(model)
+            ids = obj.search(cr, self.uid, domain)
+            subscription = ddp.Subscription(rcvd.id, rcvd.name, rcvd.params, self)
+            for id in ids:
+                subscription.add_rec(model, id)
+            ddp_subscriptions.append(subscription)
+            res = obj.read(cr, self.uid, ids, fields)
+            for rec in res:
+                rec_id = rec['id']
+                del rec['id']
+                message = ddp.Added(model, rec_id, rec)
+                ddp_message_queue.put(message)
+            message = ddp.Ready([rcvd.id])
+            ddp_message_queue.put(message)
+            print ddp_message_queue, ddp_subscriptions
         except Exception as err:
-            message = ddp.ddp.Result(message.id, error=err, result=None)
-        self.write_message(ddp.ddp.serialize(message))
-        return res
+            message = ddp.NoSub(rcvd.id, err)
+            ddp_message_queue.put(message)
+            raise err
+        finally:
+            cr.close()
+            
+
+    def on_unsub(self, rcvd):
+        """
+        """
+
+    def on_method(self, rcvd):
+        """
+        """
+        model = rcvd.params[0]
+        method = rcvd.params[1]
+        args = rcvd.params[2]
+        kwargs = rcvd.params[3]
+        fn = getattr(openerp.osv.osv.service, rcvd.method)
+        try:
+            res = fn(self.db_name, self.uid, model, method, *args, **kwargs)
+            message = ddp.Result(rcvd.id, error=None, result=res)
+        except Exception as err:
+            message = ddp.Result(rcvd.id, error=err, result=None)
+        finally:
+            self.write_message(message)
+    def write_message(self, message):
+        super(ZerpDDPHandler, self).write_message(message)
+        print message
 
