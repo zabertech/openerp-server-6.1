@@ -41,7 +41,7 @@ def ddp_decorated_write(fn):
         # Create a new changed message for each id of this
         # model which gets changed
         for id in ids:
-            message = ddp.Changed(model, id, vals)
+            message = ddp.Changed(model, str(id), vals)
             ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, vals, context)
     return inner_write
@@ -58,7 +58,7 @@ def ddp_decorated_create(fn):
         
         # Create a new changed message for each id of this
         # model which gets changed
-        message = ddp.Added(model, id, vals)
+        message = ddp.Added(model, str(id), vals)
         ddp_temp_message_queues[cr].append(message)
         return id
     return inner_create
@@ -75,8 +75,9 @@ def ddp_decorated_unlink(fn):
     
         # Create a new changed message for each id of this
         # model which gets changed
-        message = ddp.Removed(model, id)
-        ddp_temp_message_queues[cr].append(message)
+        for id in ids:
+            message = ddp.Removed(model, str(id))
+            ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, context)
     return inner_unlink
 
@@ -130,13 +131,13 @@ def launch_ddp():
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
 
     # Create then start the server
-    server = Server(zerp_ddp.ZerpDDPHandler)
-    server_thread = threading.Thread(target=lambda *a: server.start())  
+    server = Server(zerp_ddp.ZerpDDPHandler, '/ddp', 3000)
+    server_thread = threading.Thread(target=lambda *a: server.start())
     server_thread.daemon = False
     server_thread.start()
 
     # Create then start the message queue processor
-    worker = Worker()
+    worker = zerp_ddp.ZerpWorker()
     worker_thread = threading.Thread(target=lambda *a: worker.start())
     worker_thread.daemon = False
     worker_thread.start()
