@@ -49,13 +49,6 @@ class ZerpSubscription(Subscription):
 
         # Use the ORM to test if the messages record id matches the
         # subscription's domain expression (this will get expensive)
-        db, pool = pooler.get_db_and_pool(params['database'])
-        cr = db.cursor()
-        obj = pool.get(params['model'])
-        ids = obj.search(cr, int(self.uid), params['domain'])
-        cr.close()
-        if int(message.id) in ids:
-            return True
         try:
             db, pool = pooler.get_db_and_pool(params['database'])
             cr = db.cursor()
@@ -64,12 +57,11 @@ class ZerpSubscription(Subscription):
             cr.close()
             if int(message.id) in ids:
                 return True
-        except Exception as err:
+        except:
             try:
                 cr.close()
             except:
                 pass
-            raise err
         return False
         
 
@@ -100,7 +92,6 @@ class ZerpSubscription(Subscription):
             return
         if not self.test_domain(message):
             return
-        print message
         super(ZerpSubscription, self).on_added(message)
      
     def on_changed(self, message):
