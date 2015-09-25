@@ -13,10 +13,12 @@ class ZerpSubscription(Subscription):
     """
     """
     uid = None
+    nodata = False
 
-    def __init__(self, id, name, params, conn, method=False):
+    def __init__(self, id, name, params, conn, method=False, nodata=False):
         super(ZerpSubscription, self).__init__(id, name, params, conn, method)
         self.uid = conn.uid
+        self.nodata = nodata
 
     def set_uid(self, uid):
         """
@@ -40,12 +42,13 @@ class ZerpSubscription(Subscription):
         """
         if self.method:
             return True
+
         try:
             params = self.params[0]
-            if not params['domain']:
+            if not params.get('domain', False):
                 return True
         except:
-            return 
+            return True
 
         # Use the ORM to test if the messages record id matches the
         # subscription's domain expression (this will get expensive)
@@ -144,34 +147,49 @@ class ZerpDDPHandler(Handler):
         """
         global ddp_message_queue
         global ddp_subscriptions
-        sub_params = rcvd.params[0]
-        database = sub_params['database']
-        model = sub_params['model']
-        fields = sub_params['fields']
-        domain = sub_params['domain']
-        args = {}
+        params = rcvd.params[0]
+        database = params['database']
+        model = params['model']
+        fields = params.get('fields', [])
+        domain = params.get('domain', [])
+        limit = params.get('limit', None)
+        offset = params.get('offset', None)
+        nodata = params.get('nodata', False)
         try:
+
+            subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self, nodata=nodata)
+            ddp_subscriptions.add(subscription)
+
+            # Don't send any initial data if we're only interested in
+            # new things.
+            if nodata:
+                message = ddp.Ready([rcvd.id])
+                ddp_message_queue.enqueue(message)
+                return
+
+            # Fetch the initial data sent on this subscription from
+            # openerp
             db, pool = pooler.get_db_and_pool(self.database)
             cr = db.cursor()
             obj = pool.get(model)
-
-            ids = obj.search(cr, self.uid, domain)
-
-            model = "{}:{}".format(cr.dbname, model)
-
-            subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self)
-            subscription.set_uid(self.uid)
-            ddp_subscriptions.add(subscription)
-
+            ids = obj.search(cr, self.uid, domain, limit=limit, offset=offset)
             res = obj.read(cr, self.uid, ids, fields)
             cr.close()
 
+            # Piggyback the dbname on the collection name. This will get
+            # stripped off when the subscription handles the outgoing
+            # added messages
+            model = "{}:{}".format(self.database, model)
+
+            # Build and enqueue the initial data 'added' messages
             for rec in res:
                 rec_id = str(rec['id'])
                 del rec['id']
                 message = ddp.Added(model, rec_id, rec)
                 ddp_message_queue.enqueue(message)
 
+            # Enqueue a ready message now that all of the data has
+            # been enqueued
             message = ddp.Ready([rcvd.id])
             ddp_message_queue.enqueue(message)
         except Exception as err:
