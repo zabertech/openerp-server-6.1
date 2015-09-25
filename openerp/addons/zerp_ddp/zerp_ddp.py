@@ -18,6 +18,11 @@ class ZerpSubscription(Subscription):
         super(ZerpSubscription, self).__init__(id, name, params, conn, method)
         self.uid = conn.uid
 
+    def set_uid(self, uid):
+        """
+        """
+        self.uid = uid
+
     def test_collection(self, message):
         """
         """
@@ -35,37 +40,42 @@ class ZerpSubscription(Subscription):
         """
         if self.method:
             return True
-
         try:
-            return not self.params[0]['domain']
+            params = self.params[0]
+            if not params['domain']:
+                return True
         except:
-            return True
+            return 
 
         # Use the ORM to test if the messages record id matches the
         # subscription's domain expression (this will get expensive)
+        db, pool = pooler.get_db_and_pool(params['database'])
+        cr = db.cursor()
+        obj = pool.get(params['model'])
+        ids = obj.search(cr, int(self.uid), params['domain'])
+        cr.close()
+        if int(message.id) in ids:
+            return True
         try:
             db, pool = pooler.get_db_and_pool(params['database'])
-            cr = db.cursol()
+            cr = db.cursor()
             obj = pool.get(params['model'])
-            ids = obj.search(cr, self.uid, params['domain'], ['id'])
+            ids = obj.search(cr, int(self.uid), params['domain'])
             cr.close()
             if int(message.id) in ids:
                 return True
-        except:
+        except Exception as err:
             try:
                 cr.close()
             except:
                 pass
-
+            raise err
         return False
         
 
     def process_for_db(self, message):
         """
         """
-        if self.method:
-            return message
-
         params = self.params[0]
 
         # Split piggybacked databasename from collection name
@@ -74,10 +84,6 @@ class ZerpSubscription(Subscription):
 
         # Does this message come from the subscribed database?
         if message_database != params['database']:
-            return False
-
-        # Does this message match the subscribed OpenERP ORM domain expression?
-        if params['domain']:
             return False
 
         return my_message
@@ -94,6 +100,7 @@ class ZerpSubscription(Subscription):
             return
         if not self.test_domain(message):
             return
+        print message
         super(ZerpSubscription, self).on_added(message)
      
     def on_changed(self, message):
@@ -162,8 +169,7 @@ class ZerpDDPHandler(Handler):
             model = "{}:{}".format(cr.dbname, model)
 
             subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self)
-            for id in ids:
-                subscription.add_rec(model, str(id))
+            subscription.set_uid(self.uid)
             ddp_subscriptions.add(subscription)
 
             res = obj.read(cr, self.uid, ids, fields)
@@ -174,6 +180,7 @@ class ZerpDDPHandler(Handler):
                 del rec['id']
                 message = ddp.Added(model, rec_id, rec)
                 ddp_message_queue.enqueue(message)
+
             message = ddp.Ready([rcvd.id])
             ddp_message_queue.enqueue(message)
         except Exception as err:
@@ -278,6 +285,7 @@ class ZerpDDPHandler(Handler):
         
         elif rcvd.method == "execute":
             subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
+            subscription.set_uid(self.uid)
             ddp_subscriptions.add(subscription)
             model = rcvd.params[0]
             method = rcvd.params[1]
