@@ -36,7 +36,7 @@ def ddp_decorated_write(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        model = self._name
+        model = "{}:{}".format(cr.dbname, self._name)
     
         # Create a new changed message for each id of this
         # model which gets changed
@@ -52,7 +52,7 @@ def ddp_decorated_create(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        model = self._name
+        model = "{}:{}".format(cr.dbname, self._name)
     
         id = fn(self, cr, user, vals, context)
         
@@ -71,7 +71,7 @@ def ddp_decorated_unlink(fn):
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
-        model = self._name
+        model = "{}:{}".format(cr.dbname, self._name)
     
         # Create a new changed message for each id of this
         # model which gets changed
