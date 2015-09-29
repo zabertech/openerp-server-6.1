@@ -271,12 +271,13 @@ class ZerpDDPHandler(Handler):
         except:
             raise Exception('Invalid Login')
 
-    def logout(self):
+    def logout(self, database, token):
         """
         """
-        self.session_id = None
+        global login_tokens
         self.uid = None
         self.database = None
+        del login_tokens[(database, token)]
 
     def on_method(self, rcvd):
         """
@@ -328,10 +329,11 @@ class ZerpDDPHandler(Handler):
         elif rcvd.method == "logout":
             subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
             ddp_subscriptions.add(subscription)
-            self.logout()
-            ddp_message_queue.enqueue(ddp.Result(rcvd.id, error=None, result=true))
+            database = rcvd.params[0]
+            token = rcvd.params[1]
+            self.logout(database, token)
+            ddp_message_queue.enqueue(ddp.Result(rcvd.id, error=None, result=True))
             ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
-            ddp_message_queue.enqueue(message)
         
         elif rcvd.method == "execute":
             subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
