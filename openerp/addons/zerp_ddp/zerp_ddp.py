@@ -1,8 +1,10 @@
+import uuid
+import time
 import tornado.web
 from ddp import *
 import openerp.osv
 import pooler
-
+from globals import login_tokens
 from copy import copy
 
 class ZerpWorker(Worker):
@@ -19,6 +21,7 @@ class ZerpSubscription(Subscription):
         super(ZerpSubscription, self).__init__(id, name, params, conn, method)
         self.uid = conn.uid
         self.nodata = nodata
+        self.database = self.conn.database
 
     def set_uid(self, uid):
         """
@@ -53,7 +56,7 @@ class ZerpSubscription(Subscription):
         # Use the ORM to test if the messages record id matches the
         # subscription's domain expression (this will get expensive)
         try:
-            db, pool = pooler.get_db_and_pool(params['database'])
+            db, pool = pooler.get_db_and_pool(self.database)
             cr = db.cursor()
             obj = pool.get(params['model'])
             ids = obj.search(cr, int(self.uid), params['domain'])
@@ -78,7 +81,7 @@ class ZerpSubscription(Subscription):
         (message_database, my_message.collection) = my_message.collection.split(':')
 
         # Does this message come from the subscribed database?
-        if message_database != params['database']:
+        if message_database != self.database:
             return False
 
         return my_message
@@ -148,7 +151,6 @@ class ZerpDDPHandler(Handler):
         global ddp_message_queue
         global ddp_subscriptions
         params = rcvd.params[0]
-        database = params['database']
         model = params['model']
         fields = params.get('fields', [])
         domain = params.get('domain', [])
@@ -211,7 +213,7 @@ class ZerpDDPHandler(Handler):
         """
         return openerp.service.web_services.db().exp_list()
 
-    def user(self):
+    def get_user(self):
         """
         """
         fields = [
@@ -225,6 +227,9 @@ class ZerpDDPHandler(Handler):
         ]
         fn = getattr(openerp.osv.osv.service, "execute")
         return fn(self.database, self.uid, 'res.users', 'read', self.uid, fields)
+
+    def gen_token(self):
+        return str(uuid.uuid1())
 
     def login(self, database, username, password):
         """
@@ -244,8 +249,27 @@ class ZerpDDPHandler(Handler):
         user_obj.check(database, uid, password)
         self.database = database
         self.uid = uid
+
+        token = self.gen_token()
+        user = self.get_user()
+        global login_tokens
+
+        login_tokens[(database,token)] = user
         
-        return self.user()
+        return {'user': user, 'token': token}
+    
+    def resume(self, database, token):
+        """
+        """
+        global login_tokens
+        try:
+            # This will raise if it fails
+            user = login_tokens[(database,token)]
+            self.database = database
+            self.uid = user['id']
+            return {'user': login_tokens[(database,token)], 'token': token}
+        except:
+            raise Exception('Invalid Login')
 
     def logout(self):
         """
@@ -275,11 +299,28 @@ class ZerpDDPHandler(Handler):
         elif rcvd.method == "login":
             subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
             ddp_subscriptions.add(subscription)
+            database = rcvd.params[0]
+            username = rcvd.params[1]
+            password = rcvd.params[2]
             try:
-                user_info = self.login(rcvd.params[0], rcvd.params[1], rcvd.params[2])
+                user_info = self.login(database, username, password)
                 message = ddp.Result(rcvd.id, error=None, result=user_info)
             except Exception as err:
-                message = ddp.Result(rcvd.id, error="Invalid Login", result=false)
+                message = ddp.Result(rcvd.id, error="Invalid Login", result=False)
+            finally:
+                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
+                ddp_message_queue.enqueue(message)
+
+        elif rcvd.method == "resume":
+            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
+            ddp_subscriptions.add(subscription)
+            database = rcvd.params[0]
+            token = rcvd.params[1]
+            try:
+                user_info = self.resume(database, token)
+                message = ddp.Result(rcvd.id, error=None, result=user_info)
+            except Exception as err:
+                message = ddp.Result(rcvd.id, error="Invalid Login", result=False)
             finally:
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
                 ddp_message_queue.enqueue(message)
