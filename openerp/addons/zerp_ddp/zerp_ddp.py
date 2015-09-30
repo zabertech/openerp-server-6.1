@@ -213,6 +213,16 @@ class ZerpDDPHandler(Handler):
         """
         return openerp.service.web_services.db().exp_list()
 
+    def schema(self, model):
+        """
+        """
+        db, pool = pooler.get_db_and_pool(self.database)
+        cr = db.cursor()
+        model_obj = pool.get(model)
+        schema = model_obj.fields_get(cr, self.uid)
+        cr.close()
+        return schema
+
     def get_user(self):
         """
         """
@@ -277,7 +287,10 @@ class ZerpDDPHandler(Handler):
         global login_tokens
         self.uid = None
         self.database = None
-        del login_tokens[(database, token)]
+        try:
+            del login_tokens[(database, token)]
+        except:
+            pass
 
     def on_method(self, rcvd):
         """
@@ -333,6 +346,15 @@ class ZerpDDPHandler(Handler):
             token = rcvd.params[1]
             self.logout(database, token)
             ddp_message_queue.enqueue(ddp.Result(rcvd.id, error=None, result=True))
+            ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
+
+        elif rcvd.method == "schema":
+            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
+            ddp_subscriptions.add(subscription)
+            model = rcvd.params[0]
+            schema = self.schema(model)
+            message = ddp.Result(rcvd.id, error=None, result=schema)
+            ddp_message_queue.enqueue(message)
             ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
         
         elif rcvd.method == "execute":
