@@ -17,10 +17,11 @@ class ZerpSubscription(Subscription):
     uid = None
     nodata = False
 
-    def __init__(self, id, name, params, conn, method=False, nodata=False):
+    def __init__(self, id, name, params, conn, method=False, nodata=False, server_enforce_domain=False):
         super(ZerpSubscription, self).__init__(id, name, params, conn, method)
         self.uid = conn.uid
         self.nodata = nodata
+        self.server_enforce_domain = server_enforce_domain
         self.database = self.conn.database
 
     def set_uid(self, uid):
@@ -28,7 +29,7 @@ class ZerpSubscription(Subscription):
         """
         self.uid = uid
 
-    def test_collection(self, message):
+    def _matches_collection(self, message):
         """
         """
         if self.method:
@@ -40,7 +41,7 @@ class ZerpSubscription(Subscription):
             return False
 
 
-    def test_domain(self, message):
+    def _matches_domain_expression(self, message):
         """
         """
         if self.method:
@@ -86,6 +87,55 @@ class ZerpSubscription(Subscription):
 
         return my_message
 
+    def _amend_added(self, message):
+        """
+        Send more fields to a record already added in this subscription. This
+        is to allow for subscribes to the same collection with different fields
+        without having to create a union of all subscribed fields before processing.
+        
+        TODO:In this iteration, we change the added message to a changed message. In
+        the future we should probably implement a new DDP message type for amending
+        data.
+        """
+        collection = message.collection
+        id_ = message.id
+        fields = message.fields
+        
+        changed_message = ddp.Changed(collection, id_, fields)
+        self.conn.add_rec(collection, id_, fields.keys())
+        super(ZerpSubscription, self).on_changed(changed_message)
+
+    def _amend_subscribed_data(self, message):
+        """
+        Test to see if this subscription already has a copy of the added
+        data, but with different fields. If so, we send it as a changed
+        to amend the existing record.
+        """
+        collection = message.collection
+        id_ = message.id
+        fieldnames = set(message.fields.keys())
+        added_fieldnames = self.conn.recs.get((collection, id_))
+
+        if not added_fieldnames:
+            return False
+
+        added_fieldnames = set(added_fieldnames)
+        
+        if not fieldnames:
+            return False
+
+        if fieldnames == added_fieldnames:
+            return True
+
+        for fieldname in set(fieldnames):
+            if fieldname not in added_fieldnames:
+                break
+        else:
+            return True
+
+        self._amend_added(message)
+        return True
+
     def on_added(self, message):
         """
         """
@@ -94,11 +144,13 @@ class ZerpSubscription(Subscription):
         message = self.process_for_db(message)
         if not message:
             return
-        if not self.test_collection(message):
+        if not self._matches_collection(message):
             return
-        if not self.test_domain(message):
+        if self.server_enforce_domain and not self._matches_domain_expression(message):
             return
-        super(ZerpSubscription, self).on_added(message)
+
+        if not self._amend_subscribed_data(message):
+            super(ZerpSubscription, self).on_added(message)
      
     def on_changed(self, message):
         """
@@ -154,12 +206,13 @@ class ZerpDDPHandler(Handler):
         model = params['model']
         fields = params.get('fields', [])
         domain = params.get('domain', [])
+        server_enforce_domain = params.get('server_enforce_domain', False)
         limit = params.get('limit', None)
         offset = params.get('offset', None)
         nodata = params.get('nodata', False)
         try:
 
-            subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self, nodata=nodata)
+            subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self, nodata=nodata, server_enforce_domain=server_enforce_domain)
             ddp_subscriptions.add(subscription)
 
             # Don't send any initial data if we're only interested in
