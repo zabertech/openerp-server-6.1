@@ -123,6 +123,7 @@ def launch_ddp():
     # globals created from ddp/globals.py
     global ddp_message_queue
     global ddp_subscriptions
+    global ddp_sessions
 
     # Monkeypatch osv and orm methods
     osv.object_proxy.execute = execute
@@ -141,4 +142,10 @@ def launch_ddp():
     worker_thread = threading.Thread(target=lambda *a: worker.start())
     worker_thread.daemon = False
     worker_thread.start()
+
+    # Create then start the reaper
+    reaper = zerp_ddp.ZerpReaper()
+    reaper_thread = threading.Thread(target=lambda *a: reaper.start())
+    reaper_thread.daemon = False
+    reaper_thread.start()
 

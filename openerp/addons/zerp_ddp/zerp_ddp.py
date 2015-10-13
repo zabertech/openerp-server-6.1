@@ -7,6 +7,10 @@ import pooler
 from globals import login_tokens
 from copy import copy
 
+class ZerpReaper(Reaper):
+    """
+    """
+
 class ZerpWorker(Worker):
     """
     """
@@ -102,7 +106,7 @@ class ZerpSubscription(Subscription):
         fields = message.fields
         
         changed_message = ddp.Changed(collection, id_, fields)
-        self.conn.add_rec(collection, id_, fields.keys())
+        self.conn.ddp_session.add_rec(collection, id_, fields.keys())
         super(ZerpSubscription, self).on_changed(changed_message)
 
     def _amend_subscribed_data(self, message):
@@ -114,7 +118,7 @@ class ZerpSubscription(Subscription):
         collection = message.collection
         id_ = message.id
         fieldnames = set(message.fields.keys())
-        added_fieldnames = self.conn.recs.get((collection, id_))
+        added_fieldnames = self.conn.ddp_session.recs.get((collection, id_))
 
         if not added_fieldnames:
             return False
@@ -195,7 +199,6 @@ class ZerpDDPHandler(Handler):
     """
     uid = None
     database = None
-    session_id = None
 
     def on_sub(self, rcvd):
         """
@@ -256,10 +259,6 @@ class ZerpDDPHandler(Handler):
             except:
                 pass
 
-
-    def on_unsub(self, rcvd):
-        """
-        """
 
     def databases(self):
         """
@@ -426,15 +425,15 @@ class ZerpDDPHandler(Handler):
 
             fn = getattr(openerp.osv.osv.service, rcvd.method)
             try:
-                if not (self.database and self.uid and self.session_id):
+                if not (self.database and self.uid and self.ddp_session.ddp_session_id):
                     raise Exception("Access Denied")
                 res = fn(self.database, self.uid, model, method, *args, **kwargs)
                 message = ddp.Result(rcvd.id, error=None, result=res)
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=err.message, result=None)
             finally:
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
                 ddp_message_queue.enqueue(message)
+                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
     def write_message(self, message):
         super(ZerpDDPHandler, self).write_message(message)
