@@ -1,3 +1,4 @@
+import traceback
 import uuid
 import time
 import tornado.web
@@ -259,7 +260,7 @@ class ZerpDDPHandler(Handler):
         except ZerpDDPError as err:
             message = ddp.NoSub(rcvd.id, err)
         except Exception as err:
-            message = ddp.NoSub(rcvd.id, ZerpDDPError(500, "Server Error"))
+            message = ddp.NoSub(rcvd.id, ZerpDDPError(500, "Server Error", err.message))
         finally:
             ddp_message_queue.enqueue(message)
             try:
@@ -365,7 +366,7 @@ class ZerpDDPHandler(Handler):
                 databases = self.databases()
                 message = ddp.Result(rcvd.id, error=None, result=databases)
             except Exception as err:
-                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=false)
+                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=false)
             finally:
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
                 ddp_message_queue.enqueue(message)
@@ -420,7 +421,7 @@ class ZerpDDPHandler(Handler):
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
+                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
             finally:
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
@@ -448,7 +449,8 @@ class ZerpDDPHandler(Handler):
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
+                trace = traceback.format_exc()
+                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", "{}\n{}".format(err.message, trace)), result=None)
             finally:
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))

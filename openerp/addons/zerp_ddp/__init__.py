@@ -37,13 +37,14 @@ def ddp_decorated_write(fn):
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
         model = "{}:{}".format(cr.dbname, self._name)
-    
-        # Create a new changed message for each id of this
-        # model which gets changed
-        for id in ids:
-            message = ddp.Changed(model, str(id), vals)
+        ret = fn(self, cr, user, ids, vals, context)
+
+        # Send read records as changed messages
+        recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
+        for rec in recs:
+            message = ddp.Changed(model, str(rec['id']), rec)
             ddp_temp_message_queues[cr].append(message)
-        return fn(self, cr, user, ids, vals, context)
+        return ret
     return inner_write
 
 def ddp_decorated_create(fn):
