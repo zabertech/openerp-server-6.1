@@ -211,15 +211,15 @@ class ZerpDDPHandler(Handler):
         """
         global ddp_message_queue
         global ddp_subscriptions
-        params = rcvd.params[0]
-        model = params['model']
-        fields = params.get('fields', [])
-        domain = params.get('domain', [])
-        server_enforce_domain = params.get('server_enforce_domain', False)
-        limit = params.get('limit', None)
-        offset = params.get('offset', None)
-        nodata = params.get('nodata', False)
         try:
+            params = rcvd.params[0]
+            model = params['model']
+            fields = params.get('fields', [])
+            domain = params.get('domain', [])
+            server_enforce_domain = params.get('server_enforce_domain', False)
+            limit = params.get('limit', None)
+            offset = params.get('offset', None)
+            nodata = params.get('nodata', False)
             if not self.database:
                 raise ZerpDDPError(403, "Access Denied")
 
@@ -416,12 +416,16 @@ class ZerpDDPHandler(Handler):
                 subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
                 ddp_subscriptions.add(subscription)
                 model = rcvd.params[0]
+                if not model:
+                    raise ZerpDDPError("500", "No model specified when requesting schema info")
                 schema = self.schema(model)
                 message = ddp.Result(rcvd.id, error=None, result=schema)
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
+                print err.message
+                #message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
+                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
             finally:
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
