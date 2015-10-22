@@ -133,7 +133,7 @@ def launch_ddp():
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
 
     # Create then start the server
-    server = Server(zerp_ddp.ZerpDDPHandler, '/ddp', 3000)
+    server = Server(zerp_ddp.ZerpDDPHandler, '/ddp', 3001)
     server_thread = threading.Thread(target=lambda *a: server.start())
     server_thread.daemon = False
     server_thread.start()
