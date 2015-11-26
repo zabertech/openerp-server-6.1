@@ -41,8 +41,6 @@ class ZerpDDPMonitor(object):
         """ 
         """
         self.dbname = config.get('ddp_monitor_db', None)
-        if not self.dbname:
-            raise osv.except_osv('Error', 'Set ddp_monitor_db configuration option to enable DDP monitoring.')
 
     def update_sessions(self):
         global ddp_sessions
