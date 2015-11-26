@@ -57,7 +57,7 @@ class ZerpDDPMonitor(object):
 
     def update_connections(self):
         global ddp_connections
-        connection, pool = pooler.get_db_and_pool('today')
+        connection, pool = pooler.get_db_and_pool(self.dbname)
         cr = connection.cursor()
         connection_obj = pool.get('zerp.ddp.connection')
         cr.execute("DELETE FROM zerp_ddp_connection")
@@ -73,7 +73,7 @@ class ZerpDDPMonitor(object):
 
     def update_subscriptions(self):
         global ddp_subscriptions
-        connection, pool = pooler.get_db_and_pool('today')
+        connection, pool = pooler.get_db_and_pool(self.dbname)
         cr = connection.cursor()
         subscription_obj = pool.get('zerp.ddp.subscription')
         cr.execute("DELETE FROM zerp_ddp_subscription")
