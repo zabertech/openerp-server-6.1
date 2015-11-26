@@ -94,6 +94,9 @@ class ZerpDDPMonitor(object):
         global ddp_connections
         while True:
             sleep(10)
-            self.update_subscriptions()
-            self.update_connections()
-            self.update_sessions()
+            try:
+                self.update_subscriptions()
+                self.update_connections()
+                self.update_sessions()
+            except:
+                pass
