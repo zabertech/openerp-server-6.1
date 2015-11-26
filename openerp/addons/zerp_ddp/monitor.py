@@ -97,4 +97,4 @@ class ZerpDDPMonitor(object):
                 self.update_connections()
                 self.update_sessions()
             except:
-                pass
+                break # If we can't update monitoring data, stop trying. it's not critical
