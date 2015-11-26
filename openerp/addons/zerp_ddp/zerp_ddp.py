@@ -8,7 +8,6 @@ import pooler
 from globals import login_tokens
 from copy import copy
 
-
 class ZerpDDPError(ddp.DDPError):
     """
     """
@@ -326,7 +325,7 @@ class ZerpDDPHandler(Handler):
         global login_tokens
 
         login_tokens[(database,token)] = user
-        
+
         return {'user': user, 'token': token}
     
     def resume(self, database, token):

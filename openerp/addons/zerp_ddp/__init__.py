@@ -18,15 +18,19 @@
 #
 #################################################################################
 
+from datetime import datetime
 from ddp import *
+from time import sleep
 import zerp_ddp
 import threading
 import Queue
-from openerp.osv import osv, orm
+from openerp.osv import osv, orm, fields
 from openerp import pooler
 from pprint import pprint
 
+from monitor import *
 from globals import *
+
 
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
@@ -120,6 +124,10 @@ def execute(self, db, uid, obj, method, *args, **kw):
 def launch_ddp():
     global server
     global server_thread
+    global worker
+    global worker_thread
+    global reaper
+    global reaper_thread
 
     # globals created from ddp/globals.py
     global ddp_message_queue
@@ -133,7 +141,7 @@ def launch_ddp():
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
 
     # Create then start the server
-    server = Server(zerp_ddp.ZerpDDPHandler, '/ddp', 3000)
+    server = Server(zerp_ddp.ZerpDDPHandler, '/ddp', 3001)
     server_thread = threading.Thread(target=lambda *a: server.start())
     server_thread.daemon = False
     server_thread.start()
@@ -149,4 +157,31 @@ def launch_ddp():
     reaper_thread = threading.Thread(target=lambda *a: reaper.start())
     reaper_thread.daemon = False
     reaper_thread.start()
+
+    # Create then start the monitor thread
+    monitor = ZerpDDPMonitor()
+    monitor_thread = threading.Thread(target=lambda *a: monitor.start())
+    monitor_thread.daemon = False
+    monitor_thread.start()
+
+
+def stop_ddp():
+    global server
+    global server_thread
+    global ddp_message_queue
+    global ddp_subscriptions
+    global ddp_sessions
+    global worker
+    global worker_thread
+    global reaper
+    global reaper_thread
+
+    reaper.stop()
+    reaper_thread.stop()
+    worker.stop()
+    worker_thread.stop()
+    server.stop()
+    server_thread.stop()
+    monitor.stop()
+    monitor_thread.stop()
 
