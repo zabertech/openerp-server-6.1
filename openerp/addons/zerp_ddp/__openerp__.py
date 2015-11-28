@@ -27,11 +27,12 @@
     'author': 'Zaber Technologies Inc. (Colin)',
     'post_load' : 'launch_ddp',
     'website': 'http://www.zaber.com',
-    'auto_install': False,
+    'auto_install': True,
     'depends': ['users_ldap'],
     'init_xml': [],
     'update_xml': [
-        'tamatama_data.xml'
+        'zerp_ddp_view.xml',
+        'security/ir.model.access.csv'
     ],
     'demo_xml': [],
     'installable': True,

@@ -1,0 +1,4 @@
+"id","name","model_id:id","group_id:id","perm_read","perm_write","perm_create","perm_unlink"
+"access_zerp_ddp_session","zerp_ddp_session","model_zerp_ddp_session","base.group_system",1,1,1,1
+"access_zerp_ddp_connection","zerp_ddp_connection","model_zerp_ddp_connection","base.group_system",1,1,1,1
+"access_zerp_ddp_subscription","zerp_ddp_subscription","model_zerp_ddp_subscription","base.group_system",1,1,1,1
