@@ -92,6 +92,8 @@ class ZerpDDPMonitor(object):
 
     def start(self):
         global ddp_connections
+        if not self.dbname:
+            return False
         while True:
             sleep(10)
             try:
