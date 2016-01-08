@@ -27,11 +27,12 @@ class zerp_ddp_subscription(osv.osv):
     _name = 'zerp.ddp.subscription'
     _columns = {
         'user_id': fields.many2one('res.users', 'user', select=True, readonly=True),
+        'subscription_id': fields.char('Subscription ID', size=128, select=True, readonly=True),
         'ddp_session_id': fields.char('Session ID', size=128, select=True, readonly=True),
         'database': fields.char('Database', size=128, select=True, readonly=True),
         'remote_ip': fields.char('IP Address', size=128, select=True, readonly=True),
         'name': fields.char('Name', size=128, select=True, readonly=True),
-        'params': fields.char('Params', size=256, select=True, readonly=True),
+        'params': fields.text('Params', select=True, readonly=True),
         'method': fields.char('Method', size=256, select=True, readonly=True)
     }
 
@@ -78,6 +79,7 @@ class ZerpDDPMonitor(object):
         for sub in ddp_subscriptions:
             subscription_obj.create(cr, 1, {
                'ddp_session_id': sub.conn.ddp_session and sub.conn.ddp_session.ddp_session_id or None,
+               'subscription_id': sub.id,
                'remote_ip': sub.conn.remote_ip,
                'database': sub.conn.database,
                'user_id': sub.conn.uid,
