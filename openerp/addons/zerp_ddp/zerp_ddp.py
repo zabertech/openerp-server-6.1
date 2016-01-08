@@ -123,7 +123,19 @@ class ZerpSubscription(Subscription):
         collection = message.collection
         id_ = message.id
         fieldnames = set(message.fields.keys())
-        added_fieldnames = self.conn.ddp_session.recs.get((collection, id_))
+
+        # If this is a brand new connection, it probably wont have a ddp_session yet.
+        # This would cause the thread to crash with an AttributeError exception. Instead
+        # retry a couple of times, and otherwise fail the amend
+        retry = 3
+        while retry:
+            try:
+                added_fieldnames = self.conn.ddp_session.recs.get((collection, id_))
+                retry = 0
+            except AttributeError:
+                retry -= 1
+                if not retry:
+                    return False
 
         if not added_fieldnames:
             return False
@@ -422,7 +434,6 @@ class ZerpDDPHandler(Handler):
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                print err.message
                 #message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
                 message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
             finally:
@@ -459,5 +470,6 @@ class ZerpDDPHandler(Handler):
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
     def write_message(self, message):
+        #print message
         super(ZerpDDPHandler, self).write_message(message)
 
