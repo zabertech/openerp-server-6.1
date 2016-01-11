@@ -421,6 +421,8 @@ class ZerpDDPHandler(Handler):
             ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
         elif rcvd.method == "schema":
+            # This gets overwritten with a real message on success
+            message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
             try:
                 if self.uid == None:
                     raise ZerpDDPError(403, "Access Denied")
@@ -434,8 +436,7 @@ class ZerpDDPHandler(Handler):
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                #message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
-                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
+                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error: {}".format(err)), result=None)
             finally:
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
