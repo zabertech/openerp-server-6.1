@@ -7,6 +7,10 @@ import openerp.osv
 import pooler
 from globals import login_tokens
 from copy import copy
+from tools import config
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ZerpDDPError(ddp.DDPError):
     """
@@ -466,7 +470,13 @@ class ZerpDDPHandler(Handler):
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
+    def on_message(self, message):
+        if config.get('ddp_debug', False):
+            _logger.log(logging.INFO, "DDP <<< %s", message)
+        super(ZerpDDPHandler, self).on_message(message);
+
     def write_message(self, message):
-        #print message
+        if config.get('ddp_debug', False):
+            _logger.log(logging.INFO, "DDP >>> %s", message)
         super(ZerpDDPHandler, self).write_message(message)
 
