@@ -43,7 +43,6 @@ class ZerpSubscription(Subscription):
         """
         if self.method:
             return True
-        
         try:
             return message.collection == self.params[0]['model']
         except:
@@ -124,24 +123,11 @@ class ZerpSubscription(Subscription):
         id_ = message.id
         fieldnames = set(message.fields.keys())
 
-        # If this is a brand new connection, it probably wont have a ddp_session yet.
-        # This would cause the thread to crash with an AttributeError exception. Instead
-        # retry a couple of times, and otherwise fail the amend
-        retry = 3
-        while retry:
-            try:
-                added_fieldnames = self.conn.ddp_session.recs.get((collection, id_))
-                retry = 0
-            except AttributeError:
-                retry -= 1
-                if not retry:
-                    return False
-
-        if not added_fieldnames:
+        try:
+            added_fieldnames = set(self.conn.ddp_session.recs.get((collection, id_)))
+        except:
             return False
 
-        added_fieldnames = set(added_fieldnames)
-        
         if not fieldnames:
             return False
 
@@ -181,6 +167,11 @@ class ZerpSubscription(Subscription):
         message = self.process_for_db(message)
         if not message:
             return
+        if not self._matches_collection(message):
+            return
+        if self.server_enforce_domain and not self._matches_domain_expression(message):
+            return
+
         super(ZerpSubscription, self).on_changed(message)
     
     def on_removed(self, message):
@@ -191,6 +182,11 @@ class ZerpSubscription(Subscription):
         message = self.process_for_db(message)
         if not message:
             return
+        if not self._matches_collection(message):
+            return
+        if self.server_enforce_domain and not self._matches_domain_expression(message):
+            return
+
         super(ZerpSubscription, self).on_removed(message)
     
     def on_ready(self, message):
