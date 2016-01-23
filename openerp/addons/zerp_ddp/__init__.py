@@ -27,9 +27,12 @@ import Queue
 from openerp.osv import osv, orm, fields
 from openerp import pooler
 from pprint import pprint
+import logging
 
 from monitor import *
 from globals import *
+
+_logger = logging.getLogger(__name__)
 
 
 def ddp_decorated_write(fn):
