@@ -9,12 +9,12 @@
             <field name="arch" type="xml">
                 <tree string="DDP Subscriptions">
                     <field name="user_id"/>
+                    <field name="subscription_id"/>
                     <field name="ddp_session_id"/>
                     <field name="database"/>
                     <field name="remote_ip"/>
                     <field name="name"/>
                     <field name="method"/>
-                    <field name="params"/>
                 </tree>
             </field>
         </record>

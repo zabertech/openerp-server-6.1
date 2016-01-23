@@ -7,6 +7,10 @@ import openerp.osv
 import pooler
 from globals import login_tokens
 from copy import copy
+from tools import config
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ZerpDDPError(ddp.DDPError):
     """
@@ -43,7 +47,6 @@ class ZerpSubscription(Subscription):
         """
         if self.method:
             return True
-        
         try:
             return message.collection == self.params[0]['model']
         except:
@@ -123,13 +126,12 @@ class ZerpSubscription(Subscription):
         collection = message.collection
         id_ = message.id
         fieldnames = set(message.fields.keys())
-        added_fieldnames = self.conn.ddp_session.recs.get((collection, id_))
 
-        if not added_fieldnames:
+        try:
+            added_fieldnames = set(self.conn.ddp_session.recs.get((collection, id_)))
+        except:
             return False
 
-        added_fieldnames = set(added_fieldnames)
-        
         if not fieldnames:
             return False
 
@@ -169,6 +171,11 @@ class ZerpSubscription(Subscription):
         message = self.process_for_db(message)
         if not message:
             return
+        if not self._matches_collection(message):
+            return
+        if self.server_enforce_domain and not self._matches_domain_expression(message):
+            return
+
         super(ZerpSubscription, self).on_changed(message)
     
     def on_removed(self, message):
@@ -179,6 +186,11 @@ class ZerpSubscription(Subscription):
         message = self.process_for_db(message)
         if not message:
             return
+        if not self._matches_collection(message):
+            return
+        if self.server_enforce_domain and not self._matches_domain_expression(message):
+            return
+
         super(ZerpSubscription, self).on_removed(message)
     
     def on_ready(self, message):
@@ -409,6 +421,8 @@ class ZerpDDPHandler(Handler):
             ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
         elif rcvd.method == "schema":
+            # This gets overwritten with a real message on success
+            message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
             try:
                 if self.uid == None:
                     raise ZerpDDPError(403, "Access Denied")
@@ -422,9 +436,7 @@ class ZerpDDPHandler(Handler):
             except ZerpDDPError as err:
                 message = ddp.Result(rcvd.id, error=err, result=None)
             except Exception as err:
-                print err.message
-                #message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=None)
-                message = ddp_result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
+                message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error: {}".format(err)), result=None)
             finally:
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
@@ -458,6 +470,13 @@ class ZerpDDPHandler(Handler):
                 ddp_message_queue.enqueue(message)
                 ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
 
+    def on_message(self, message):
+        if config.get('ddp_debug', False):
+            _logger.log(logging.INFO, "DDP <<< %s", message)
+        super(ZerpDDPHandler, self).on_message(message);
+
     def write_message(self, message):
+        if config.get('ddp_debug', False):
+            _logger.log(logging.INFO, "DDP >>> %s", message)
         super(ZerpDDPHandler, self).write_message(message)
 
