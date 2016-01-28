@@ -199,7 +199,7 @@ class ZerpSubscription(Subscription):
         if self.method:
             return
         super(ZerpSubscription, self).on_ready(message)
-    
+
     def on_result(self, message):
         """
         """
@@ -232,7 +232,7 @@ class ZerpDDPHandler(Handler):
             offset = params.get('offset', None)
             nodata = params.get('nodata', False)
             if not self.database:
-                raise ZerpDDPError(403, "Access Denied")
+                raise ZerpDDPError(403, "Error accessing database")
 
             subscription = ZerpSubscription(rcvd.id, rcvd.name, rcvd.params, self, nodata=nodata, server_enforce_domain=server_enforce_domain)
             ddp_subscriptions.add(subscription)
@@ -364,27 +364,29 @@ class ZerpDDPHandler(Handler):
         except:
             pass
 
+    def method_sessionify(self, rcvd):
+        """
+        """
+        rcvd.id = self.ddp_session.ddp_session_id + rcvd.id
+        return rcvd
+
     def on_method(self, rcvd):
         """
         """
         global ddp_message_queue
-        global ddp_subscriptions
+        global ddp_subscription
 
         if rcvd.method == "databases":
-            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-            ddp_subscriptions.add(subscription)
             try:
                 databases = self.databases()
                 message = ddp.Result(rcvd.id, error=None, result=databases)
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=false)
             finally:
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
-                ddp_message_queue.enqueue(message)
+                self.write_message(ddp.Updated([rcvd.id]))
+                self.write_message(message)
             
         elif rcvd.method == "login":
-            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-            ddp_subscriptions.add(subscription)
             database = rcvd.params[0]
             username = rcvd.params[1]
             password = rcvd.params[2]
@@ -394,12 +396,10 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(400, "Invalid Login"), result=False)
             finally:
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
-                ddp_message_queue.enqueue(message)
+                self.write_message(ddp.Updated([rcvd.id]))
+                self.write_message(message)
 
         elif rcvd.method == "resume":
-            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-            ddp_subscriptions.add(subscription)
             database = rcvd.params[0]
             token = rcvd.params[1]
             try:
@@ -408,26 +408,22 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(400, "Invalid Login"), result=False)
             finally:
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
-                ddp_message_queue.enqueue(message)
+                self.write_message(ddp.Updated([rcvd.id]))
+                self.write_message(message)
 
         elif rcvd.method == "logout":
-            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-            ddp_subscriptions.add(subscription)
             database = rcvd.params[0]
             token = rcvd.params[1]
             self.logout(database, token)
-            ddp_message_queue.enqueue(ddp.Result(rcvd.id, error=None, result=True))
-            ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
+            self.write_message(ddp.Updated([rcvd.id]))
+            self.write_message(message)
 
         elif rcvd.method == "schema":
             # This gets overwritten with a real message on success
             message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error"), result=None)
             try:
                 if self.uid == None:
-                    raise ZerpDDPError(403, "Access Denied")
-                subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-                ddp_subscriptions.add(subscription)
+                    raise ZerpDDPError(403, "Invalid UID")
                 model = rcvd.params[0]
                 if not model:
                     raise ZerpDDPError("500", "No model specified when requesting schema info")
@@ -438,13 +434,10 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error: {}".format(err)), result=None)
             finally:
-                ddp_message_queue.enqueue(message)
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
-        
+                self.write_message(ddp.Updated([rcvd.id]))
+                self.write_message(message)
+       
         elif rcvd.method == "execute":
-            subscription = ZerpSubscription(rcvd.id, rcvd.method, rcvd.params, self, method=True)
-            subscription.set_uid(self.uid)
-            ddp_subscriptions.add(subscription)
             model = rcvd.params[0]
             method = rcvd.params[1]
             args = []
@@ -458,7 +451,7 @@ class ZerpDDPHandler(Handler):
             fn = getattr(openerp.osv.osv.service, rcvd.method)
             try:
                 if not (self.database and self.uid and self.ddp_session.ddp_session_id):
-                    raise ZerpDDPError(403, "Access Denied")
+                    raise ZerpDDPError(403, "Access Denied: {} {} {}".format(self.database, self.uid, self.ddp_session.ddp_session_id))
                 res = fn(self.database, self.uid, model, method, *args, **kwargs)
                 message = ddp.Result(rcvd.id, error=None, result=res)
             except ZerpDDPError as err:
@@ -467,8 +460,8 @@ class ZerpDDPHandler(Handler):
                 trace = traceback.format_exc()
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", "{}\n{}".format(err.message, trace)), result=None)
             finally:
-                ddp_message_queue.enqueue(message)
-                ddp_message_queue.enqueue(ddp.Updated([rcvd.id]))
+                self.write_message(ddp.Updated([rcvd.id]))
+                self.write_message(message)
 
     def on_message(self, message):
         if config.get('ddp_debug', False):
