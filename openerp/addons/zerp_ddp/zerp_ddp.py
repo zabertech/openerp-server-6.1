@@ -364,12 +364,6 @@ class ZerpDDPHandler(Handler):
         except:
             pass
 
-    def method_sessionify(self, rcvd):
-        """
-        """
-        rcvd.id = self.ddp_session.ddp_session_id + rcvd.id
-        return rcvd
-
     def on_method(self, rcvd):
         """
         """
@@ -383,8 +377,8 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", err.message), result=false)
             finally:
-                self.write_message(ddp.Updated([rcvd.id]))
                 self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
             
         elif rcvd.method == "login":
             database = rcvd.params[0]
@@ -396,8 +390,8 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(400, "Invalid Login"), result=False)
             finally:
-                self.write_message(ddp.Updated([rcvd.id]))
                 self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
 
         elif rcvd.method == "resume":
             database = rcvd.params[0]
@@ -408,15 +402,16 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(400, "Invalid Login"), result=False)
             finally:
-                self.write_message(ddp.Updated([rcvd.id]))
                 self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
 
         elif rcvd.method == "logout":
             database = rcvd.params[0]
             token = rcvd.params[1]
             self.logout(database, token)
-            self.write_message(ddp.Updated([rcvd.id]))
+            message = ddp.Result(rcvd.id, error=None, result=True)
             self.write_message(message)
+            self.write_message(ddp.Updated([rcvd.id]))
 
         elif rcvd.method == "schema":
             # This gets overwritten with a real message on success
@@ -434,8 +429,8 @@ class ZerpDDPHandler(Handler):
             except Exception as err:
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error: {}".format(err)), result=None)
             finally:
-                self.write_message(ddp.Updated([rcvd.id]))
                 self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
        
         elif rcvd.method == "execute":
             model = rcvd.params[0]
@@ -460,8 +455,8 @@ class ZerpDDPHandler(Handler):
                 trace = traceback.format_exc()
                 message = ddp.Result(rcvd.id, error=ZerpDDPError(500, "Server Error", "{}\n{}".format(err.message, trace)), result=None)
             finally:
-                self.write_message(ddp.Updated([rcvd.id]))
                 self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
 
     def on_message(self, message):
         if config.get('ddp_debug', False):
