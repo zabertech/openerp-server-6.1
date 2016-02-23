@@ -5,6 +5,7 @@ from openerp.osv import osv, orm, fields
 from openerp import pooler
 from ddp import *
 from tools import config
+
 from globals import *
 
 class zerp_ddp_connection(osv.osv):
@@ -15,6 +16,14 @@ class zerp_ddp_connection(osv.osv):
         'database': fields.char('Database', size=128, select=True, readonly=True),
         'remote_ip': fields.char('IP Address', size=128, select=True, readonly=True)
     }
+    def stop_ddp(self, cr, uid, ids, context=None):
+        from . import stop_ddp
+        stop_ddp()
+
+    def start_ddp(self, cr, uid, ids, context=None):
+        from . import start_ddp
+        start_ddp()
+
 
 class zerp_ddp_session(osv.osv):
     _name = 'zerp.ddp.session'
@@ -42,6 +51,7 @@ class ZerpDDPMonitor(object):
         """ 
         """
         self.dbname = config.get('ddp_monitor_db', None)
+        self.active = True
 
     def update_sessions(self):
         global ddp_sessions
@@ -94,7 +104,8 @@ class ZerpDDPMonitor(object):
         global ddp_connections
         if not self.dbname:
             return False
-        while True:
+        self.active = True
+        while self.active:
             sleep(10)
             try:
                 self.update_subscriptions()
@@ -102,3 +113,7 @@ class ZerpDDPMonitor(object):
                 self.update_sessions()
             except:
                 break # If we can't update monitoring data, stop trying. it's not critical
+
+    def stop(self):
+        self.active = False
+

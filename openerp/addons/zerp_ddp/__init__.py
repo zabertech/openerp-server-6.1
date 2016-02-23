@@ -34,6 +34,7 @@ from globals import *
 
 _logger = logging.getLogger(__name__)
 
+_original = {}
 
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
@@ -124,18 +125,26 @@ def execute(self, db, uid, obj, method, *args, **kw):
         cr.close()
     return res
 
-def launch_ddp():
+def start_ddp():
     global server
     global server_thread
     global worker
     global worker_thread
     global reaper
     global reaper_thread
+    global monitor
+    global monitor_thread
 
     # globals created from ddp/globals.py
     global ddp_message_queue
     global ddp_subscriptions
     global ddp_sessions
+
+    # Save original methods about to be monkey-patched
+    _original['execute'] = osv.object_proxy.execute
+    _original['write'] = orm.BaseModel.write
+    _original['create'] = orm.BaseModel.create
+    _original['unlink'] = orm.BaseModel.unlink
 
     # Monkeypatch osv and orm methods
     osv.object_proxy.execute = execute
@@ -178,13 +187,17 @@ def stop_ddp():
     global worker_thread
     global reaper
     global reaper_thread
+    global monitor
+    global monitor_thread
 
-    reaper.stop()
-    reaper_thread.stop()
+    # Un-monkeypatch osv and orm methods
+    osv.object_proxy.execute = _original['execute']
+    orm.BaseModel.write = _original['write']
+    orm.BaseModel.create = _original['create']
+    orm.BaseModel.unlink = _original['unlink']
+
     worker.stop()
-    worker_thread.stop()
-    server.stop()
-    server_thread.stop()
+    reaper.stop()
     monitor.stop()
-    monitor_thread.stop()
+    server.stop()
 
