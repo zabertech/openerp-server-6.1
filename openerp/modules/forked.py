@@ -41,7 +41,15 @@ class forked(object):
                 args = tuple(args)
 
                 # Make the call to the decorated function
-                ret = func(*args, **kwargs)
+                try:
+                    ret = func(*args, **kwargs)
+                except Exception as err:
+                    cr.rollback()
+                    ret = Exception(err)
+                else:
+                    cr.commit()
+                finally:
+                    cr.close()
 
                 # Put the return value on the queue to send it back to caller
                 q.put(ret)
@@ -62,10 +70,14 @@ class forked(object):
             # Listen on the queue for the return value from the new process
             ret = q.get()
 
+            # If an exception was returned from the caller, raise it
+            if type(ret) is Exception:
+                raise ret
+
             # Wait for the new process to finish (probably redundent given the
             # queue will block, but anyway...)
             p.join()
-
+            
             # Return the value passed us from the forked process
             return ret
 
