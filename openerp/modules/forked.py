@@ -22,6 +22,9 @@ from multiprocessing import Queue, Process
 
 class forked(object):
 
+    def __init__(self, timeout=3600):
+        self.timeout = timeout
+
     def __call__(self, func):
 
         # Wrap the caller function (this part does the work of the decoration)
@@ -68,15 +71,15 @@ class forked(object):
             p.start()
 
             # Listen on the queue for the return value from the new process
-            ret = q.get()
-
+            ret = q.get(True, self.timeout)
+            
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
                 raise ret
 
             # Wait for the new process to finish (probably redundent given the
             # queue will block, but anyway...)
-            p.join()
+            #p.join()
             
             # Return the value passed us from the forked process
             return ret
