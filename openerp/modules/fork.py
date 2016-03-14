@@ -20,7 +20,7 @@
 
 from multiprocessing import Queue, Process
 
-class forked(object):
+class fork(object):
 
     def __init__(self, timeout=3600):
         self.timeout = timeout
@@ -70,17 +70,24 @@ class forked(object):
             # Start the new process
             p.start()
 
-            # Listen on the queue for the return value from the new process
-            ret = q.get(True, self.timeout)
+            try:
+                # Listen on the queue for the return value from the new process
+                ret = q.get(True, self.timeout)
+            except:
+                # Default to an exception just incase the forked process doesn't respond
+                ret = Exception('Forked process failed to respond')
+
+                # If we've timed out, try and kill the child process with SIGINT 
+                p.terminate()
+
+            # Join the process just incase it's still running even though the queue timed out.
+            # This will prevent Zombies!
+            p.join()
             
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
                 raise ret
 
-            # Wait for the new process to finish (probably redundent given the
-            # queue will block, but anyway...)
-            #p.join()
-            
             # Return the value passed us from the forked process
             return ret
 
