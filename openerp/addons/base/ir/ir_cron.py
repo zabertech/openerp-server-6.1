@@ -32,6 +32,7 @@ import openerp
 import pooler
 import tools
 from openerp.cron import WAKE_UP_NOW
+from openerp.modules.fork import fork
 from osv import fields, osv
 from tools import DEFAULT_SERVER_DATETIME_FORMAT
 from tools.safe_eval import safe_eval as eval
@@ -124,6 +125,7 @@ class ir_cron(osv.osv):
         cr.rollback()
         _logger.exception("Call of self.pool.get('%s').%s(cr, uid, *%r) failed in Job %s" % (model_name, method_name, args, job_id))
 
+    @fork(timeout=1800, name="[openerp-server-cron]", name_args=[3,4])
     def _callback(self, cr, uid, model_name, method_name, args, job_id):
         """ Run the method associated to a given job
 
