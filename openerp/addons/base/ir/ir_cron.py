@@ -125,7 +125,7 @@ class ir_cron(osv.osv):
         cr.rollback()
         _logger.exception("Call of self.pool.get('%s').%s(cr, uid, *%r) failed in Job %s" % (model_name, method_name, args, job_id))
 
-    @fork(timeout=3600)
+    @fork(timeout=300, name="[openerp-server-cron]", name_args=[3,4])
     def _callback(self, cr, uid, model_name, method_name, args, job_id):
         """ Run the method associated to a given job
 

@@ -22,17 +22,30 @@ from multiprocessing import Queue, Process
 
 class fork(object):
 
-    def __init__(self, timeout=3600):
+    def __init__(self, timeout=3600, name="[openerp-server]", name_args=[]):
         self.timeout = timeout
+        self.name = name
+        self.name_args = name_args
 
     def __call__(self, func):
 
         # Wrap the caller function (this part does the work of the decoration)
         def inner(*args, **kwargs):
 
+            # If a list of argv index values is passed, append those arguments to the
+            # process name
+            __process_name = self.name
+            for arg in self.name_args:
+                __process_name += " {}".format(args[arg])
+
             # Wrap the decorated function in another function which will replace
             # the passed cursor argument with a new cursor unique to the new process
             def forked(dbname, q, *args, **kwargs):
+                
+                # Set the proc title of this process for debugging
+                if __process_name:
+                    from setproctitle import setproctitle
+                    setproctitle(__process_name)
 
                 # Get our own db cursor just for this process
                 from sql_db import ConnectionPool, Connection, Cursor
@@ -65,7 +78,7 @@ class fork(object):
             q = Queue()
 
             # Create a new forked process targetting the forked function wrapper
-            p = Process(target=forked, args=(dbname, q, args))
+            p = Process(target=forked, args=(dbname, q, args), name=__process_name)
 
             # Start the new process
             p.start()
