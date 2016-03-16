@@ -8,6 +8,7 @@
             <field name="arch" type="xml">
                 <form string="DDP">
                     <separator string="Stop and Start DDP server"/>
+                    <newline/>
                     <button type="object" name="stop_ddp" string="Stop DDP" />
                     <button type="object" name="start_ddp" string="Start DDP" />
                 </form>
