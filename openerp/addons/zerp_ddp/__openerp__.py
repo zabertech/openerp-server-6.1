@@ -25,7 +25,7 @@
     'description': """Add support for Meteor-js Distributed Data Protocol""",
     'license': 'AGPL-3',
     'author': 'Zaber Technologies Inc. (Colin)',
-    'post_load' : 'launch_ddp',
+    'post_load' : 'start_ddp',
     'website': 'http://www.zaber.com',
     'auto_install': True,
     'depends': ['users_ldap'],
