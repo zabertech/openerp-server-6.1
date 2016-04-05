@@ -3446,6 +3446,24 @@ class BaseModel(object):
 
         """
 
+        def cache_get(key):
+            # Go for a cache hit
+            import redis
+            r = redis.StrictRedis(host='localhost', port=6379, db=0)
+            try:
+                return eval(r.get(key))
+            except:
+                return False
+
+        def cache_set(key, result):
+            # Cache a query
+            import redis
+            r = redis.StrictRedis(host='localhost', port=6379, db=0)
+     
+            r.set(key, result)
+            r.lpush(key[0], key)
+
+
         if not context:
             context = {}
         self.check_read(cr, user)
@@ -3456,7 +3474,11 @@ class BaseModel(object):
         else:
             select = ids
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
-        result = self._read_flat(cr, user, select, fields, context, load)
+
+        result = cache_get((self._table, user, select, fields, context, load))
+        if not result:
+            result = self._read_flat(cr, user, select, fields, context, load)
+            cache_set((self._table, user, select, fields, context, load), result)
 
         for r in result:
             for key, v in r.items():
