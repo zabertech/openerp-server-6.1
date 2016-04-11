@@ -65,13 +65,14 @@ from openerp.tools.translate import _
 from openerp import SUPERUSER_ID
 from query import Query
 
+from openerp.modules.cache import RedisCache, RedisCacheException
+
 # TODO remove logging
 _logger = logging.getLogger(__name__)
 _schema = logging.getLogger(__name__ + '.schema')
 crud_logger = logging.getLogger('crud')
 crud_logger.setLevel(logging.INFO)
 crud_logger.propagate = False
-
 
         #if context.get('crudlogger') is None and ignoreList(self._name,user) and config.get('crud_logger'):
 
@@ -3445,25 +3446,6 @@ class BaseModel(object):
                             * if user tries to bypass access rules for read on the requested object
 
         """
-
-        def cache_get(key):
-            # Go for a cache hit
-            import redis
-            r = redis.StrictRedis(host='localhost', port=6379, db=0)
-            try:
-                return eval(r.get(key))
-            except:
-                return False
-
-        def cache_set(key, result):
-            # Cache a query
-            import redis
-            r = redis.StrictRedis(host='localhost', port=6379, db=0)
-     
-            r.set(key, result)
-            r.lpush(key[0], key)
-
-
         if not context:
             context = {}
         self.check_read(cr, user)
@@ -3475,10 +3457,15 @@ class BaseModel(object):
             select = ids
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
 
-        result = cache_get((self._table, user, select, fields, context, load))
-        if not result:
+        rc = RedisCache(host=config.get('cache_redis_host'), port=config.get('cache_redis_port'), db=config.get('cache_redis_db'), domain_blacklist=config.get('cache_domain_blacklist'))
+        _domain = (cr.dbname, self._table)
+        _key = rc.keygen(_domain, (user, sorted(set(select)), sorted(set(fields)), context, load)) 
+        try:
+            result = rc.cache_get(_key)
+        except Exception as err:
             result = self._read_flat(cr, user, select, fields, context, load)
-            cache_set((self._table, user, select, fields, context, load), result)
+            if not rc.domain_is_blacklisted(_domain):
+                rc.cache_set(_key, result)
 
         for r in result:
             for key, v in r.items():
