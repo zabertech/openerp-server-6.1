@@ -1071,6 +1071,21 @@ class BaseModel(object):
             assert self._log_access, "TransientModels must have log_access turned on, "\
                                      "in order to implement their access rights policy"
 
+        # Initialize rediscache
+        if config.get('redis_cache_enable', False):
+            rc = RedisCache(cr, host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'))
+            rc.postgresql_init(cr)
+            rc.model_clear(cr, self)
+            if not rc.model_complex_fields(cr, self):
+                rc.model_init(cr, self)
+                _logger.info("Redis cache initializing: %s/%s", cr.dbname, self._table)
+            else:
+                #rc.domain_blacklist()
+                _logger.warning("Redis cache not caching complex table: %s/%s", cr.dbname, self._table)
+        else:
+            rc = RedisCache(cr, host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'))
+            rc.model_clear(cr, self)
+
     def __export_row(self, cr, uid, row, fields, context=None):
         if context is None:
             context = {}
@@ -3457,15 +3472,31 @@ class BaseModel(object):
             select = ids
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
 
-        rc = RedisCache(host=config.get('cache_redis_host'), port=config.get('cache_redis_port'), db=config.get('cache_redis_db'), domain_blacklist=config.get('cache_domain_blacklist'))
-        _domain = (cr.dbname, self._table)
-        _key = rc.keygen(_domain, (user, sorted(set(select)), sorted(set(fields)), context, load)) 
-        try:
-            result = rc.cache_get(_key)
-        except Exception as err:
+        # Redis Cache things
+        if config.get('redis_cache_enable', False):
+            try:
+                rc = RedisCache(cr, host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'))
+                _key = rc.keygen((cr.dbname, self._table, user, select, fields, context, load)) 
+                rc.connect()
+                result = rc.cache_get(_key)
+                #real_result = self._read_flat(cr, user, select, fields, context, load)
+                #if real_result != result:
+                #    _logger.error('Redis cache: Oh sheesh! Cached result didn\'t match real result from %s/%s, %s' % (cr.dbname, self._table, (user, select, fields, context)))
+                #    _logger.error('Redis cache: Real result: %s' % real_result)
+                #    _logger.error('Redis cache: Cached result: %s' % result)
+            except RedisCacheException as err:
+
+                # Handle a cache miss by doing a real read
+                result = self._read_flat(cr, user, select, fields, context, load)
+
+                # Cache the result if the model isn't blacklisted
+                if not rc.model_is_blacklisted(self):
+                    rc.cache_set(self, _key, result)
+
+            except Exception as err:
+                _logger.log("RedisCache: Something went wrong: %s", err)
+        else:
             result = self._read_flat(cr, user, select, fields, context, load)
-            if not rc.domain_is_blacklisted(_domain):
-                rc.cache_set(_key, result)
 
         for r in result:
             for key, v in r.items():
