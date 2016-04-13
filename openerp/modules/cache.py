@@ -1,6 +1,7 @@
 import hashlib
 import redis
 import logging
+import time
 from pprint import pprint
 
 _domain_cache = {}
@@ -76,18 +77,17 @@ class RedisCache(object):
         self.stats_collect(stats_key, 'hit', 1)
         return val
 
-    def cache_set(self, model, key, result, stats_key=None):
+    def cache_set(self, model, key, result):
         """Attempt to cache data failing gracefully
         """
-        #try:
-        self.connect()
-        domain = self.domaingen(model)
-        key = "|".join((domain, key)) 
-        self.redis_client.set(key, result)
-        self.stats_collect(stats_key, 'set', 1)
-        #except Exception as err:
-        #    _logger.error("cache_set error: %s", err)
-        #    pass
+        try:
+            self.connect()
+            domain = self.domaingen(model)
+            key = "|".join((domain, key)) 
+            self.redis_client.set(key, result)
+        except Exception as err:
+            _logger.error("cache_set error: %s", err)
+            pass
 
     def postgresql_init(self, cr):
         """Create a function in the postgresql database which will be triggered to invalidate data in the cache
@@ -166,12 +166,29 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
     def stats_collect(key, stat, num):
         global _stats_counter
         global _cache_stats
-        if not key or not stat in ('hit', 'miss', 'set'):
+        if not key or not stat in ('hit', 'miss'):
             return
         if not key in _cache_stats:
-            _cache_stats[key] = {'hit': 0, 'miss': 0, 'set': 0}
+            _cache_stats[key] = {'hit': 0.0001, 'miss': 0, 'total': 0.0001}
         _cache_stats[key][stat] += num
         _stats_counter = _stats_counter % 100 + 1
         if _stats_counter == 100:
-            pprint(_cache_stats)
-        
+            print "{model:<28} {hit:>10} {miss:>10}  {time}".format(model="Model", hit="Hits", miss="Misses", time="Time Saved")
+            for model, stats in _cache_stats.items():
+                print "{model:<28} {hit:>10.0f} {miss:>10.0f}  Latest:{time:>7.3f}  Total:{total:>7.3f} seconds".format(model=model, hit=stats["hit"], miss=stats["miss"], time=(stats["total"] / stats["hit"]), total=stats["total"])
+
+    def timer_start(self):
+        """
+        """
+        self.timer = time.time()
+
+    def timer_stop(self, key):
+        """
+        """
+        global _cache_stats
+        _time = time.time() - self.timer
+        if not key in _cache_stats:
+            _cache_stats[key] = {'hit': 0.0001, 'miss': 0, 'total': 0.0001}
+        _cache_stats[key]['total'] += _time
+
+

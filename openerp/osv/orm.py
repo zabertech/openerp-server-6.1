@@ -3485,7 +3485,9 @@ class BaseModel(object):
                 result = rc.cache_get(_key, stats_key=self._table)
                 # If redis cache is enabled for testing only, also fetch the real result and compare it with the cache result
                 if config.get('redis_cache_test_only', False):
+                    rc.timer_start()
                     real_result = self._read_flat(cr, user, select, fields, context, load)
+                    rc.timer_stop(self._table)
                     rc.validate(result, real_result)
                     result = real_result
             except RedisCacheException as err:
@@ -3493,7 +3495,7 @@ class BaseModel(object):
                 result = self._read_flat(cr, user, select, fields, context, load)
                 # Cache the result if the model isn't blacklisted
                 if not rc.model_is_blacklisted(self):
-                    rc.cache_set(self, _key, result, stats_key=self._table)
+                    rc.cache_set(self, _key, result)
             except Exception as err:
                 # Anything else that's gone wrong
                 _logger.error("RedisCache error: %s", err)
