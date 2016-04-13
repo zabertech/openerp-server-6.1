@@ -3,27 +3,47 @@ import redis
 import logging
 import time
 from pprint import pprint
+import os
+import signal
 
 _domain_cache = {}
 _model_blacklist = set([])
 _cache_stats = {}
 _stats_counter = 0
 _logger = logging.getLogger(__name__)
+_stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
+_stats_header = "{model:<28} {hit:>7} {miss:>7} {error:>7} {time:15}   {get:15}   {set:15}   {profit:7}".format(
+        model="Model",
+        hit="Hits",
+        miss="Misses",
+        error="Errors",
+        time="Time Saved",
+        get="Time Wasted Get",
+        set="Time Wasted Set",
+        profit="Profit"
+    )
+_stats_template = "{model:<28} {hit:>7} {miss:>7} {error:7} {time:>7.3f} {total_time:>7.3f}   {get:>7.3f} {total_get:>7.3f}   {set:>7.3f} {total_set:>7.3f}   {profit:>7.3f}" 
+_redis_connection_pool = {}
 
 class RedisCacheException(Exception):
     """Exception fired for a cache miss
     """
 
 class RedisCache(object):
-    def __init__(self, cr, host="localhost", port=6379, db=0, password=None):
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist=""):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
+        global _redis_connection_pool
+        global _model_blacklist
+        self.unix = unix
         self.host = host
         self.port = port
         self.db = db
         self.password = password
         self.dbname = cr.dbname
         self.redis_client = None
+        if not _model_blacklist:
+            _model_blacklist = set(blacklist.split())
 
     def __repr__(self):
         return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
@@ -31,8 +51,23 @@ class RedisCache(object):
     def connect(self):
         """Connect to the redis server
         """
-        if not self.redis_client:
-            self.redis_client = redis.StrictRedis(host=self.host, port=self.port, db=self.db)
+        global _redis_connection_pool
+
+        # Connecting via unix socket
+        if self.unix:
+            self.redis_client = redis.Redis(unix_socket_path=self.unix)
+            return True
+        
+        # Set up a TCP connection pool in a fork-safe way
+        if self.host:
+            if not _redis_connection_pool.get(os.getpid()):
+                _redis_connection_pool[os.getpid()] = redis.ConnectionPool(host=self.host, port=self.port, db=self.db)
+                self.redis_client = redis.Redis(connection_pool=_redis_connection_pool[os.getpid()])
+            elif not self.redis_client:
+                self.redis_client = redis.Redis(connection_pool=_redis_connection_pool[os.getpid()])
+            return True
+
+        return False
 
     def domaingen(self, model):
         """Postgresql database name and all tables which will cause invalidation of this data if written
@@ -64,22 +99,31 @@ class RedisCache(object):
         key = hashlib.md5(str(key_args)).hexdigest()
         return key
 
-    def cache_get(self, key, stats_key=None):
+    def cache_get(self, model, key, stats_key=None):
         """Try for a cache hit throwing a Cache Miss when failing
         """
+        global _domain_cache
+        self.timer_start()
+        if self.model_is_blacklisted(model):
+            raise RedisCacheException('Model is blacklisted %s', model._table)
         try:
+            key = "|".join([_domain_cache.get((self.dbname, model._table), ""), key])
             self.connect()
-            key = self.redis_client.keys("*|"+key)[0]
             val = eval(self.redis_client.get(key))
         except Exception as err:
             self.stats_collect(stats_key, 'miss', 1)
             raise RedisCacheException("Cache Miss %s %s", key, err)
+        finally:
+            self.timer_stop(stats_key, 'total_get')
         self.stats_collect(stats_key, 'hit', 1)
         return val
 
-    def cache_set(self, model, key, result):
+    def cache_set(self, model, key, result, stats_key=None):
         """Attempt to cache data failing gracefully
         """
+        self.timer_start()
+        if self.model_is_blacklisted(model):
+            return
         try:
             self.connect()
             domain = self.domaingen(model)
@@ -88,6 +132,7 @@ class RedisCache(object):
         except Exception as err:
             _logger.error("cache_set error: %s", err)
             pass
+        self.timer_stop(stats_key, 'total_set')
 
     def postgresql_init(self, cr):
         """Create a function in the postgresql database which will be triggered to invalidate data in the cache
@@ -159,36 +204,63 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """
         if cache_result != real_result:
             _logger.error("Validation failure\nCache Result: %s\nReal Result: %s\n", cache_result, real_result)
-            return false
+            return False
         return True
+
 
     @staticmethod
     def stats_collect(key, stat, num):
         global _stats_counter
         global _cache_stats
-        if not key or not stat in ('hit', 'miss'):
-            return
         if not key in _cache_stats:
-            _cache_stats[key] = {'hit': 0.0001, 'miss': 0, 'total': 0.0001}
+            _cache_stats[key] = _stats_default.copy()
         _cache_stats[key][stat] += num
-        _stats_counter = _stats_counter % 100 + 1
-        if _stats_counter == 100:
-            print "{model:<28} {hit:>10} {miss:>10}  {time}".format(model="Model", hit="Hits", miss="Misses", time="Time Saved")
-            for model, stats in _cache_stats.items():
-                print "{model:<28} {hit:>10.0f} {miss:>10.0f}  Latest:{time:>7.3f}  Total:{total:>7.3f} seconds".format(model=model, hit=stats["hit"], miss=stats["miss"], time=(stats["total"] / stats["hit"]), total=stats["total"])
+
+    @staticmethod
+    def stats_print(*args):
+        def div(a, b):
+            try:
+                return a / b
+            except ZeroDivisionError:
+                return 0
+        print _stats_header
+        keys = sorted(_cache_stats.keys())
+        profit = 0
+        for key in keys:
+            _profit = _cache_stats[key]["total_time"] - _cache_stats[key]["total_get"] - _cache_stats[key]["total_set"] + 0.001
+            profit += _profit
+            print _stats_template.format(
+                model=key,
+                hit=_cache_stats[key]["hit"],
+                miss=_cache_stats[key]["miss"],
+                error=_cache_stats[key]["error"],
+                time=div(_cache_stats[key]["total_time"], _cache_stats[key]["hit"]),
+                total_time=_cache_stats[key]["total_time"],
+                set=div(_cache_stats[key]["total_set"], _cache_stats[key]["miss"]),
+                total_set=_cache_stats[key]["total_set"],
+                get=div(_cache_stats[key]["total_get"], _cache_stats[key]["hit"]),
+                total_get=_cache_stats[key]["total_get"],
+                profit=_profit
+            )
+        print "{profit:>114.3f}".format(profit=profit)
 
     def timer_start(self):
         """
         """
         self.timer = time.time()
 
-    def timer_stop(self, key):
+    def timer_stop(self, key, stat):
         """
         """
         global _cache_stats
         _time = time.time() - self.timer
         if not key in _cache_stats:
-            _cache_stats[key] = {'hit': 0.0001, 'miss': 0, 'total': 0.0001}
-        _cache_stats[key]['total'] += _time
+            _cache_stats[key] = _stats_default.copy()
+        _cache_stats[key][stat] += _time
+
+try:
+    signal.signal(signal.SIGUSR1, RedisCache.stats_print)
+except ValueError:
+    pass
 
 

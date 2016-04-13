@@ -1072,15 +1072,15 @@ class BaseModel(object):
                                      "in order to implement their access rights policy"
 
         # Initialize RedisCache
-        rc = RedisCache(cr, host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'))
+        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=config.get('redis_cache_blacklist'))
         if config.get('redis_cache_enable', False):
             # Run this every time just incase the database name has changed
-            rc.postgresql_init(cr)
+            self.rc.postgresql_init(cr)
             # Create invalidation triggers for every model (paranoid!)
-            rc.model_init(cr, self)
+            self.rc.model_init(cr, self)
             # Blacklist models with function fields unless expressly told not to in config
-            if rc.model_complex_fields(cr, self) and not config.get('redis_cache_complex_models', False):
-                rc.model_blacklist(self)
+            if self.rc.model_complex_fields(cr, self) and not config.get('redis_cache_complex_models', False):
+                self.rc.model_blacklist(self)
                 _logger.warning("RedisCache skipping: %s/%s", cr.dbname, self._table)
         else:
             # Always remove RedisCache triggers from database if they exist
@@ -3473,35 +3473,35 @@ class BaseModel(object):
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
 
         # Redis Cache things
-        if config.get('redis_cache_enable', False):
+        if config.get('redis_cache_enable', False) and not self.rc.model_is_blacklisted(self):
             try:
                 # Initialize cache client
-                rc = RedisCache(cr, host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'))
                 # Create a key for this read
-                _key = rc.keygen((cr.dbname, self._table, user, select, fields, context, load)) 
-                # Connect to the redis server
-                rc.connect()
+                _key = self.rc.keygen((cr.dbname, self._table, user, select, fields, context, load)) 
+                # Connect doesn't do anything if we already have a client connected, unless the process has forked and this is the child
+                self.rc.connect()
                 # Try for a cache hit
-                result = rc.cache_get(_key, stats_key=self._table)
+                result = self.rc.cache_get(self, _key, stats_key=self._table)
                 # If redis cache is enabled for testing only, also fetch the real result and compare it with the cache result
                 if config.get('redis_cache_test_only', False):
-                    rc.timer_start()
+                    self.rc.timer_start()
                     real_result = self._read_flat(cr, user, select, fields, context, load)
-                    rc.timer_stop(self._table)
-                    rc.validate(result, real_result)
-                    result = real_result
+                    self.rc.timer_stop(self._table, 'total_time')
+                    if not self.rc.validate(result, real_result):
+                        self.rc.stats_collect(self._table, 'error', 1)
+                        result = real_result
             except RedisCacheException as err:
                 # Handle a cache miss by doing a real read and caching the result
                 result = self._read_flat(cr, user, select, fields, context, load)
                 # Cache the result if the model isn't blacklisted
-                if not rc.model_is_blacklisted(self):
-                    rc.cache_set(self, _key, result)
+                if not self.rc.model_is_blacklisted(self):
+                    self.rc.cache_set(self, _key, result, stats_key=self._table)
             except Exception as err:
                 # Anything else that's gone wrong
                 _logger.error("RedisCache error: %s", err)
                 result = self._read_flat(cr, user, select, fields, context, load)
         else:
-            # RedisCache is disabled
+            # RedisCache is disabled or this model is blacklisted
             result = self._read_flat(cr, user, select, fields, context, load)
 
         for r in result:
