@@ -9,20 +9,7 @@ import signal
 _domain_cache = {}
 _model_blacklist = set([])
 _cache_stats = {}
-_stats_counter = 0
 _logger = logging.getLogger(__name__)
-_stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-_stats_header = "{model:<28} {hit:>7} {miss:>7} {error:>7} {time:15}   {get:15}   {set:15}   {profit:7}".format(
-        model="Model",
-        hit="Hits",
-        miss="Misses",
-        error="Errors",
-        time="Time Saved",
-        get="Time Wasted Get",
-        set="Time Wasted Set",
-        profit="Profit"
-    )
-_stats_template = "{model:<28} {hit:>7} {miss:>7} {error:7} {time:>7.3f} {total_time:>7.3f}   {get:>7.3f} {total_get:>7.3f}   {set:>7.3f} {total_set:>7.3f}   {profit:>7.3f}" 
 _redis_connection_pool = {}
 
 class RedisCacheException(Exception):
@@ -30,7 +17,8 @@ class RedisCacheException(Exception):
     """
 
 class RedisCache(object):
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist=""):
+    _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", invalidation_tables={}):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
@@ -44,6 +32,8 @@ class RedisCache(object):
         self.redis_client = None
         if not _model_blacklist:
             _model_blacklist = set(blacklist.split())
+        # I'd like to thank the academy, god, and of course my adoring fans for supporting me in this, the ugliest comprehension i've ever created
+        self.invalidation_tables = invalidation_tables
 
     def __repr__(self):
         return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
@@ -76,7 +66,7 @@ class RedisCache(object):
         try:
             return _domain_cache[(self.dbname, model._table)]
         except KeyError:
-            tables = set([model._table])
+            tables = set([model._table] + self.invalidation_tables.get(model._table, []))
             for name, col in model._columns.items():
                 if col._classic_write:
                     continue
@@ -199,37 +189,49 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         self.redis_client.flushall()
 
     @staticmethod
-    def validate(cache_result, real_result):
+    def validate(model, cache_result, real_result):
         """Validate a cache result by comparing it to a real result
         """
         if cache_result != real_result:
-            _logger.error("Validation failure\nCache Result: %s\nReal Result: %s\n", cache_result, real_result)
+            _logger.error("Validation failure for model %s\nCache Result: %s\nReal Result: %s\n", model._table, cache_result, real_result)
             return False
         return True
 
 
-    @staticmethod
-    def stats_collect(key, stat, num):
+    def stats_collect(self, key, stat, num):
         global _stats_counter
         global _cache_stats
         if not key in _cache_stats:
-            _cache_stats[key] = _stats_default.copy()
+            _cache_stats[key] = self._stats_default.copy()
         _cache_stats[key][stat] += num
 
     @staticmethod
-    def stats_print(*args):
+    def stats_dump(*args):
+        _stats_header = "{model:<28} {hit:>7} {miss:>7} {error:>7} {time:15}   {get:15}   {set:15}   {profit:7}\n".format(
+                model="Model",
+                hit="Hits",
+                miss="Misses",
+                error="Errors",
+                time="Time Saved",
+                get="Time Wasted Get",
+                set="Time Wasted Set",
+                profit="Profit"
+            )
+        _stats_template = "{model:<28} {hit:>7} {miss:>7} {error:7} {time:>7.3f} {total_time:>7.3f}   {get:>7.3f} {total_get:>7.3f}   {set:>7.3f} {total_set:>7.3f}   {profit:>7.3f}\n" 
+        _stats_filename_template = "/tmp/redis-cache-stats-{time}"
+
         def div(a, b):
             try:
                 return a / b
             except ZeroDivisionError:
                 return 0
-        print _stats_header
+        out = _stats_header
         keys = sorted(_cache_stats.keys())
         profit = 0
         for key in keys:
             _profit = _cache_stats[key]["total_time"] - _cache_stats[key]["total_get"] - _cache_stats[key]["total_set"] + 0.001
             profit += _profit
-            print _stats_template.format(
+            out += _stats_template.format(
                 model=key,
                 hit=_cache_stats[key]["hit"],
                 miss=_cache_stats[key]["miss"],
@@ -242,7 +244,11 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
                 total_get=_cache_stats[key]["total_get"],
                 profit=_profit
             )
-        print "{profit:>114.3f}".format(profit=profit)
+        out += "{profit:>114.3f}\n".format(profit=profit)
+        with open(_stats_filename_template.format(time=time.time()), 'w') as f:
+            f.write(out)
+        print out
+
 
     def timer_start(self):
         """
@@ -259,7 +265,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         _cache_stats[key][stat] += _time
 
 try:
-    signal.signal(signal.SIGUSR1, RedisCache.stats_print)
+    signal.signal(signal.SIGUSR1, RedisCache.stats_dump)
 except ValueError:
     pass
 

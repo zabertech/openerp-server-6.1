@@ -1072,7 +1072,8 @@ class BaseModel(object):
                                      "in order to implement their access rights policy"
 
         # Initialize RedisCache
-        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=config.get('redis_cache_blacklist'))
+        _invalidation_tables = {key.replace('redis_cache_invalidation_',''): val.split() for key,val in config.options.items() if key.startswith('redis_cache_invalidation_')}
+        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=config.get('redis_cache_blacklist'), invalidation_tables=_invalidation_tables)
         if config.get('redis_cache_enable', False):
             # Run this every time just incase the database name has changed
             self.rc.postgresql_init(cr)
@@ -3473,7 +3474,7 @@ class BaseModel(object):
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
 
         # Redis Cache things
-        if config.get('redis_cache_enable', False) and not self.rc.model_is_blacklisted(self):
+        if config.get('redis_cache_enable', False) and not self.rc.model_is_blacklisted(self) and not context.get('redis_cache_disable', False):
             try:
                 # Initialize cache client
                 # Create a key for this read
@@ -3487,7 +3488,7 @@ class BaseModel(object):
                     self.rc.timer_start()
                     real_result = self._read_flat(cr, user, select, fields, context, load)
                     self.rc.timer_stop(self._table, 'total_time')
-                    if not self.rc.validate(result, real_result):
+                    if not self.rc.validate(self, result, real_result):
                         self.rc.stats_collect(self._table, 'error', 1)
                         result = real_result
             except RedisCacheException as err:
