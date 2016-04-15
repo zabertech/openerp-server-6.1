@@ -18,7 +18,7 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", invalidation_tables={}):
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", invalidation_tables={}, max_item_size=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
@@ -34,6 +34,7 @@ class RedisCache(object):
             _model_blacklist = set(blacklist.split())
         # I'd like to thank the academy, god, and of course my adoring fans for supporting me in this, the ugliest comprehension i've ever created
         self.invalidation_tables = invalidation_tables
+        self.max_item_size = max_item_size
 
     def __repr__(self):
         return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
@@ -113,6 +114,8 @@ class RedisCache(object):
         """
         self.timer_start()
         if self.model_is_blacklisted(model):
+            return
+        if self.max_item_size and len(str(result)) > self.max_item_size:
             return
         try:
             self.connect()
@@ -207,7 +210,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
 
     @staticmethod
     def stats_dump(*args):
-        _stats_header = "{model:<28} {hit:>7} {miss:>7} {error:>7} {time:15}   {get:15}   {set:15}   {profit:7}\n".format(
+        _stats_header = "{model:<28} {hit:>9} {miss:>9} {error:>9} {time:21}   {get:21}   {set:21}   {profit:10}\n".format(
                 model="Model",
                 hit="Hits",
                 miss="Misses",
@@ -217,7 +220,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
                 set="Time Wasted Set",
                 profit="Profit"
             )
-        _stats_template = "{model:<28} {hit:>7} {miss:>7} {error:7} {time:>7.3f} {total_time:>7.3f}   {get:>7.3f} {total_get:>7.3f}   {set:>7.3f} {total_set:>7.3f}   {profit:>7.3f}\n" 
+        _stats_template = "{model:<28} {hit:>9} {miss:>9} {error:9} {time:>10.3f} {total_time:>10.3f}   {get:>10.3f} {total_get:>10.3f}   {set:>10.3f} {total_set:>10.3f}   {profit:>10.3f}\n" 
         _stats_filename_template = "/tmp/redis-cache-stats-{time}"
 
         def div(a, b):
@@ -244,7 +247,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
                 total_get=_cache_stats[key]["total_get"],
                 profit=_profit
             )
-        out += "{profit:>114.3f}\n".format(profit=profit)
+        out += "{profit:>141.3f}\n".format(profit=profit)
         with open(_stats_filename_template.format(time=time.time()), 'w') as f:
             f.write(out)
         print out
