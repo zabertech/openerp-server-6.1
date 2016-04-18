@@ -31,8 +31,7 @@ class RedisCache(object):
         self.dbname = cr.dbname
         self.redis_client = None
         if not _model_blacklist:
-            _model_blacklist = set(blacklist.split())
-        # I'd like to thank the academy, god, and of course my adoring fans for supporting me in this, the ugliest comprehension i've ever created
+            _model_blacklist = blacklist
         self.invalidation_tables = invalidation_tables
         self.max_item_size = max_item_size
 
