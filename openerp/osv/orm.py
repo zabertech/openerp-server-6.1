@@ -1072,8 +1072,10 @@ class BaseModel(object):
                                      "in order to implement their access rights policy"
 
         # Initialize RedisCache
+        import pdb;pdb.set_trace)
+        _model_blacklist = set(config.get('redis_cache_blacklist', '').split())
         _invalidation_tables = {key.replace('redis_cache_invalidation_',''): val.split() for key,val in config.options.items() if key.startswith('redis_cache_invalidation_')}
-        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=config.get('redis_cache_blacklist'), invalidation_tables=_invalidation_tables, max_item_size=config.get('redis_cache_max_item_size'))
+        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=_model_blacklist, invalidation_tables=_invalidation_tables, max_item_size=config.get('redis_cache_max_item_size'))
         if config.get('redis_cache_enable', False):
             # Run this every time just incase the database name has changed
             self.rc.postgresql_init(cr)
