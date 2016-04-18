@@ -155,7 +155,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
     def model_init(cr, model):
         """Create a trigger in the postgresql database for the given model's table to invalidate data when written
         """
-        if not self.model_exists(cr, model):
+        if not RedisCache.model_exists(cr, model):
             return
         cr.execute("DROP TRIGGER IF EXISTS trigger_cache_invalidate ON %s; CREATE TRIGGER trigger_cache_invalidate BEFORE INSERT OR UPDATE OR DELETE ON %s EXECUTE PROCEDURE cache_invalidate()" % (model._table, model._table));
 
@@ -163,7 +163,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
     def model_clear(cr, model):
         """Remove invalidation trigger from the model
         """
-        if not self.model_exists(cr, model):
+        if not RedisCache.model_exists(cr, model):
             return
         cr.execute("DROP TRIGGER IF EXISTS trigger_cache_invalidate ON %s" % model._table);
 
