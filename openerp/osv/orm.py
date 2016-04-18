@@ -1086,7 +1086,7 @@ class BaseModel(object):
                 _logger.warning("RedisCache skipping: %s/%s", cr.dbname, self._table)
         else:
             # Always remove RedisCache triggers from database if they exist
-            rc.model_clear(cr, self)
+            self.rc.model_clear(cr, self)
 
     def __export_row(self, cr, uid, row, fields, context=None):
         if context is None:
