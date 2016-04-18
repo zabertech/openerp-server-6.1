@@ -251,7 +251,12 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         with open(_stats_filename_template.format(time=time.time()), 'w') as f:
             f.write(out)
         print out
+        RedisCache.stats_reset()
 
+    @staticmethod
+    def stats_reset():
+        global _cache_stats
+        _cache_stats = {}
 
     def timer_start(self):
         """
