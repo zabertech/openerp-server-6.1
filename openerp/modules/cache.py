@@ -148,7 +148,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
 
     @staticmethod
     def model_exists(cr, model):
-        cr.execute("select * from information_schema.tables where table_name=%s" % model._table)
+        cr.execute("select * from information_schema.tables where table_name=%s", (model._table,))
         return bool(cr.rowcount)
 
     @staticmethod
