@@ -155,7 +155,10 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
     def model_clear(cr, model):
         """Remove invalidation trigger from the model
         """
-        cr.execute("DROP TRIGGER IF EXISTS trigger_cache_invalidate ON %s" % model._table);
+        try:
+            cr.execute("DROP TRIGGER IF EXISTS trigger_cache_invalidate ON %s" % model._table);
+        except:
+            pass
 
     @staticmethod
     def model_complex_fields(cr, model):
