@@ -278,7 +278,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         global _cache_stats
         _time = time.time() - self.timer
         if not key in _cache_stats:
-            _cache_stats[key] = _stats_default.copy()
+            _cache_stats[key] = self._stats_default.copy()
         _cache_stats[key][stat] += _time
 
 try:
