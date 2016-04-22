@@ -65,8 +65,8 @@ def ddp_decorated_create(fn):
     
         id = fn(self, cr, user, vals, context)
         
-        # Create a new changed message for each id of this
-        # model which gets changed
+        # Create a new added message for each id of this
+        # model which gets created
         message = ddp.Added(model, str(id), vals)
         ddp_temp_message_queues[cr].append(message)
         return id
@@ -82,8 +82,8 @@ def ddp_decorated_unlink(fn):
             ddp_temp_message_queues[cr] = []
         model = "{}:{}".format(cr.dbname, self._name)
     
-        # Create a new changed message for each id of this
-        # model which gets changed
+        # Create a new removed message for each id of this
+        # model which gets unlinked
         for id in ids:
             message = ddp.Removed(model, str(id))
             ddp_temp_message_queues[cr].append(message)
@@ -125,6 +125,26 @@ def execute(self, db, uid, obj, method, *args, **kw):
         cr.close()
     return res
 
+def exec_workflow(self, db, uid, obj, method, *args):
+    global ddp_temp_message_queues
+    global ddp_message_queue
+    cr = pooler.get_db(db).cursor()
+    ddp_temp_message_queues.setdefault(cr, [])
+    try:
+        try:
+            res = self.exec_workflow_cr(cr, uid, obj, method, *args)
+            cr.commit()
+        except Exception:
+            del(ddp_temp_message_queues[cr])
+            cr.rollback()
+            raise
+    finally:
+        if cr in ddp_temp_message_queues:
+            for item in ddp_temp_message_queues[cr]:
+                ddp_message_queue.put(item)
+        cr.close()
+    return res
+
 def start_ddp():
     global server
     global server_thread
@@ -142,12 +162,14 @@ def start_ddp():
 
     # Save original methods about to be monkey-patched
     _original['execute'] = osv.object_proxy.execute
+    _original['exec_workflow'] = osv.object_proxy.exec_workflow
     _original['write'] = orm.BaseModel.write
     _original['create'] = orm.BaseModel.create
     _original['unlink'] = orm.BaseModel.unlink
 
     # Monkeypatch osv and orm methods
     osv.object_proxy.execute = execute
+    osv.object_proxy.exec_workflow = exec_workflow
     orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
     orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
@@ -192,6 +214,7 @@ def stop_ddp():
 
     # Un-monkeypatch osv and orm methods
     osv.object_proxy.execute = _original['execute']
+    osv.object_proxy.exec_workflow = _original['exec_workflow']
     orm.BaseModel.write = _original['write']
     orm.BaseModel.create = _original['create']
     orm.BaseModel.unlink = _original['unlink']
