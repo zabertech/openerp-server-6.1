@@ -9,6 +9,7 @@ from globals import login_tokens
 from copy import copy
 from tools import config
 import logging
+import netsvc
 
 _logger = logging.getLogger(__name__)
 
@@ -432,7 +433,8 @@ class ZerpDDPHandler(Handler):
                 self.write_message(message)
                 self.write_message(ddp.Updated([rcvd.id]))
        
-        elif rcvd.method == "execute":
+        #elif rcvd.method == "execute":
+        else:
             model = rcvd.params[0]
             method = rcvd.params[1]
             args = []
@@ -457,24 +459,7 @@ class ZerpDDPHandler(Handler):
             finally:
                 self.write_message(message)
                 self.write_message(ddp.Updated([rcvd.id]))
-        elif rcvd.method == "workflow":
-            model = rcvd.params[0]
-            method = rcvd.params[1]
-            id_ = rcvd.params[2]
-            arg = rcvd.params[3]
-            if method == 'create':
-                netsvc.LocalService('workflow').trg_create(uid, model, id_, cr)
-            elif method == 'validate':
-                netsvc.LocalService('workflow').trg_validate(uid, model, id_, arg, cr)
-            elif method == 'write':
-                netsvc.LocalService('workflow').trg_write(uid, model, id_, cr)
-            elif method == 'delete':
-                netsvc.LocalService('workflow').trg_delete(uid, model, id_, cr)
-            elif method == 'trigger':
-                netsvc.LocalService('workflow').trg_trigger(uid, model, id_, cr)
-            elif method == 'redirect':
-                netsvc.LocalService('workflow').trg_redirect(uid, model, id_, arg, cr)
-
+ 
     def on_message(self, message):
         if config.get('ddp_debug', False):
             _logger.log(logging.INFO, "DDP <<< %s", message)
