@@ -205,7 +205,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """Validate a cache result by comparing it to a real result
         """
         if cache_result != real_result:
-            _logger.error("Validation failure for model %s\nCache Result: %s\nReal Result: %s\n", model._table, cache_result, real_result)
+            #_logger.error("Validation failure for model %s\nCache Result: %s\nReal Result: %s\n", model._table, cache_result, real_result)
             return False
         return True
 
