@@ -19,11 +19,12 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", invalidation_tables={}, max_item_size=None):
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
         global _model_blacklist
+        global _model_whitelist
         self.unix = unix
         self.host = host
         self.port = port
@@ -33,6 +34,8 @@ class RedisCache(object):
         self.redis_client = None
         if not _model_blacklist:
             _model_blacklist = blacklist
+        if not _model_whitelist:
+            _model_whitelist = whitelist
         self.invalidation_tables = invalidation_tables
         self.max_item_size = max_item_size
 
@@ -195,7 +198,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         global _model_blacklist
         global _model_whitelist
         if _model_whitelist:
-            return (model._table in _model_blacklist) or (model._table not in _model_whitelist)
+            return (model._table not in _model_whitelist) or (model._table in _model_blacklist)
         else:
             return model._table in _model_blacklist
 
