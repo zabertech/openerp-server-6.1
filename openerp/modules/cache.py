@@ -8,6 +8,7 @@ import signal
 
 _domain_cache = {}
 _model_blacklist = set([])
+_model_whitelist = set([])
 _cache_stats = {}
 _logger = logging.getLogger(__name__)
 _redis_connection_pool = {}
@@ -192,7 +193,11 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """Test if the model is currently blacklisted
         """
         global _model_blacklist
-        return model._table in _model_blacklist
+        global _model_whitelist
+        if _model_whitelist:
+            return (model._table in _model_blacklist) or (model._table not in _model_whitelist)
+        else:
+            return model._table in _model_blacklist
 
     def panic(self):
         """Something's gone wrong, so flush the cache
