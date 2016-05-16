@@ -19,7 +19,7 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None):
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None, validation_log=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
@@ -38,6 +38,7 @@ class RedisCache(object):
             _model_whitelist = whitelist
         self.invalidation_tables = invalidation_tables
         self.max_item_size = max_item_size
+        self.validation_log = validation_log
 
     def __repr__(self):
         return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
@@ -51,7 +52,7 @@ class RedisCache(object):
         if self.unix:
             self.redis_client = redis.Redis(unix_socket_path=self.unix)
             return True
-        
+
         # Set up a TCP connection pool in a fork-safe way
         if self.host:
             if not _redis_connection_pool.get(os.getpid()):
@@ -81,7 +82,7 @@ class RedisCache(object):
                         pass
                 if hasattr(col, '_rel'):
                     tables.add(col._rel)
-            
+
             domain = "{}|{}".format(self.dbname, "|".join(sorted(tables)))
             _domain_cache[(self.dbname, model._table)] = domain
             return domain
@@ -123,7 +124,7 @@ class RedisCache(object):
         try:
             self.connect()
             domain = self.domaingen(model)
-            key = "|".join((domain, key)) 
+            key = "|".join((domain, key))
             self.redis_client.set(key, result)
         except Exception as err:
             _logger.error("cache_set error: %s", err)
@@ -189,7 +190,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """Add a model to the global model blacklist
         """
         global _model_blacklist
-        _model_blacklist.add(model._table)  
+        _model_blacklist.add(model._table)
 
     @staticmethod
     def model_is_blacklisted(model):
@@ -208,12 +209,18 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         self.connect()
         self.redis_client.flushall()
 
-    @staticmethod
-    def validate(model, cache_result, real_result):
+    def validate(self, model, cache_result, real_result):
         """Validate a cache result by comparing it to a real result
         """
         if cache_result != real_result:
-            #_logger.error("Validation failure for model %s\nCache Result: %s\nReal Result: %s\n", model._table, cache_result, real_result)
+            diff = None
+            if type(cache_result) == list:
+                diff = set(real_result[0].items()) ^ set(cache_result[0].items())
+            if type(cache_result) == dict:
+                diff = set(real_result.items()) ^ set(cache_result.items())
+            if self.validation_log:
+                with open(self.validation_log, "a") as f:
+                    f.write("{}|{}|{}\n".format(time.time(), model._table, diff))
             return False
         return True
 
@@ -237,7 +244,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
                 set="Time Wasted Set",
                 profit="Profit"
             )
-        _stats_template = "{model:<28} {hit:>9} {miss:>9} {error:9} {time:>10.3f} {total_time:>10.3f}   {get:>10.3f} {total_get:>10.3f}   {set:>10.3f} {total_set:>10.3f}   {profit:>10.3f}\n" 
+        _stats_template = "{model:<28} {hit:>9} {miss:>9} {error:9} {time:>10.3f} {total_time:>10.3f}   {get:>10.3f} {total_get:>10.3f}   {set:>10.3f} {total_set:>10.3f}   {profit:>10.3f}\n"
         _stats_filename_template = "/tmp/redis-cache-stats-{time}"
 
         def div(a, b):
