@@ -213,19 +213,17 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """Validate a cache result by comparing it to a real result
         """
         if cache_result != real_result:
-            diff = None
-            try:
-                if type(cache_result) == list:
-                    # Runic incantations to generate a diff between the two results as a set of items
-                    # Don't bother trying to read this, it's a mess.
-                    diff = set([(i[0], str(i[1])) for i in real_result[0].items()]) ^ set([(i[0], str(i[1])) for i in cache_result[0].items()])
-                if type(cache_result) == dict:
-                    diff = set([(i[0], str(i[1])) for i in real_result.items()]) ^ set([(i[0], str(i[1])) for i in cache_result.items()])
-            except Exception as err:
-                print err, cache_result, real_result
             if self.validation_log:
+                if type(cache_result) == list:
+                    cache_result = cache_result[0]
+                    real_result = real_result[0]
+                cache_result = set([(i[0], str(i[1])) for i in cache_result.items()])
+                real_result = set([(i[0], str(i[1])) for i in real_result.items()])
+                diff = cache_result ^ real_result
+                cache_result.intersection_update(diff)
+                real_result.intersection_update(diff)
                 with open(self.validation_log, "a") as f:
-                    f.write("{}|{}|{}\n".format(time.time(), model._table, diff))
+                    f.write("{}|{}|{}|{}\n".format(time.time(), model._table, dict(cache_result), dict(real_result)))
             return False
         return True
 
