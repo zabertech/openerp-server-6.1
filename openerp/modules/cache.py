@@ -214,10 +214,15 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """
         if cache_result != real_result:
             diff = None
-            if type(cache_result) == list:
-                diff = set(real_result[0].items()) ^ set(cache_result[0].items())
-            if type(cache_result) == dict:
-                diff = set(real_result.items()) ^ set(cache_result.items())
+            try:
+                if type(cache_result) == list:
+                    # Runic incantations to generate a diff between the two results as a set of items
+                    # Don't bother trying to read this, it's a mess.
+                    diff = set([(i[0], str(i[1])) for i in real_result[0].items()]) ^ set([(i[0], str(i[1])) for i in cache_result[0].items()])
+                if type(cache_result) == dict:
+                    diff = set([(i[0], str(i[1])) for i in real_result.items()]) ^ set([(i[0], str(i[1])) for i in cache_result.items()])
+            except Exception as err:
+                print err, cache_result, real_result
             if self.validation_log:
                 with open(self.validation_log, "a") as f:
                     f.write("{}|{}|{}\n".format(time.time(), model._table, diff))
