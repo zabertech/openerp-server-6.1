@@ -19,6 +19,8 @@
 #################################################################################
 
 from multiprocessing import Queue, Process
+import os
+import signal
 
 class fork(object):
 
@@ -89,9 +91,7 @@ class fork(object):
             except:
                 # Default to an exception just incase the forked process doesn't respond
                 ret = Exception('Forked process failed to respond')
-
-                # If we've timed out, try and kill the child process with SIGINT 
-                p.terminate()
+                os.kill(p.pid, signal.SIGKILL)
 
             # Join the process just incase it's still running even though the queue timed out.
             # This will prevent Zombies!
