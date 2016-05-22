@@ -8,6 +8,7 @@ import signal
 
 _domain_cache = {}
 _model_blacklist = set([])
+_model_whitelist = set([])
 _cache_stats = {}
 _logger = logging.getLogger(__name__)
 _redis_connection_pool = {}
@@ -18,11 +19,12 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", invalidation_tables={}, max_item_size=None):
+    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None, validation_log=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
         global _model_blacklist
+        global _model_whitelist
         self.unix = unix
         self.host = host
         self.port = port
@@ -32,8 +34,11 @@ class RedisCache(object):
         self.redis_client = None
         if not _model_blacklist:
             _model_blacklist = blacklist
+        if not _model_whitelist:
+            _model_whitelist = whitelist
         self.invalidation_tables = invalidation_tables
         self.max_item_size = max_item_size
+        self.validation_log = validation_log
 
     def __repr__(self):
         return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
@@ -47,7 +52,7 @@ class RedisCache(object):
         if self.unix:
             self.redis_client = redis.Redis(unix_socket_path=self.unix)
             return True
-        
+
         # Set up a TCP connection pool in a fork-safe way
         if self.host:
             if not _redis_connection_pool.get(os.getpid()):
@@ -77,7 +82,7 @@ class RedisCache(object):
                         pass
                 if hasattr(col, '_rel'):
                     tables.add(col._rel)
-            
+
             domain = "{}|{}".format(self.dbname, "|".join(sorted(tables)))
             _domain_cache[(self.dbname, model._table)] = domain
             return domain
@@ -119,7 +124,7 @@ class RedisCache(object):
         try:
             self.connect()
             domain = self.domaingen(model)
-            key = "|".join((domain, key)) 
+            key = "|".join((domain, key))
             self.redis_client.set(key, result)
         except Exception as err:
             _logger.error("cache_set error: %s", err)
@@ -185,14 +190,18 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         """Add a model to the global model blacklist
         """
         global _model_blacklist
-        _model_blacklist.add(model._table)  
+        _model_blacklist.add(model._table)
 
     @staticmethod
     def model_is_blacklisted(model):
         """Test if the model is currently blacklisted
         """
         global _model_blacklist
-        return model._table in _model_blacklist
+        global _model_whitelist
+        if _model_whitelist:
+            return (model._table not in _model_whitelist) or (model._table in _model_blacklist)
+        else:
+            return model._table in _model_blacklist
 
     def panic(self):
         """Something's gone wrong, so flush the cache
@@ -200,12 +209,21 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
         self.connect()
         self.redis_client.flushall()
 
-    @staticmethod
-    def validate(model, cache_result, real_result):
+    def validate(self, model, cache_result, real_result):
         """Validate a cache result by comparing it to a real result
         """
         if cache_result != real_result:
-            #_logger.error("Validation failure for model %s\nCache Result: %s\nReal Result: %s\n", model._table, cache_result, real_result)
+            if self.validation_log:
+                if type(cache_result) == list:
+                    cache_result = cache_result[0]
+                    real_result = real_result[0]
+                cache_result = set([(i[0], str(i[1])) for i in cache_result.items()])
+                real_result = set([(i[0], str(i[1])) for i in real_result.items()])
+                diff = cache_result ^ real_result
+                cache_result.intersection_update(diff)
+                real_result.intersection_update(diff)
+                with open(self.validation_log, "a") as f:
+                    f.write("{}|{}|{}|{}\n".format(time.time(), model._table, dict(cache_result), dict(real_result)))
             return False
         return True
 
@@ -229,7 +247,7 @@ $$;""" % (self.host, self.port, self.db, self.dbname))
                 set="Time Wasted Set",
                 profit="Profit"
             )
-        _stats_template = "{model:<28} {hit:>9} {miss:>9} {error:9} {time:>10.3f} {total_time:>10.3f}   {get:>10.3f} {total_get:>10.3f}   {set:>10.3f} {total_set:>10.3f}   {profit:>10.3f}\n" 
+        _stats_template = "{model:<28} {hit:>9} {miss:>9} {error:9} {time:>10.3f} {total_time:>10.3f}   {get:>10.3f} {total_get:>10.3f}   {set:>10.3f} {total_set:>10.3f}   {profit:>10.3f}\n"
         _stats_filename_template = "/tmp/redis-cache-stats-{time}"
 
         def div(a, b):

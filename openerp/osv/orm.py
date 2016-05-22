@@ -379,7 +379,7 @@ class browse_record(object):
                 else:
                     return attr
             else:
-                error_msg = "Field '%s' does not exist in object '%s'" % (name, self) 
+                error_msg = "Field '%s' does not exist in object '%s'" % (name, self)
                 self.__logger.warning(error_msg)
                 raise KeyError(error_msg)
 
@@ -1073,15 +1073,16 @@ class BaseModel(object):
 
         # Initialize RedisCache
         _model_blacklist = set(config.get('redis_cache_blacklist', '').split())
+        _model_whitelist = set(config.get('redis_cache_whitelist', '').split())
         _invalidation_tables = {key.replace('redis_cache_invalidation_',''): val.split() for key,val in config.options.items() if key.startswith('redis_cache_invalidation_')}
-        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=_model_blacklist, invalidation_tables=_invalidation_tables, max_item_size=config.get('redis_cache_max_item_size'))
-        if config.get('redis_cache_enable', False):
+        self.rc = RedisCache(cr, unix=config.get('redis_cache_unix'), host=config.get('redis_cache_host'), port=config.get('redis_cache_port'), db=config.get('redis_cache_db'), blacklist=_model_blacklist, whitelist=_model_whitelist, invalidation_tables=_invalidation_tables, max_item_size=config.get('redis_cache_max_item_size'), validation_log=config.get('redis_cache_validation_log'))
+        if (config.get('redis_cache_enable', False) == True):
             # Run this every time just incase the database name has changed
             self.rc.postgresql_init(cr)
             # Create invalidation triggers for every model (paranoid!)
             self.rc.model_init(cr, self)
             # Blacklist models with function fields unless expressly told not to in config
-            if self.rc.model_complex_fields(cr, self) and not config.get('redis_cache_complex_models', False):
+            if self.rc.model_complex_fields(cr, self) and not (config.get('redis_cache_complex_models', False) == True):
                 self.rc.model_blacklist(self)
                 _logger.warning("RedisCache skipping: %s/%s", cr.dbname, self._table)
         else:
@@ -1880,7 +1881,7 @@ class BaseModel(object):
     def _get_default_calendar_view(self, cr, user, context=None):
         """ Generates a default calendar view by trying to infer
         calendar fields from a number of pre-set attribute names
-        
+
         :param cr: database cursor
         :param int user: user id
         :param dict context: connection context
@@ -2334,7 +2335,7 @@ class BaseModel(object):
                                 or ``'='``.
            :param int limit: optional max number of records to return
            :rtype: list
-           :return: list of pairs ``(id,text_repr)`` for all matching records. 
+           :return: list of pairs ``(id,text_repr)`` for all matching records.
         """
         return self._name_search(cr, user, name, args, operator, context, limit)
 
@@ -2465,7 +2466,7 @@ class BaseModel(object):
         # This is useful to implement kanban views for instance, where all columns
         # should be displayed even if they don't contain any record.
 
-        # Grab the list of all groups that should be displayed, including all present groups 
+        # Grab the list of all groups that should be displayed, including all present groups
         present_group_ids = [x[groupby][0] for x in read_group_result if x[groupby]]
         all_groups = self._group_by_full[groupby](self, cr, uid, present_group_ids, domain,
                                                   read_group_order=read_group_order,
@@ -2620,17 +2621,17 @@ class BaseModel(object):
 
         order = orderby or groupby
         data_ids = self.search(cr, uid, [('id', 'in', alldata.keys())], order=order, context=context)
-        
+
         # the IDs of records that have groupby field value = False or '' should be included too
         data_ids += set(alldata.keys()).difference(data_ids)
-        
-        if groupby:   
+
+        if groupby:
             data = self.read(cr, uid, data_ids, [groupby], context=context)
             # restore order of the search as read() uses the default _order (this is only for groups, so the footprint of data should be small):
             data_dict = dict((d['id'], d[groupby] ) for d in data)
             result = [{'id': i, groupby: data_dict[i]} for i in data_ids]
         else:
-            result = [{'id': i} for i in data_ids] 
+            result = [{'id': i} for i in data_ids]
 
         for d in result:
             if groupby:
@@ -2805,28 +2806,28 @@ class BaseModel(object):
 
     def _m2o_fix_foreign_key(self, cr, source_table, source_field, dest_model, ondelete):
         # Find FK constraint(s) currently established for the m2o field,
-        # and see whether they are stale or not 
+        # and see whether they are stale or not
         cr.execute("""SELECT confdeltype as ondelete_rule, conname as constraint_name,
                              cl2.relname as foreign_table
                       FROM pg_constraint as con, pg_class as cl1, pg_class as cl2,
                            pg_attribute as att1, pg_attribute as att2
-                      WHERE con.conrelid = cl1.oid 
-                        AND cl1.relname = %s 
-                        AND con.confrelid = cl2.oid 
-                        AND array_lower(con.conkey, 1) = 1 
-                        AND con.conkey[1] = att1.attnum 
-                        AND att1.attrelid = cl1.oid 
-                        AND att1.attname = %s 
-                        AND array_lower(con.confkey, 1) = 1 
-                        AND con.confkey[1] = att2.attnum 
-                        AND att2.attrelid = cl2.oid 
-                        AND att2.attname = %s 
+                      WHERE con.conrelid = cl1.oid
+                        AND cl1.relname = %s
+                        AND con.confrelid = cl2.oid
+                        AND array_lower(con.conkey, 1) = 1
+                        AND con.conkey[1] = att1.attnum
+                        AND att1.attrelid = cl1.oid
+                        AND att1.attname = %s
+                        AND array_lower(con.confkey, 1) = 1
+                        AND con.confkey[1] = att2.attnum
+                        AND att2.attrelid = cl2.oid
+                        AND att2.attname = %s
                         AND con.contype = 'f'""", (source_table, source_field, 'id'))
         constraints = cr.dictfetchall()
         if constraints:
             if len(constraints) == 1:
                 # Is it the right constraint?
-                cons, = constraints 
+                cons, = constraints
                 if cons['ondelete_rule'] != POSTGRES_CONFDELTYPES.get((ondelete or 'set null').upper(), 'a')\
                     or cons['foreign_table'] != dest_model._table:
                     _schema.debug("Table '%s': dropping obsolete FK constraint: '%s'",
@@ -3475,17 +3476,17 @@ class BaseModel(object):
         select = map(lambda x: isinstance(x, dict) and x['id'] or x, select)
 
         # Redis Cache things
-        if config.get('redis_cache_enable', False) and not self.rc.model_is_blacklisted(self) and not context.get('redis_cache_disable', False):
+        if (config.get('redis_cache_enable', False) == True) and not self.rc.model_is_blacklisted(self):
             try:
                 # Initialize cache client
                 # Create a key for this read
-                _key = self.rc.keygen((cr.dbname, self._table, user, select, fields, context, load)) 
+                _key = self.rc.keygen((cr.dbname, self._table, user, select, fields, context, load))
                 # Connect doesn't do anything if we already have a client connected, unless the process has forked and this is the child
                 self.rc.connect()
                 # Try for a cache hit
                 result = self.rc.cache_get(self, _key, stats_key=self._table)
                 # If redis cache is enabled for testing only, also fetch the real result and compare it with the cache result
-                if config.get('redis_cache_test_only', False):
+                if (config.get('redis_cache_test_only', False) == True):
                     self.rc.timer_start()
                     real_result = self._read_flat(cr, user, select, fields, context, load)
                     self.rc.timer_stop(self._table, 'total_time')
@@ -3822,7 +3823,7 @@ class BaseModel(object):
         self.check_unlink(cr, uid)
 
         ir_property = self.pool.get('ir.property')
-        
+
         # Check if the records are used as default properties.
         domain = [('res_id', '=', False),
                   ('value_reference', 'in', ['%s,%s' % (self._name, i) for i in ids]),
@@ -4222,12 +4223,12 @@ class BaseModel(object):
                 del vals[self._inherits[table]]
 
             record_id = tocreate[table].pop('id', None)
-            
+
             # When linking/creating parent records, force context without 'no_store_function' key that
-            # defers stored functions computing, as these won't be computed in batch at the end of create(). 
+            # defers stored functions computing, as these won't be computed in batch at the end of create().
             parent_context = dict(context)
             parent_context.pop('no_store_function', None)
-            
+
             if record_id is None or not record_id:
                 record_id = self.pool.get(table).create(cr, user, tocreate[table], context=parent_context)
             else:
@@ -4367,7 +4368,7 @@ class BaseModel(object):
 
         if context is None:
             context = {}
-        if len(crud_logger.handlers) == 0: 
+        if len(crud_logger.handlers) == 0:
             try:
                 crud_file = logging.FileHandler(config.get('crud_file_loc'))
                 crud_logger.addHandler(crud_file)
@@ -4391,11 +4392,11 @@ class BaseModel(object):
             ## OpenERP defaults to running in UTC time so .today will give a time in utc
             ## We then convert that time to the local time of the context
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            strOut += now + ';' 
+            strOut += now + ';'
             crud_logger.info(strOut)
         return None
-    
-    
+
+
     def browse(self, cr, uid, select, context=None, list_class=None, fields_process=None, log=False):
         if config.get('crud_read') is not None and config.get('crud_read'):
             self.CRUDlogger(oper='browse', user=uid, ids=select, context=context)
@@ -5009,7 +5010,7 @@ class BaseModel(object):
 
         :return: map of ids to their fully qualified XML ID,
                  defaulting to an empty string when there's none
-                 (to be usable as a function field), 
+                 (to be usable as a function field),
                  e.g.::
 
                      { 'id': 'module.ext_id',
