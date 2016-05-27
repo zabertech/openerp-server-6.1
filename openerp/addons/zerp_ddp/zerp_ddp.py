@@ -439,7 +439,7 @@ class ZerpDDPHandler(Handler):
                 self.write_message(ddp.Updated([rcvd.id]))
 
         # object.execute, report.report_get, etc
-        elif rcvd.method.index('.') > 0:
+        elif '.' in rcvd.method:
             try:
                 elements = rcvd.method.split('.')
                 if len(elements) != 2:
