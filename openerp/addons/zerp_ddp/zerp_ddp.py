@@ -4,6 +4,7 @@ import time
 import tornado.web
 from ddp import *
 import openerp.osv
+from osv import fields, osv
 import pooler
 from globals import login_tokens
 from copy import copy
@@ -334,13 +335,15 @@ class ZerpDDPHandler(Handler):
         self.uid = uid
 
         token = self.gen_token()
+        self.token = token
+
         user = self.get_user()
         global login_tokens
 
         login_tokens[(database,token)] = user
 
         return {'user': user, 'token': token}
-    
+
     def resume(self, database, token):
         """
         """
@@ -350,6 +353,7 @@ class ZerpDDPHandler(Handler):
             user = login_tokens[(database,token)]
             self.database = database
             self.uid = user['id']
+            self.token = token
             return {'user': login_tokens[(database,token)], 'token': token}
         except:
             raise DDPException(400, 'Invalid Login')
@@ -360,6 +364,7 @@ class ZerpDDPHandler(Handler):
         global login_tokens
         self.uid = None
         self.database = None
+        self.token = None
         try:
             del login_tokens[(database, token)]
         except:
@@ -380,7 +385,7 @@ class ZerpDDPHandler(Handler):
             finally:
                 self.write_message(message)
                 self.write_message(ddp.Updated([rcvd.id]))
-            
+
         elif rcvd.method == "login":
             database = rcvd.params[0]
             username = rcvd.params[1]
@@ -432,7 +437,36 @@ class ZerpDDPHandler(Handler):
             finally:
                 self.write_message(message)
                 self.write_message(ddp.Updated([rcvd.id]))
-       
+
+        # object.execute, report.report_get, etc
+        elif rcvd.method.index('.') > 0:
+            try:
+                elements = rcvd.method.split('.')
+                if len(elements) != 2:
+                    raise ZerpDDPError('RPC call has invalid format. Must be [service_name].[method]')
+                ( service_name, method ) = elements
+
+                # use the uid and token to get through user.check
+                params = [ self.database, self.uid, self.token ]
+                params.extend( rcvd.params )
+
+                res = openerp.netsvc.dispatch_rpc(service_name,method,params)
+                message = ddp.Result(rcvd.id, error=None, result=res)
+            except Exception as err:
+                trace = traceback.format_exc()
+                message = ddp.Result(
+                                rcvd.id,
+                                error=ZerpDDPError(
+                                            500,
+                                            "Server Error",
+                                            "{}\n{}".format(err.message, trace)),
+                                result=None
+                            )
+
+            finally:
+                self.write_message(message)
+                self.write_message(ddp.Updated([rcvd.id]))
+
         #elif rcvd.method == "execute":
         else:
             model = rcvd.params[0]
@@ -444,6 +478,17 @@ class ZerpDDPHandler(Handler):
                 kwargs = rcvd.params[3]
             except:
                 pass
+
+            # We're going to retire this eventually
+            _logger.warn("Client {uid}@{remote_ip} is using deprecated DDP object.{method} for {model}.{model_method}".format(
+                        uid=self.uid,
+                        remote_ip=self.remote_ip,
+                        method=rcvd.method,
+                        function=rcvd.params[0],
+                        model=model,
+                        model_method=method
+                    ))
+
 
             fn = getattr(openerp.osv.osv.service, rcvd.method)
             try:
@@ -459,7 +504,7 @@ class ZerpDDPHandler(Handler):
             finally:
                 self.write_message(message)
                 self.write_message(ddp.Updated([rcvd.id]))
- 
+
     def on_message(self, message):
         if config.get('ddp_debug', False):
             _logger.log(logging.INFO, "DDP <<< %s", message)
@@ -469,4 +514,36 @@ class ZerpDDPHandler(Handler):
         if config.get('ddp_debug', False):
             _logger.log(logging.INFO, "DDP >>> %s", message)
         super(ZerpDDPHandler, self).write_message(message)
+
+class users(osv.osv):
+    _inherit = "res.users"
+
+    def check(self, db, uid, passwd):
+        """ Checks the global session tokens if a token exists for validity.
+            If it doesn't then passes the request up the rest of the 
+            authenticators.
+        """
+
+        key = (db,passwd)
+
+        # If the token doesn't match anything then just chain
+        # the auth request up.
+        if key not in login_tokens:
+            return super(users,self).check(db, uid, passwd)
+
+        # Ensure we have a token that matches an actual
+        # user rather than a stub.
+        user = login_tokens[key]
+        if not user:
+            return super(users,self).check(db, uid, passwd)
+
+        # It does exist, let's make sure that the user isn't
+        # trying anything sneaky like impersonate another user.
+        if uid and user.get('id') == uid:
+            return uid
+
+        # Nope. Sadness. If you've gotten here, things have
+        # gotten tres-weird.
+        raise openerp.exceptions.AccessDenied()
+
 
