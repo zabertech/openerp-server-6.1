@@ -1503,7 +1503,7 @@
                         <field name="function"/>
                         <separator string="Arguments" colspan="4"/>
                         <field colspan="4" name="args" nolabel="1"/>
-                        <button name="run_now" type="object" string="Run Now!" />
+                        <button name="run_now" type="object" string="Run Now!" colspan="6" />
                     </page>
                     </notebook>
                 </form>
