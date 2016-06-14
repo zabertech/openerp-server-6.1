@@ -134,13 +134,19 @@ class RedisCache(object):
     def postgresql_init(self, cr):
         """Create a function in the postgresql database which will be triggered to invalidate data in the cache
         """
+        _unix = None
+        _host = None
+        if self.unix:
+            _unix = "\"%s\"" % self.unix
+        if self.host:
+            _host = "\"%s\"" % self.host
         cr.execute("""CREATE OR REPLACE FUNCTION cache_invalidate()
     returns trigger
     language plpython3u
 as $$
     try:
         import redis
-        client = redis.StrictRedis(host="%s", port=%s, db=%s)
+        client = redis.StrictRedis(unix=%s, host=%s, port=%s, db=%s)
         pattern = "%s*|" + TD["table_name"] + "|*"
         keys = client.keys(pattern=pattern)
         if keys:
@@ -148,7 +154,7 @@ as $$
     except:
         pass
     return None
-$$;""" % (self.host, self.port, self.db, self.dbname))
+$$;""" % (_unix, _host, self.port, self.db, self.dbname))
 
 
     @staticmethod
