@@ -19,7 +19,7 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host="localhost", port=6379, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None, validation_log=None):
+    def __init__(self, cr, host=None, port=None, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None, validation_log=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
@@ -46,7 +46,6 @@ class RedisCache(object):
     def connect(self):
         """Connect to the redis server
         """
-        global _redis_connection_pool
 
         # Connecting via unix socket
         if self.unix:
@@ -55,6 +54,7 @@ class RedisCache(object):
 
         # Set up a TCP connection pool in a fork-safe way
         if self.host:
+            global _redis_connection_pool
             if not _redis_connection_pool.get(os.getpid()):
                 _redis_connection_pool[os.getpid()] = redis.ConnectionPool(host=self.host, port=self.port, db=self.db)
                 self.redis_client = redis.Redis(connection_pool=_redis_connection_pool[os.getpid()])
@@ -140,7 +140,7 @@ class RedisCache(object):
             _unix = "\"%s\"" % self.unix
         if self.host:
             _host = "\"%s\"" % self.host
-        cr.execute("""CREATE OR REPLACE FUNCTION cache_invalidate()
+        query ="""CREATE OR REPLACE FUNCTION cache_invalidate()
     returns trigger
     language plpython3u
 as $$
@@ -154,8 +154,9 @@ as $$
     except:
         pass
     return None
-$$;""" % (_unix, _host, self.port, self.db, self.dbname))
-
+$$;""" % (_unix, _host, self.port, self.db, self.dbname)
+        print query
+        cr.execute(query)
 
     @staticmethod
     def model_exists(cr, model):
