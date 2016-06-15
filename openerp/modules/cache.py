@@ -155,7 +155,6 @@ as $$
         pass
     return None
 $$;""" % (_unix, _host, self.port, self.db, self.dbname)
-        print query
         cr.execute(query)
 
     @staticmethod
@@ -284,7 +283,6 @@ $$;""" % (_unix, _host, self.port, self.db, self.dbname)
         out += "{profit:>141.3f}\n".format(profit=profit)
         with open(_stats_filename_template.format(time=time.time()), 'w') as f:
             f.write(out)
-        print out
         RedisCache.stats_reset()
 
     @staticmethod
