@@ -144,15 +144,12 @@ class RedisCache(object):
     returns trigger
     language plpython3u
 as $$
-    try:
-        import redis
-        client = redis.StrictRedis(unix=%s, host=%s, port=%s, db=%s)
-        pattern = "%s*|" + TD["table_name"] + "|*"
-        keys = client.keys(pattern=pattern)
-        if keys:
-            client.delete(*keys)
-    except:
-        pass
+    import redis
+    client = redis.StrictRedis(unix_socket_path=%s, host=%s, port=%s, db=%s)
+    pattern = "%s*|" + TD["table_name"] + "|*"
+    keys = client.keys(pattern=pattern)
+    if keys:
+        client.delete(*keys)
     return None
 $$;""" % (_unix, _host, self.port, self.db, self.dbname)
         cr.execute(query)
