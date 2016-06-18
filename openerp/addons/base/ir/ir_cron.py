@@ -69,6 +69,13 @@ class ir_cron(osv.osv):
     # loaded yet or was already unloaded (e.g. 'force_db_wakeup' or something)
     # See also openerp.cron
 
+    def run_now(self, cr, uid, ids, context=None):
+        """
+        """
+        for rec in self.browse(cr, uid, ids, context=context):
+            self._callback(cr, uid, rec.model, rec.function, rec.args, rec.id)
+        return True
+
     _name = "ir.cron"
     _order = 'name'
     _columns = {
