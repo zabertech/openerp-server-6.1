@@ -5,6 +5,7 @@ import time
 from pprint import pprint
 import os
 import signal
+import sys
 
 _domain_cache = {}
 _model_blacklist = set([])
@@ -37,11 +38,11 @@ class RedisCache(object):
         if not _model_whitelist:
             _model_whitelist = whitelist
         self.invalidation_tables = invalidation_tables
-        self.max_item_size = max_item_size
+        self.max_item_size = int(max_item_size)
         self.validation_log = validation_log
 
     def __repr__(self):
-        return "<RedisCache object: host=%s port=%s db=%s password=%s dbname=%s>" % (self.host, self.port, self.db, self.password, self.dbname)
+        return "<RedisCache object: socket=%s host=%s port=%s db=%s dbname=%s>" % (self.unix, self.host, self.port, self.db, self.dbname)
 
     def connect(self):
         """Connect to the redis server
@@ -118,17 +119,30 @@ class RedisCache(object):
         """
         self.timer_start()
         if self.model_is_blacklisted(model):
+            self.timer_stop(stats_key, 'total_set')
             return
-        if self.max_item_size and len(str(result)) > self.max_item_size:
+
+        if self.max_item_size and sys.getsizeof(result) > self.max_item_size:
+            _logger.warning("Redis Cache refusing to cache object larger than limit of %s for model %s (%s)", self.max_item_size, model._name, sys.getsizeof(result))
+            self.timer_stop(stats_key, 'total_set')
             return
+
         try:
-            self.connect()
             domain = self.domaingen(model)
             key = "|".join((domain, key))
+        except Exception as err:
+            _logger.error("Redis Cache cache_set error while preparing payload for model %s - %s", model._name, err)
+            self.timer_stop(stats_key, 'total_set')
+            return
+
+        try:
+            self.connect()
             self.redis_client.set(key, result)
         except Exception as err:
-            _logger.error("cache_set error: %s", err)
-            pass
+            _logger.error("Redis Cache cache_set error for model %s - %s", model._name, err)
+            self.timer_stop(stats_key, 'total_set')
+            return
+
         self.timer_stop(stats_key, 'total_set')
 
     def postgresql_init(self, cr):
