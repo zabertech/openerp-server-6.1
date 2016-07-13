@@ -1,9 +1,28 @@
+"""
+
+To be able to use this library, one will probably have to:
+
+sudo apt-get install python-dev
+sudo pip install crossbar
+
+Configuration Options to place into openerp.conf:
+
+wamp_uri = wss://nexus.izaber.com/ws
+wamp_login = someuser
+wamp_password = somepass
+wamp_realm = izaber
+wamp_registration_prefix = com.izaber.nexus.zerp.
+
+"""
+
 import os
 import re
 
 from tools import config
 import logging
 import netsvc
+
+_logger = logging.getLogger(__name__)
 
 from twisted.logger import Logger
 from twisted.internet import reactor
@@ -27,25 +46,6 @@ from pprint import pprint
 import openerp
 from openerp import pooler
 import openerp.service
-
-"""
-
-To be able to use this library, one will probably have to:
-
-sudo apt-get install python-dev
-sudo pip install crossbar
-
-Configuration Options to place into openerp.conf:
-
-wamp_uri = wss://nexus.izaber.com/ws
-wamp_login = someuser
-wamp_password = somepass
-wamp_realm = izaber
-wamp_registration_prefix = com.izaber.nexus.zerp.
-
-"""
-
-_logger = logging.getLogger(__name__)
 
 CLIENT_CACHE = {}
 
@@ -242,6 +242,7 @@ class ZERPClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClient
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 def wamp_start(*a):
+    # Sanity check, ensure we have something to connect to
     wamp_uri = unicode(config.get('wamp_uri',''))
     if not wamp_uri:
         _logger.log(logging.WARNING,"Not starting WAMP services as no configuration found.")

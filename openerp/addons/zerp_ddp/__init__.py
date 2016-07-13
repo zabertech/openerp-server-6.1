@@ -22,7 +22,6 @@ from datetime import datetime
 from ddp import *
 from time import sleep
 import zerp_ddp
-import zerp_wamp
 import threading
 import Queue
 from openerp.osv import osv, orm, fields
@@ -154,10 +153,14 @@ def start_wamp():
     # So now we use fork.
 
     # Create then start the WAMP session
-    import multiprocessing as mp
-    q = mp.Queue()
-    p = mp.Process(target=zerp_wamp.wamp_start, args=(q,))
-    p.start()
+    try:
+        import zerp_wamp
+        import multiprocessing as mp
+        q = mp.Queue()
+        p = mp.Process(target=zerp_wamp.wamp_start, args=(q,))
+        p.start()
+    except ImportError as ex:
+        _logger.log(logging.WARNING,"Could not load autobahn libraries because '{}'".format(unicode(ex)))
 
 def start_ddp():
     global server
