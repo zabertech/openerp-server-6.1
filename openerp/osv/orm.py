@@ -5140,6 +5140,41 @@ class BaseModel(object):
             record_dicts.append(item)
         return record_dicts
 
+    def zerp_search_read(
+            self,
+            cr,
+            user,
+            args,
+            fields=[],
+            offset=0,
+            limit=None,
+            order=None,
+            context=None,
+            count=False,
+        ):
+        ids = self.search(cr,user,args,offset,limit,order,context,count)
+        results = self.read(cr,user,ids,fields,context)
+        return results
+
+    def zerp_search_read_one(
+            self,
+            cr,
+            user,
+            args,
+            fields=[],
+            offset=0,
+            limit=None,
+            order=None,
+            context=None,
+            count=False,
+        ):
+        ids = self.search(cr,user,args,offset,limit,order,context,count)
+        if ids > 1:
+            raise except_orm(_('Error'), _("More than one result found!"))
+        result = self.read(cr,user,ids[0],fields,context)
+        return result
+
+
 # keep this import here, at top it will cause dependency cycle errors
 import expression
 

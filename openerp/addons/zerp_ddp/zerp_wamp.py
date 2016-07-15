@@ -11,7 +11,7 @@ wamp_uri = wss://nexus.izaber.com/ws
 wamp_login = someuser
 wamp_password = somepass
 wamp_realm = izaber
-wamp_registration_prefix = com.izaber.nexus.zerp.
+wamp_registration_prefix = com.izaber.nexus.zerp
 
 """
 
@@ -49,25 +49,24 @@ import openerp.service
 
 CLIENT_CACHE = {}
 
+class ZERPWampUri(object):
+    """ Handles the parsing of the procedure URI and converts it into its
+        constituent parts
+    """
+    def __init__(self,details):
+        self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
+        m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
+        if not m: raise InvalidUri()
+        self.database = m.group(1)
+        self.service_name = m.group(2)
+        self.method = m.group(3)
+
+    def __repr__(self):
+        return "ZERPWampUri({s.service_base}.{s.database}.{s.service_name}.{s.method})".format(s=self)
+
 class ZERPSession(ApplicationSession):
 
-    log = Logger()
-
-    handled_methods = {
-                    'execute':       ['object','execute',None],
-                    'exec_workflow': ['object','exec_workflow',None],
-                    'wizard_create': ['wizard','create',None],
-                    'report':        ['report','report',None],
-                    'report_get':    ['report','report_get',None],
-
-                    'search':        ['object','execute','search'],
-                    'fetch':         ['object','execute','read'],
-                    'write':         ['object','execute','write'],
-                    'create':        ['object','execute','create'],
-                    'unlink':        ['object','execute','unlink'],
-                }
-
-    def zerp_get(self,details):
+    def zerp_get(self,details,uri=None):
         """ Returns a user session from database or creates a new one
         """
         global CLIENT_CACHE
@@ -77,13 +76,12 @@ class ZERPSession(ApplicationSession):
         if not login: return
 
         # Parse out what database the user is trying to attach to
-        m = re.search('com.izaber.nexus.zerp.(.+)\.([\w_]+)',details.procedure)
-
+        if uri is None:
+            uri = ZERPWampUri(details)
 
         # Ensure that the database they're trying to access actually exists
-        database = m.group(1)
         databases = openerp.service.web_services.db().exp_list()
-        if database not in databases:
+        if uri.database not in databases:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
 
@@ -92,11 +90,11 @@ class ZERPSession(ApplicationSession):
         if not session: return
 
         # If we've got a cached session, let's use that
-        user_zerp = CLIENT_CACHE.get(session,{}).get(database)
+        user_zerp = CLIENT_CACHE.get(session,{}).get(uri.database)
         if user_zerp: return user_zerp
 
         # Verify that the user actually exists in the database
-        db, pool = pooler.get_db_and_pool(database)
+        db, pool = pooler.get_db_and_pool(uri.database)
         cr = db.cursor()
         user_uids = pool.get('res.users').search(cr,1,[('login','=',login)])
         if not user_uids:
@@ -110,14 +108,17 @@ class ZERPSession(ApplicationSession):
 
         # Store the session information
         # Cache the session for faster lookup and continue on
-        user_zerp = [database, user_uid, sess_key]
-        CLIENT_CACHE.setdefault(session,{})[database] = user_zerp
+        user_zerp = [uri.database, user_uid, sess_key]
+        CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
+
         cr.commit()
 
         return user_zerp
 
     def zerp_del(self,session):
-        """ Removes user session from database
+        """ Removes user session
+            * Deletes session from cache
+            * Removes related session tokens from each database known
         """
 
         # Check if the user disconnecting has a session and
@@ -142,39 +143,88 @@ class ZERPSession(ApplicationSession):
 
         return
 
-    def rpc_execute(self,*args,**kwargs):
-        """ The catch-all function to do various RPC functions with
+    def dispatch_model_standard(self,args,details,uri):
+
+        zerp_params = self.zerp_get(details,uri)
+
+        # Now attempt to dispatch the request to the underlying RPC system
+        handled_methods = {
+                            'execute':             ['object','execute',None],
+                            'exec_workflow':       ['object','exec_workflow',None],
+                            'wizard_create':       ['wizard','create',None],
+                            'report':              ['report','report',None],
+                            'report_get':          ['report','report_get',None],
+                            'reports_fetch':       ['report','report_get',None],
+                            'search':              ['object','execute','search'],
+                            'search_fetch':        ['object','execute','zerp_search_read'],
+                            'search_fetch_one':    ['object','execute','zerp_search_read_one'],
+                            'fetch':               ['object','execute','read'],
+                            'fetch_one':           ['object','execute','read'],
+                            'write':               ['object','execute','write'],
+                            'create':              ['object','execute','create'],
+                            'unlink':              ['object','execute','unlink'],
+                        }
+
+        if not uri.method in handled_methods:
+            raise ApplicationError(details.procedure,'Unknown procedure!')
+
+        (service_name,method,first_argument) = handled_methods[uri.method]
+
+        if first_argument:
+            args.insert(1,first_argument)
+
+        res = openerp.netsvc.dispatch_rpc(
+                        service_name,
+                        method,
+                        zerp_params + args
+                    )
+
+        _logger.log(logging.INFO,"Responding with: '{}'".format(res))
+        return res
+
+    def dispatch_model(self,*args,**kwargs):
+        """ The function to catch 'model' service based actions in
             ZERP.
         """
 
-        details = kwargs.get('details')
-        _logger.log(logging.INFO,"Received request '{}'".format(details.procedure))
-
-        # Check to see if request is somewhat sane
-        m = re.search('com.izaber.nexus.zerp.(.+)\.([\w_]+)',details.procedure)
-        if not m: raise InvalidUri()
-        database = m.group(1)
-        zerp = self.zerp_get(details)
-        del kwargs['details']
-
-        # Now attempt to dispatch the request to the underlying RPC system
-        method = m.group(2)
-        if method not in self.handled_methods:
-            raise InvalidUri()
         try:
-            ( service_name, method, arg1 ) = self.handled_methods[method]
+            details = kwargs.get('details')
+            _logger.log(logging.INFO,"Received model request '{}'".format(details.procedure))
 
-            # use the uid and token to get through user.check
-            params = list(zerp)
-            if arg1:
-                params.append( args[0] )  # model
-                params.append( arg1 )     # function/method
-                params.extend( args[1:] ) # arguments
-            else:
-                params.extend( args )
+            # Check to see if request is somewhat sane
+            uri = ZERPWampUri(details)
 
-            res = openerp.netsvc.dispatch_rpc(service_name,method,params)
+            # Leaving this as an example stub for a future special method
+            #if uri.method == 'specialmethod':
+            #    return self.dispatch_model_specialmethod(args,details,uri)
 
+            # Nope? use the normal
+            return self.dispatch_model_standard(list(args),details,uri)
+
+        except Exception as ex:
+            _logger.warning(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
+            raise ApplicationError(details.procedure,unicode(ex))
+
+
+    def dispatch_rpc(self,*args,**kwargs):
+        """ The standard function to do various RPC functions with ZERP.
+        """
+
+        try:
+            details = kwargs.get('details')
+            _logger.log(logging.INFO,"Received request '{}'".format(details.procedure))
+
+            # Check to see if request is somewhat sane
+            uri = ZERPWampUri(details)
+            zerp_params = list(self.zerp_get(details,uri))
+            del kwargs['details']
+
+            # Now attempt to dispatch the request to the underlying RPC system
+            res = openerp.netsvc.dispatch_rpc(
+                            uri.service_name,
+                            uri.method,
+                            zerp_params + list(args)
+                        )
             _logger.log(logging.INFO,"Responding with: '{}'".format(res))
             return res
 
@@ -193,15 +243,27 @@ class ZERPSession(ApplicationSession):
         databases = openerp.service.web_services.db().exp_list()
 
         for database in databases:
-            for service_name, method in self.handled_methods.items():
-                service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp.')\
-                                            +'{}.{}'.format(database,service_name)
-                _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
-                yield self.register(
-                            self.rpc_execute,
-                            service_uri,
-                            options=RegisterOptions(details_arg='details')
-                        )
+
+            # For 'model.*' services
+            service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
+                                        +'.{}.model'.format(database)
+            _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
+            yield self.register(
+                        self.dispatch_model,
+                        service_uri,
+                        options=RegisterOptions(details_arg='details',match=u'prefix')
+                    )
+
+            # For '*.*' services (such as object.execute)
+            service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
+                                        +'.{}'.format(database)
+            _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
+            yield self.register(
+                        self.dispatch_rpc,
+                        service_uri,
+                        options=RegisterOptions(details_arg='details',match=u'prefix')
+                    )
+
 
         yield self.subscribe(
                     self.onLeave,
@@ -230,9 +292,7 @@ class ZERPSession(ApplicationSession):
             raise Exception("Invalid authmethod {}".format(challenge.method))
 
 class ZERPClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
-
     maxDelay = 30
-
     def clientConnectionFailed(self, connector, reason):
         _logger.log(logging.WARNING,"Connection Failed because '{}'".format(reason))
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
