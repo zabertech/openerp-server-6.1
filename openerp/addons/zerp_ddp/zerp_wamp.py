@@ -180,7 +180,8 @@ class ZERPSession(ApplicationSession):
                         zerp_params + args
                     )
 
-        _logger.log(logging.INFO,"Responding with: '{}'".format(res))
+        # This is for debugging. Otherwise, this can get really really big!
+        # _logger.log(logging.INFO,"Responding with: '{}'".format(res))
         return res
 
     def dispatch_model(self,*args,**kwargs):
