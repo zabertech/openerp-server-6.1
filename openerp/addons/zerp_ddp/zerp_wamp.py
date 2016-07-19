@@ -96,6 +96,7 @@ class ZERPSession(ApplicationSession):
         # Verify that the user actually exists in the database
         db, pool = pooler.get_db_and_pool(uri.database)
         cr = db.cursor()
+
         user_uids = pool.get('res.users').search(cr,1,[('login','=',login)])
         if not user_uids:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
@@ -218,6 +219,7 @@ class ZERPSession(ApplicationSession):
             uri = ZERPWampUri(details)
             zerp_params = list(self.zerp_get(details,uri))
             del kwargs['details']
+            _logger.log(logging.INFO,"Received arguments '{}'".format(zerp_params))
 
             # Now attempt to dispatch the request to the underlying RPC system
             res = openerp.netsvc.dispatch_rpc(
@@ -229,6 +231,9 @@ class ZERPSession(ApplicationSession):
             return res
 
         except Exception as ex:
+            import traceback
+            traceback.print_exc()
+            _logger.log(logging.WARNING,"Error in dispatch because: '{}'".format(ex))
             raise ApplicationError(details.procedure,unicode(ex))
 
     ##########################################################

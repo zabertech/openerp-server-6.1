@@ -154,6 +154,7 @@ def start_wamp():
 
     # Create then start the WAMP session
     try:
+        _logger.log(logging.INFO,"About to reg WAMP")
         import zerp_wamp
         import multiprocessing as mp
         q = mp.Queue()
