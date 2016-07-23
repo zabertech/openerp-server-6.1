@@ -145,6 +145,24 @@ def exec_workflow(self, db, uid, obj, method, *args):
         cr.close()
     return res
 
+def start_wamp():
+    global wamp_server_thread
+
+    # Tried using threads but got this instead:
+    # exceptions.ValueError: signal only works in main thread
+    # So now we use fork.
+
+    # Create then start the WAMP session
+    try:
+        _logger.log(logging.INFO,"About to reg WAMP")
+        import zerp_wamp
+        import multiprocessing as mp
+        q = mp.Queue()
+        p = mp.Process(target=zerp_wamp.wamp_start, args=(q,))
+        p.start()
+    except ImportError as ex:
+        _logger.log(logging.WARNING,"Could not load autobahn libraries because '{}'".format(unicode(ex)))
+
 def start_ddp():
     global server
     global server_thread
@@ -198,6 +216,9 @@ def start_ddp():
     monitor_thread.daemon = False
     monitor_thread.start()
 
+def start_web_services():
+    start_ddp()
+    start_wamp()
 
 def stop_ddp():
     global server
@@ -224,3 +245,5 @@ def stop_ddp():
     monitor.stop()
     server.stop()
 
+def stop_web_services():
+    stop_ddp()
