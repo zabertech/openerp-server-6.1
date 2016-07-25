@@ -38,7 +38,10 @@ class RedisCache(object):
         if not _model_whitelist:
             _model_whitelist = whitelist
         self.invalidation_tables = invalidation_tables
-        self.max_item_size = int(max_item_size)
+        try:
+            self.max_item_size = int(max_item_size)
+        except:
+            self.max_item_size = 0
         self.validation_log = validation_log
 
     def __repr__(self):
