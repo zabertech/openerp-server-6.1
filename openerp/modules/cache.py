@@ -20,7 +20,7 @@ class RedisCacheException(Exception):
 
 class RedisCache(object):
     _stats_default = {'hit': 0, 'miss': 0, 'total_time': 0, 'total_get': 0, 'total_set': 0, 'error': 0}
-    def __init__(self, cr, host=None, port=None, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=None, validation_log=None):
+    def __init__(self, cr, host=None, port=None, unix=None, db=0, password=None, blacklist="", whitelist="", invalidation_tables={}, max_item_size=0, validation_log=None):
         """Redis server details, plus a copy of the postgresql cursor for the dbname
         """
         global _redis_connection_pool
