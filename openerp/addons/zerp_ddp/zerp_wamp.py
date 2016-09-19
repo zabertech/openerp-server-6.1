@@ -148,6 +148,18 @@ class ZERPSession(ApplicationSession):
 
         zerp_params = self.zerp_get(details,uri)
 
+        # Return the model's schema. This is used by Tanooki forms
+        # to determine the structure of the model data
+        # See ticket #2610
+        if uri.method == 'schema':
+            (dbname, uid, password) = zerp_params
+            db, pool = pooler.get_db_and_pool(dbname)
+            cr = db.cursor()
+            model_obj = pool.get(args[0])
+            schema = model_obj.fields_get(cr, uid)
+            cr.close()
+            return schema
+
         # Now attempt to dispatch the request to the underlying RPC system
         handled_methods = {
                             'execute':             ['object','execute',None],
@@ -206,7 +218,6 @@ class ZERPSession(ApplicationSession):
         except Exception as ex:
             _logger.warning(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
             raise ApplicationError(details.procedure,unicode(ex))
-
 
     def dispatch_rpc(self,*args,**kwargs):
         """ The standard function to do various RPC functions with ZERP.
