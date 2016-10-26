@@ -113,6 +113,7 @@ class ZERPSession(ApplicationSession):
         CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
 
         cr.commit()
+        cr.close()
 
         return user_zerp
 
@@ -141,6 +142,7 @@ class ZERPSession(ApplicationSession):
                             [ ('name','=',sess_key) ])
             sess_obj.unlink(cr,1,sess_ids)
             cr.commit()
+            cr.close()
 
         return
 
