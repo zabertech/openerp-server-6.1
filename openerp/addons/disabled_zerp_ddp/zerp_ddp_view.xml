@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <record id="view_zerp_ddp_manage" model="ir.ui.view">
+            <field name="name">view.zerp.ddp.manage</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="DDP">
+                    <separator string="Stop and Start DDP server" colspan="2"/>
+                    <newline/>
+                    <button type="object" name="stop_ddp" string="Stop DDP" />
+                    <button type="object" name="start_ddp" string="Start DDP" />
+                </form>
+            </field>
+        </record>
+
+        <record id="view_zerp_ddp_subscription_tree" model="ir.ui.view">
+            <field name="name">view.zerp.ddp.subscription.tree</field>
+            <field name="model">zerp.ddp.subscription</field>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                <tree string="DDP Subscriptions">
+                    <field name="user_id"/>
+                    <field name="subscription_id"/>
+                    <field name="ddp_session_id"/>
+                    <field name="database"/>
+                    <field name="remote_ip"/>
+                    <field name="name"/>
+                    <field name="method"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_zerp_ddp_connection_tree" model="ir.ui.view">
+            <field name="name">view.zerp.ddp.connection.tree</field>
+            <field name="model">zerp.ddp.connection</field>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                <tree string="DDP Connections">
+                    <field name="user_id"/>
+                    <field name="ddp_session_id"/>
+                    <field name="database"/>
+                    <field name="remote_ip"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_zerp_ddp_session_tree" model="ir.ui.view">
+            <field name="name">view.zerp.ddp.session.tree</field>
+            <field name="model">zerp.ddp.session</field>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                <tree string="DDP Sessions">
+                    <field name="ddp_session_id"/>
+                    <field name="expiry"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_zerp_ddp_manage" model="ir.actions.act_window">
+            <field name="name">Manage DDP Service</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="view_mode">form</field>
+            <field name="res_model">zerp.ddp.connection</field>
+            <field name="view_id" ref="view_zerp_ddp_manage"/>
+            <field name="help">Manage DDP</field>
+            <field name="target">new</field>
+        </record>
+
+        <record id="action_zerp_ddp_session" model="ir.actions.act_window">
+            <field name="name">DDP Sessions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">zerp.ddp.session</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_zerp_ddp_session_tree"/>
+            <field name="help">View current DDP sessions</field>
+        </record>
+
+        <record id="action_zerp_ddp_connection" model="ir.actions.act_window">
+            <field name="name">DDP Connections</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">zerp.ddp.connection</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_zerp_ddp_connection_tree"/>
+            <field name="help">View current DDP connections</field>
+        </record>
+
+        <record id="action_zerp_ddp_subscription" model="ir.actions.act_window">
+            <field name="name">DDP Subscriptions</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">zerp.ddp.subscription</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_zerp_ddp_subscription_tree"/>
+            <field name="help">View current DDP subscriptions</field>
+        </record>
+
+<!--
+        <record id="ir_actions_server_ddp_connection_close" model="ir.actions.server">
+            <field name="name">Close Connections</field>
+            <field name="type">ir.actions.server</field>
+            <field name="model_id" ref="model_zerp_ddp_connection"/>
+            <field name="state">code</field>
+            <field name="code">action = pool.get('zerp.ddp.connection').close(cr, uid, context.get('active_ids'), context)</field>
+        </record>
+ 
+        <record id="ir_actions_server_ddp_subscription_stop" model="ir.actions.server">
+            <field name="name">Stop Subscriptions</field>
+            <field name="type">ir.actions.server</field>
+            <field name="model_id" ref="model_zerp_ddp_subscription"/>
+            <field name="state">code</field>
+            <field name="code">action = pool.get('zerp.ddp.connection').close(cr, uid, context.get('active_ids'), context)</field>
+        </record>
+
+        <record id="ir_values_server_ddp_connection_close" model="ir.values">
+            <field name="name">Close Connections</field>
+            <field name="action_id" ref="ir_actions_server_ddp_connection_close"/>
+            <field name="value" eval="'ir.actions.server,' + str(ref('ir_actions_server_ddp_connection_close'))"/>
+            <field name="key">action</field>
+            <field name="model_id" ref="model_zerp_ddp_connection"/>
+            <field name="model">zerp.ddp.connection</field>
+            <field name="key2">client_action_multi</field>
+        </record>
+
+        <record id="ir_values_server_ddp_subscription_stop" model="ir.values">
+            <field name="name">Stop Subscriptions</field>
+            <field name="action_id" ref="ir_actions_server_ddp_subscription_stop"/>
+            <field name="value" eval="'ir.actions.server,' + str(ref('ir_actions_server_ddp_subscription_stop'))"/>
+            <field name="key">action</field>
+            <field name="model_id" ref="model_zerp_ddp_subscription"/>
+            <field name="model">zerp.ddp.subscription</field>
+            <field name="key2">client_action_multi</field>
+        </record>
+-->
+
+        <menuitem id="menu_zerp_ddp_section" parent="base.menu_administration" sequence="10" name="Distributed Data Protocol"/>
+        <menuitem id="menu_zerp_ddp_manage" parent="menu_zerp_ddp_section" action="action_zerp_ddp_manage" sequence="5"/>
+        <menuitem id="menu_zerp_ddp_connection" parent="menu_zerp_ddp_section" action="action_zerp_ddp_connection" sequence="10"/>
+        <menuitem id="menu_zerp_ddp_session" parent="menu_zerp_ddp_section" action="action_zerp_ddp_session" sequence="20"/>
+        <menuitem id="menu_zerp_ddp_subscription" parent="menu_zerp_ddp_section" action="action_zerp_ddp_subscription" sequence="10"/>
+    </data>
+</openerp>

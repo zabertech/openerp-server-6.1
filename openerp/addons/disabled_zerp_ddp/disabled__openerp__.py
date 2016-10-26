@@ -19,7 +19,7 @@
 #################################################################################
 
 {
-    'name': 'DDP Log Socket',
+    'name': 'DDP API',
     'version': '1.1',
     'category': 'Generic Modules',
     'description': """Add support for Meteor-js Distributed Data Protocol""",
@@ -31,6 +31,8 @@
     'depends': ['users_ldap'],
     'init_xml': [],
     'update_xml': [
+        'zerp_ddp_view.xml',
+        'security/ir.model.access.csv'
     ],
     'demo_xml': [],
     'installable': True,
