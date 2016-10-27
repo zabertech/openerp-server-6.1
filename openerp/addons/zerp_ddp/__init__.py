@@ -18,26 +18,19 @@
 #
 #################################################################################
 
-from datetime import datetime
 from ddp import *
-from time import sleep
-import threading
-import Queue
-from openerp.osv import osv, orm, fields
+from openerp.osv import orm
 from openerp.sql_db import Cursor
-from openerp import pooler
+from tools import config
 import logging
-
 
 import socket
 import sys
 import os
 
-from globals import *
-
 _logger = logging.getLogger(__name__)
 
-"""Playing with unix domain sockets and datagrams for publishing
+""" Playing with unix domain sockets and datagrams for publishing
     ORM change events.
 
     This code replaces all of the DDP subscription handling that
@@ -110,24 +103,33 @@ def ddp_decorated_unlink(fn):
 
 def ddp_decorated_commit(fn):
     global ddp_temp_message_queues
-    global ddp_message_queue
     def inner_commit(self):
         try:
             ret = fn(self)
         except:
             raise
         else:
-            logging.warn("Committing from pid {} with {} changes.".format(os.getpid(), len(ddp_temp_message_queues.get(self, []))))
-            for message in ddp_temp_message_queues.get(self, []):
+            logging.warn("Committing with {} changes.".format(len(ddp_temp_message_queues.get(self, []))))
+            # TODO: once I know this works, use a connection pool, or keep a connection alive on the socket
+            # to make things run a little faster.
+            # If there are message to send on this queue
+            if len(ddp_temp_message_queues.get(self, [])):
+                # establish a unix/seqpacket connection with the server.
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                sock.sendto(message.ejson_serialize(), config.get("ddp_ormlog_socket_address", "/tmp/ddp_ormlog.socket")
+                sock.connect(config.get("ddp_socket", "/var/run/zerp.socket"))
+                # With each message we pull off the queue
+                for message in ddp_temp_message_queues.get(self, []):
+                    # send it using the linux specific sendmsg (sendall in python) which is like SOCK_STREAM, but preserves boundary
+                    sock.sendall(message.ejson_serialize())
+                # Close the socket.
+                sock.shutdown()
         return ret
     return inner_commit
 
 def ddp_decorated_rollback(fn):
     global ddp_temp_message_queues
     def inner_rollback(self):
-        logging.warn("Committing from pid {} with {} changes.".format(os.getpid(), len(ddp_temp_message_queues.get(cr, []))))
+        logging.warn("Committing with {} changes.".format(len(ddp_temp_message_queues.get(cr, []))))
         del ddp_temp_message_queues[self]
         return fn(self)
     return inner_rollback
@@ -141,6 +143,5 @@ def start_ddp_ormlog():
     Cursor.rollback = ddp_decorated_rollback(Cursor.rollback)
 
 def start_web_services():
-    if config.get("ddp_ormlog_enable", False):
+    if config.get("ddp_enable", False):
         start_ddp_ormlog()
-
