@@ -29,6 +29,7 @@ import sys
 import os
 
 _logger = logging.getLogger(__name__)
+ddp_temp_message_queues = {}
 
 """ Playing with unix domain sockets and datagrams for publishing
     ORM change events.
@@ -104,33 +105,37 @@ def ddp_decorated_unlink(fn):
 def ddp_decorated_commit(fn):
     global ddp_temp_message_queues
     def inner_commit(self):
+        global ddp_temp_message_queues
         try:
             ret = fn(self)
         except:
             raise
         else:
-            logging.warn("Committing with {} changes.".format(len(ddp_temp_message_queues.get(self, []))))
             # TODO: once I know this works, use a connection pool, or keep a connection alive on the socket
             # to make things run a little faster.
             # If there are message to send on this queue
             if len(ddp_temp_message_queues.get(self, [])):
-                # establish a unix/seqpacket connection with the server.
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                sock.connect(config.get("ddp_socket", "/var/run/zerp.socket"))
-                # With each message we pull off the queue
-                for message in ddp_temp_message_queues.get(self, []):
-                    # send it using the linux specific sendmsg (sendall in python) which is like SOCK_STREAM, but preserves boundary
-                    sock.sendall(message.ejson_serialize())
-                # Close the socket.
-                sock.shutdown()
+                socket_address = config.get("ddp_socket", "/tmp/zerp.socket")
+                try:
+                    # establish a unix/seqpacket connection with the server.
+                    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                    sock.connect(socket_address)
+                    # With each message we pull off the queue
+                    for message in ddp_temp_message_queues.get(self, []):
+                        sock.send(message.ejson_serialize())
+                    # Close the socket.
+                    sock.shutdown(socket.SHUT_RDWR)
+                except Exception, err:
+                    logging.warn("Error logging commit to socket {}: {}".format(socket_address, err))
         return ret
     return inner_commit
 
 def ddp_decorated_rollback(fn):
     global ddp_temp_message_queues
     def inner_rollback(self):
-        logging.warn("Committing with {} changes.".format(len(ddp_temp_message_queues.get(cr, []))))
-        del ddp_temp_message_queues[self]
+        global ddp_temp_message_queues
+        if self in ddp_temp_message_queues:
+            del ddp_temp_message_queues[self]
         return fn(self)
     return inner_rollback
 
