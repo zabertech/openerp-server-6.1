@@ -65,7 +65,7 @@ class ZERPWampUri(object):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
         m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
         if not m: raise InvalidUri()
-        self.database = m.group(1)
+        self.database = DATABASE_MAPPINGS.get(m.group(1))
         self.service_name = m.group(2)
         self.method = m.group(3)
 
