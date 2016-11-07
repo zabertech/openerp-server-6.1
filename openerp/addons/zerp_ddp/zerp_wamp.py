@@ -14,7 +14,7 @@ wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
 
 """
-
+import traceback
 import os
 import re
 
@@ -73,7 +73,10 @@ class ZERPSession(ApplicationSession):
 
         # authid is the login of the authenticated user
         login = details.caller_authid
-        if not login: return
+        if not login:
+            raise ApplicationError("com.izaber.zerp.error.invalid_login",
+                    "could not authenticate session")
+
 
         # Parse out what database the user is trying to attach to
         if uri is None:
@@ -147,7 +150,6 @@ class ZERPSession(ApplicationSession):
     def dispatch_model_standard(self,args,details,uri):
 
         zerp_params = self.zerp_get(details,uri)
-
         # Return the model's schema. This is used by Tanooki forms
         # to determine the structure of the model data
         # See ticket #2610
@@ -193,7 +195,7 @@ class ZERPSession(ApplicationSession):
                     )
 
         # This is for debugging. Otherwise, this can get really really big!
-        # _logger.log(logging.INFO,"Responding with: '{}'".format(res))
+        #_logger.log(logging.INFO,"Responding with: '{}'".format(res))
         return res
 
     def dispatch_model(self,*args,**kwargs):
@@ -216,7 +218,7 @@ class ZERPSession(ApplicationSession):
             return self.dispatch_model_standard(list(args),details,uri)
 
         except Exception as ex:
-            _logger.warning(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
+            _logger.log(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
             raise ApplicationError(details.procedure,unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
@@ -336,6 +338,7 @@ def wamp_start(*a):
     transport_factory.port = port
     websocket.connectWS(transport_factory)
 
+    #if not reactor.running:
     reactor.run()
 
 

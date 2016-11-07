@@ -18,7 +18,7 @@
 #
 #################################################################################
 
-from ddp import *
+from ddp import ddp
 from openerp.osv import orm
 from openerp.sql_db import Cursor
 from tools import config
@@ -27,6 +27,8 @@ import logging
 import socket
 import sys
 import os
+
+import zerp_wamp
 
 _logger = logging.getLogger(__name__)
 ddp_temp_message_queues = {}
@@ -150,3 +152,5 @@ def start_ddp_ormlog():
 def start_web_services():
     if config.get("ddp_enable", False):
         start_ddp_ormlog()
+    if (config.get("wamp_uri", False)):
+        zerp_wamp.wamp_start()
