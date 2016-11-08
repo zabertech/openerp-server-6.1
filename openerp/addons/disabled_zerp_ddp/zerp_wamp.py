@@ -13,6 +13,13 @@ wamp_password = somepass
 wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
 
+Optional configuration
+
+'wamp_register' will allow a ZERP database to register with an arbitrary name on the WAMP router
+
+wamp_register = databasename,registername2=database2
+
+
 """
 
 import os
@@ -48,6 +55,7 @@ from openerp import pooler
 import openerp.service
 
 CLIENT_CACHE = {}
+DATABASE_MAPPINGS = {}
 
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
@@ -57,7 +65,7 @@ class ZERPWampUri(object):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
         m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
         if not m: raise InvalidUri()
-        self.database = m.group(1)
+        self.database = DATABASE_MAPPINGS.get(m.group(1))
         self.service_name = m.group(2)
         self.method = m.group(3)
 
@@ -113,6 +121,7 @@ class ZERPSession(ApplicationSession):
         CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
 
         cr.commit()
+        cr.close()
 
         return user_zerp
 
@@ -141,6 +150,7 @@ class ZERPSession(ApplicationSession):
                             [ ('name','=',sess_key) ])
             sess_obj.unlink(cr,1,sess_ids)
             cr.commit()
+            cr.close()
 
         return
 
@@ -257,13 +267,29 @@ class ZERPSession(ApplicationSession):
         """ Executed when the script attaches to the server
         """
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
-        databases = openerp.service.web_services.db().exp_list()
 
-        for database in databases:
+        wamp_register = config.get('wamp_register','').split(',')
+        for l in wamp_register:
+            if '=' in l:
+                ( service_name, db_name ) = l.split('=',1)
+            else:
+                service_name = l
+                db_name = l
+            DATABASE_MAPPINGS[service_name] = db_name
+
+        databases = openerp.service.web_services.db().exp_list()
+        if not DATABASE_MAPPINGS:
+            for database in databases:
+                DATABASE_MAPPINGS[database] = database
+
+        for service_name,db_name in DATABASE_MAPPINGS.items():
+            if not db_name in databases:
+                _logger.warn("Database '{}' does not exist for registering on WAMP!".format(db_name))
+                continue
 
             # For 'model.*' services
             service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
-                                        +'.{}.model'.format(database)
+                                        +'.{}.model'.format(service_name)
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_model,
@@ -273,7 +299,7 @@ class ZERPSession(ApplicationSession):
 
             # For '*.*' services (such as object.execute)
             service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
-                                        +'.{}'.format(database)
+                                        +'.{}'.format(service_name)
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_rpc,
