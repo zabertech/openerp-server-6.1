@@ -18,15 +18,21 @@ import traceback
 import os
 import re
 
+import posix_ipc
+
 from tools import config
 import logging
 import netsvc
+
+import ejson
+from ddp import ddp
 
 _logger = logging.getLogger(__name__)
 
 from twisted.logger import Logger
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 from twisted.internet.protocol import ReconnectingClientFactory
 
 from autobahn.twisted import websocket
@@ -47,8 +53,11 @@ import openerp
 from openerp import pooler
 import openerp.service
 
-CLIENT_CACHE = {}
+from Queue import Queue
 
+log = Logger()
+
+CLIENT_CACHE = {}
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
         constituent parts
@@ -290,6 +299,48 @@ class ZERPSession(ApplicationSession):
                     options=SubscribeOptions(details_arg='details')
                 )
 
+        # Handle live data from ORM. This uses a POSIX mqueue to wrangle data from
+        # all threads and all child processes.
+        mqueue_name = config.get("ddp_mqueue", "/zerp.mqueue")
+        max_message_size = config.get("ddp_max_message_size", 0xffff)
+        MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
+                                               flags=posix_ipc.O_CREAT,
+                                               max_message_size=int(max_message_size))
+
+        def receive():
+            # blocking receive from ipc mqueue deferred and run on a thread
+            return deferToThread(lambda: MESSAGE_QUEUE.receive())
+
+        while True:
+            # deferred blocking receive from ipc mqueue
+            (message, prio) = yield receive()
+            # reconstitute our message object
+            message = ddp.deserialize(message)
+            # collection is encoded with database:model and needs to be split up
+            (database, model) = message.collection.split(':')
+            message.collection = model
+            # prepare our publications to wamp
+            service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
+            data_uri = u'{service_uri}.{database}.{model}.data.{record_id}.{msg}'.format(
+                service_uri=service_uri,
+                database=database,
+                model=model,
+                record_id=message.id,
+                msg=message.msg
+            )
+            events_uri = u'{service_uri}.{database}.{model}.events.{record_id}.{msg}'.format(
+                service_uri=service_uri,
+                database=database,
+                model=model,
+                record_id=message.id,
+                msg=message.msg
+            )
+            # publish full data from ORM event
+            self.publish(data_uri, message.__dict__)
+            # publish event notification
+            self.publish(events_uri, message.msg)
+            # _logger.info(message)
+              
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
         """

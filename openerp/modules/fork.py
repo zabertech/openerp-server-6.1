@@ -43,6 +43,13 @@ class fork(object):
             # Wrap the decorated function in another function which will replace
             # the passed cursor argument with a new cursor unique to the new process
             def forked(dbname, q, *args, **kwargs):
+                # Shut down twisted in this process if it's running
+                from twisted.internet import reactor
+                from twisted.internet.error import ReactorNotRunning
+                try:
+                    reactor.stop()
+                except ReactorNotRunning:
+                    pass
                 
                 # Set the proc title of this process for debugging
                 if __process_name:

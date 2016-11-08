@@ -19,10 +19,10 @@
 #################################################################################
 
 {
-    'name': 'DDP Log Socket',
+    'name': 'WAMP',
     'version': '1.1',
     'category': 'Generic Modules',
-    'description': """Add support for Meteor-js Distributed Data Protocol""",
+    'description': """Add support for the Web Application Messaging Protocol""",
     'license': 'AGPL-3',
     'author': 'Zaber Technologies Inc. (Colin)',
     'post_load' : 'start_web_services',
@@ -35,7 +35,7 @@
     'demo_xml': [],
     'installable': True,
     "external_dependencies" : {
-        'python' : ['ejson'],
+        'python' : ['ddp'],
     }
 }
 

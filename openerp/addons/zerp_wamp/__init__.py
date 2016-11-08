@@ -28,7 +28,9 @@ import socket
 import sys
 import os
 
-import zerp_wamp
+from zerp_wamp import wamp_start
+
+import posix_ipc
 
 _logger = logging.getLogger(__name__)
 ddp_temp_message_queues = {}
@@ -108,27 +110,25 @@ def ddp_decorated_commit(fn):
     global ddp_temp_message_queues
     def inner_commit(self):
         global ddp_temp_message_queues
+        global MESSAGE_QUEUE
         try:
             ret = fn(self)
         except:
             raise
         else:
-            # TODO: once I know this works, use a connection pool, or keep a connection alive on the socket
-            # to make things run a little faster.
-            # If there are message to send on this queue
             if len(ddp_temp_message_queues.get(self, [])):
-                socket_address = config.get("ddp_socket", "/tmp/zerp.socket")
+                mqueue_name = config.get("ddp_mqueue", "/zerp.mqueue") 
+                max_message_size = config.get("ddp_max_message_size", 0xffff)
                 try:
-                    # establish a unix/seqpacket connection with the server.
-                    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                    sock.connect(socket_address)
+                    # TODO: Open the mqueue on cursor instantiation so we don't do it so often
+                    MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
+                                                           flags=posix_ipc.O_CREAT,
+                                                           max_message_size=int(max_message_size))
                     # With each message we pull off the queue
                     for message in ddp_temp_message_queues.get(self, []):
-                        sock.send(message.ejson_serialize())
-                    # Close the socket.
-                    sock.shutdown(socket.SHUT_RDWR)
+                        MESSAGE_QUEUE.send(message.ejson_serialize())
                 except Exception, err:
-                    logging.warn("Error logging commit to socket {}: {}".format(socket_address, err))
+                    logging.warn("Error logging commit to socket {}: {}".format(mqueue_name, err))
         return ret
     return inner_commit
 
@@ -153,4 +153,4 @@ def start_web_services():
     if config.get("ddp_enable", False):
         start_ddp_ormlog()
     if (config.get("wamp_uri", False)):
-        zerp_wamp.wamp_start()
+        wamp_start()
