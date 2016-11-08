@@ -14,19 +14,24 @@ wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
 wamp_mqueue = /zerp.mqueue
 wamp_max_message_size = 65536
+
+Optional configuration
+
+'wamp_register' will allow a ZERP database to register with an arbitrary name on the WAMP router
+
+wamp_register = databasename,registername2=database2
+
+
 """
 import traceback
 import os
 import re
-
 import posix_ipc
+from ddp import ddp
 
 from tools import config
 import logging
 import netsvc
-
-import ejson
-from ddp import ddp
 
 _logger = logging.getLogger(__name__)
 
@@ -54,11 +59,9 @@ import openerp
 from openerp import pooler
 import openerp.service
 
-from Queue import Queue
-
-log = Logger()
-
 CLIENT_CACHE = {}
+DATABASE_MAPPINGS = {}
+
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
         constituent parts
@@ -67,7 +70,7 @@ class ZERPWampUri(object):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
         m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
         if not m: raise InvalidUri()
-        self.database = m.group(1)
+        self.database = DATABASE_MAPPINGS.get(m.group(1))
         self.service_name = m.group(2)
         self.method = m.group(3)
 
@@ -86,7 +89,6 @@ class ZERPSession(ApplicationSession):
         if not login:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
-
 
         # Parse out what database the user is trying to attach to
         if uri is None:
@@ -126,6 +128,7 @@ class ZERPSession(ApplicationSession):
         CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
 
         cr.commit()
+        cr.close()
 
         return user_zerp
 
@@ -154,12 +157,14 @@ class ZERPSession(ApplicationSession):
                             [ ('name','=',sess_key) ])
             sess_obj.unlink(cr,1,sess_ids)
             cr.commit()
+            cr.close()
 
         return
 
     def dispatch_model_standard(self,args,details,uri):
 
         zerp_params = self.zerp_get(details,uri)
+
         # Return the model's schema. This is used by Tanooki forms
         # to determine the structure of the model data
         # See ticket #2610
@@ -205,7 +210,7 @@ class ZERPSession(ApplicationSession):
                     )
 
         # This is for debugging. Otherwise, this can get really really big!
-        #_logger.log(logging.INFO,"Responding with: '{}'".format(res))
+        # _logger.log(logging.INFO,"Responding with: '{}'".format(res))
         return res
 
     def dispatch_model(self,*args,**kwargs):
@@ -269,13 +274,29 @@ class ZERPSession(ApplicationSession):
         """ Executed when the script attaches to the server
         """
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
-        databases = openerp.service.web_services.db().exp_list()
 
-        for database in databases:
+        wamp_register = config.get('wamp_register','').split(',')
+        for l in wamp_register:
+            if '=' in l:
+                ( service_name, db_name ) = l.split('=',1)
+            else:
+                service_name = l
+                db_name = l
+            DATABASE_MAPPINGS[service_name] = db_name
+
+        databases = openerp.service.web_services.db().exp_list()
+        if not DATABASE_MAPPINGS:
+            for database in databases:
+                DATABASE_MAPPINGS[database] = database
+
+        for service_name,db_name in DATABASE_MAPPINGS.items():
+            if not db_name in databases:
+                _logger.warn("Database '{}' does not exist for registering on WAMP!".format(db_name))
+                continue
 
             # For 'model.*' services
             service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
-                                        +'.{}.model'.format(database)
+                                        +'.{}.model'.format(service_name)
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_model,
@@ -285,7 +306,7 @@ class ZERPSession(ApplicationSession):
 
             # For '*.*' services (such as object.execute)
             service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
-                                        +'.{}'.format(database)
+                                        +'.{}'.format(service_name)
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_rpc,
@@ -341,7 +362,7 @@ class ZERPSession(ApplicationSession):
             # publish event notification
             self.publish(events_uri, message.msg)
             # _logger.info(message)
-              
+
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
         """
@@ -390,7 +411,7 @@ def wamp_start(*a):
     transport_factory.port = port
     websocket.connectWS(transport_factory)
 
-    #if not reactor.running:
-    reactor.run()
+    if not reactor.running:
+        reactor.run()
 
 
