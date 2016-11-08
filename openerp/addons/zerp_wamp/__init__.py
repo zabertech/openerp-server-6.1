@@ -133,7 +133,6 @@ def start_ddp_ormlog():
     Cursor.rollback = ddp_decorated_rollback(Cursor.rollback)
 
 def start_web_services():
-    if config.get("ddp_enable", False):
-        start_ddp_ormlog()
     if (config.get("wamp_uri", False)):
+        start_ddp_ormlog()
         wamp_start()
