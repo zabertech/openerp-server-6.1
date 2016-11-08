@@ -12,7 +12,8 @@ wamp_login = someuser
 wamp_password = somepass
 wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
-
+wamp_mqueue = /zerp.mqueue
+wamp_max_message_size = 65536
 """
 import traceback
 import os
@@ -301,8 +302,8 @@ class ZERPSession(ApplicationSession):
 
         # Handle live data from ORM. This uses a POSIX mqueue to wrangle data from
         # all threads and all child processes.
-        mqueue_name = config.get("ddp_mqueue", "/zerp.mqueue")
-        max_message_size = config.get("ddp_max_message_size", 0xffff)
+        mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
+        max_message_size = config.get("wamp_max_message_size", 0xffff)
         MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
                                                flags=posix_ipc.O_CREAT,
                                                max_message_size=int(max_message_size))

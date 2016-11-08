@@ -35,23 +35,6 @@ import posix_ipc
 _logger = logging.getLogger(__name__)
 ddp_temp_message_queues = {}
 
-""" Playing with unix domain sockets and datagrams for publishing
-    ORM change events.
-
-    This code replaces all of the DDP subscription handling that
-    currently lives in Zerp. That code could now be written as a
-    separate process that lives outside Zerp.
-
-    All changes are send as DDP packets which are suitable for
-    publishing, or are easily parsed and processed before publishing.
-    For example, to fetch the record ID out of a change message and
-    publish just it over WAMP for clients then to invalidate.
-
-    RPC will still be handled by Zerp for the time being, but maybe
-    that too will change. It'd be nice to have these things outside
-    of Zerp entirely to reduce complexity.
-"""
-
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
     def inner_write(self, cr, user, ids, vals, context=None):
@@ -117,8 +100,8 @@ def ddp_decorated_commit(fn):
             raise
         else:
             if len(ddp_temp_message_queues.get(self, [])):
-                mqueue_name = config.get("ddp_mqueue", "/zerp.mqueue") 
-                max_message_size = config.get("ddp_max_message_size", 0xffff)
+                mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue") 
+                max_message_size = config.get("wamp_max_message_size", 0xffff)
                 try:
                     # TODO: Open the mqueue on cursor instantiation so we don't do it so often
                     MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
