@@ -220,7 +220,7 @@ class ZERPSession(ApplicationSession):
 
         try:
             details = kwargs.get('details')
-            _logger.log(logging.INFO,"Received model request '{}'".format(details.procedure))
+            #_logger.log(logging.INFO,"Received model request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
@@ -233,22 +233,21 @@ class ZERPSession(ApplicationSession):
             return self.dispatch_model_standard(list(args),details,uri)
 
         except Exception as ex:
-            _logger.log(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
+            #_logger.log(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
             raise ApplicationError(details.procedure,unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
         """ The standard function to do various RPC functions with ZERP.
         """
-
         try:
             details = kwargs.get('details')
-            _logger.log(logging.INFO,"Received request '{}'".format(details.procedure))
+            #_logger.log(logging.INFO,"Received request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
             zerp_params = list(self.zerp_get(details,uri))
             del kwargs['details']
-            _logger.log(logging.INFO,"Received arguments '{}'".format(zerp_params))
+            #_logger.log(logging.INFO,"Received arguments '{}'".format(zerp_params + list(args)))
 
             # Now attempt to dispatch the request to the underlying RPC system
             res = openerp.netsvc.dispatch_rpc(
@@ -256,7 +255,7 @@ class ZERPSession(ApplicationSession):
                             uri.method,
                             zerp_params + list(args)
                         )
-            _logger.log(logging.INFO,"Responding with: '{}'".format(res))
+            #_logger.log(logging.INFO,"Responding with: '{}'".format(res))
             return res
 
         except Exception as ex:
@@ -321,27 +320,19 @@ class ZERPSession(ApplicationSession):
                     options=SubscribeOptions(details_arg='details')
                 )
 
-        # Handle live data from ORM. This uses a POSIX mqueue to wrangle data from
-        # all threads and all child processes.
+        
+        reactor.callInThread(self.receive_and_publish)
+
+    def receive_and_publish(self):
+        _logger.info("Starting ORM data subscription manager")
         mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
         max_message_size = config.get("wamp_max_message_size", 0xffff)
-        MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
-                                               flags=posix_ipc.O_CREAT,
-                                               max_message_size=int(max_message_size))
-
-        def receive():
-            # blocking receive from ipc mqueue deferred and run on a thread
-            return deferToThread(lambda: MESSAGE_QUEUE.receive())
-
+        MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
         while True:
-            # deferred blocking receive from ipc mqueue
-            (message, prio) = yield receive()
-            # reconstitute our message object
+            (message, prio) = MESSAGE_QUEUE.receive()
             message = ddp.deserialize(message)
-            # collection is encoded with database:model and needs to be split up
             (database, model) = message.collection.split(':')
             message.collection = model
-            # prepare our publications to wamp
             service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
             data_uri = u'{service_uri}.{database}.{model}.data.{record_id}.{msg}'.format(
                 service_uri=service_uri,
@@ -357,11 +348,8 @@ class ZERPSession(ApplicationSession):
                 record_id=message.id,
                 msg=message.msg
             )
-            # publish full data from ORM event
-            self.publish(data_uri, message.__dict__)
-            # publish event notification
-            self.publish(events_uri, message.msg)
-            # _logger.info(message)
+            reactor.callFromThread(ZERPSession.publish, self, data_uri, ddp.serialize(message))
+            reactor.callFromThread(ZERPSession.publish, self, events_uri, message.msg)
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
@@ -412,6 +400,7 @@ def wamp_start(*a):
     websocket.connectWS(transport_factory)
 
     if not reactor.running:
+        reactor.suggestThreadPoolSize(100)
         reactor.run()
 
 

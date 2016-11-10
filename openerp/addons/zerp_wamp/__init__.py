@@ -49,7 +49,7 @@ def ddp_decorated_write(fn):
         # Send read records as changed messages
         recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
         for rec in recs:
-            message = ddp.Changed(model, str(rec['id']), rec)
+            message = ddp.Changed(model, rec['id'], rec)
             ddp_temp_message_queues[cr].append(message)
         return ret
     return inner_write
@@ -66,7 +66,7 @@ def ddp_decorated_create(fn):
 
         # Create a new added message for each id of this
         # model which gets created
-        message = ddp.Added(model, str(id), vals)
+        message = ddp.Added(model, id, vals)
         ddp_temp_message_queues[cr].append(message)
         return id
     return inner_create
@@ -84,7 +84,7 @@ def ddp_decorated_unlink(fn):
         # Create a new removed message for each id of this
         # model which gets unlinked
         for id in ids:
-            message = ddp.Removed(model, str(id))
+            message = ddp.Removed(model, id)
             ddp_temp_message_queues[cr].append(message)
         return fn(self, cr, user, ids, context)
     return inner_unlink
