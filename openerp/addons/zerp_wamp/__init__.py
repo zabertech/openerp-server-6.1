@@ -31,6 +31,7 @@ import os
 from zerp_wamp import wamp_start
 
 import posix_ipc
+import json
 
 _logger = logging.getLogger(__name__)
 ddp_temp_message_queues = {}
@@ -109,7 +110,8 @@ def ddp_decorated_commit(fn):
                                                            max_message_size=int(max_message_size))
                     # With each message we pull off the queue
                     for message in ddp_temp_message_queues.get(self, []):
-                        MESSAGE_QUEUE.send(message.ejson_serialize())
+                        message = ddp.serialize(message, serializer=json)
+                        MESSAGE_QUEUE.send(message)
                 except Exception, err:
                     logging.warn("Error logging commit to socket {}: {}".format(mqueue_name, err))
         return ret

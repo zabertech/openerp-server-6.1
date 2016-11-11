@@ -28,6 +28,7 @@ import os
 import re
 import posix_ipc
 from ddp import ddp
+import json
 
 from tools import config
 import logging
@@ -330,7 +331,7 @@ class ZERPSession(ApplicationSession):
         MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
         while True:
             (message, prio) = MESSAGE_QUEUE.receive()
-            message = ddp.deserialize(message)
+            message = ddp.deserialize(message, serializer=json)
             (database, model) = message.collection.split(':')
             message.collection = model
             service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
@@ -348,8 +349,8 @@ class ZERPSession(ApplicationSession):
                 record_id=message.id,
                 msg=message.msg
             )
-            reactor.callFromThread(ZERPSession.publish, self, data_uri, ddp.serialize(message))
-            reactor.callFromThread(ZERPSession.publish, self, events_uri, message.msg)
+            reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
+            reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
