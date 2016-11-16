@@ -211,10 +211,14 @@ class ZERPSession(ApplicationSession):
                             'unlink':              ['object','execute','unlink'],
                         }
 
-        if not uri.method in handled_methods:
+        if uri.method in handled_methods:
+            (service_name,method,first_argument) = handled_methods[uri.method]
+        elif uri.service_name:
+            ( service_name, method ) = uri.service_name.split('.')
+            first_argument = uri.method
+        else:
             raise ApplicationError(details.procedure,'Unknown procedure!')
 
-        (service_name,method,first_argument) = handled_methods[uri.method]
 
         if first_argument:
             args.insert(1,first_argument)
