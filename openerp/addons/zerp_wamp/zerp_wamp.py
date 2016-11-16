@@ -39,7 +39,6 @@ _logger = logging.getLogger(__name__)
 from twisted.logger import Logger
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
 from twisted.internet.protocol import ReconnectingClientFactory
 
 from autobahn.twisted import websocket
@@ -69,12 +68,32 @@ class ZERPWampUri(object):
     """
     def __init__(self,details):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
-        m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
-        if not m: raise InvalidUri("Invalid URI")
-        self.database = DATABASE_MAPPINGS.get(m.group(1))
-        self.service_name = m.group(2)
-        self.method = m.group(3)
 
+        # Check if it's V2 or V1
+        # If there's no ":", it's V1
+        if details.procedure.find(':') == -1:
+            m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
+            if not m: raise InvalidUri("Invalid URI")
+            self.database = DATABASE_MAPPINGS.get(m.group(1))
+            self.service_name = m.group(2)
+            self.method = m.group(3)
+            self.database = m.group(1)
+            self.service_name = m.group(2)
+            self.method = m.group(3)
+            self.model = None
+            self.version = 1
+        else:
+            # Format should be
+            # <prefix>:<database>:<model>:<service>:<method>
+            uri_elements = details.procedure.split(':')
+            (
+                prefix,
+                self.database,
+                self.model,
+                self.service_name,
+                self.method
+            ) = uri_elements
+            self.version = 2
     def __repr__(self):
         return "ZERPWampUri({s.service_base}.{s.database}.{s.service_name}.{s.method})".format(s=self)
 
@@ -166,6 +185,10 @@ class ZERPSession(ApplicationSession):
 
         zerp_params = self.zerp_get(details,uri)
 
+        # Deal with V2 issues
+        if uri.version == 2:
+            args.insert(0,uri.model)
+
         # Return the model's schema. This is used by Tanooki forms
         # to determine the structure of the model data
         # See ticket #2610
@@ -196,10 +219,13 @@ class ZERPSession(ApplicationSession):
                             'unlink':              ['object','execute','unlink'],
                         }
 
-        if not uri.method in handled_methods:
+        if uri.method in handled_methods:
+            (service_name,method,first_argument) = handled_methods[uri.method]
+        elif uri.service_name:
+            ( service_name, method ) = uri.service_name.split('.')
+            first_argument = uri.method
+        else:
             raise ApplicationError(details.procedure,'Unknown procedure!')
-
-        (service_name,method,first_argument) = handled_methods[uri.method]
 
         if first_argument:
             args.insert(1,first_argument)
@@ -314,6 +340,17 @@ class ZERPSession(ApplicationSession):
                         options=RegisterOptions(details_arg='details',match=u'prefix')
                     )
 
+            # Version 2
+
+            # For '*.*' services (such as object.execute)
+            service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
+                                        +':{}'.format(service_name)
+            _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
+            yield self.register(
+                        self.dispatch_model,
+                        service_uri,
+                        options=RegisterOptions(details_arg='details',match=u'prefix')
+                    )
 
         yield self.subscribe(
                     self.onLeave,
@@ -321,7 +358,7 @@ class ZERPSession(ApplicationSession):
                     options=SubscribeOptions(details_arg='details')
                 )
 
-        
+
         reactor.callInThread(self.receive_and_publish)
 
     def receive_and_publish(self):
@@ -401,7 +438,6 @@ def wamp_start(*a):
     websocket.connectWS(transport_factory)
 
     if not reactor.running:
-        reactor.suggestThreadPoolSize(100)
         reactor.run()
 
 
