@@ -63,11 +63,30 @@ class ZERPWampUri(object):
     """
     def __init__(self,details):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
-        m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
-        if not m: raise InvalidUri()
-        self.database = DATABASE_MAPPINGS.get(m.group(1))
-        self.service_name = m.group(2)
-        self.method = m.group(3)
+
+        # Check if it's V2 or V1
+        # If there's no ":", it's V1
+        if details.procedure.find(':') == -1:
+            m = re.search(self.service_base+'\.(.+)\.([\w_]+)\.([\w_]+)$',details.procedure)
+            if not m: raise InvalidUri()
+            self.database = m.group(1)
+            self.service_name = m.group(2)
+            self.method = m.group(3)
+            self.model = None
+            self.version = 1
+
+        else:
+            # Format should be
+            # <prefix>:<database>:<model>:<service>:<method>
+            uri_elements = details.procedure.split(':')
+            (
+                prefix,
+                self.database,
+                self.model,
+                self.service_name,
+                self.method
+            ) = uri_elements
+            self.version = 2
 
     def __repr__(self):
         return "ZERPWampUri({s.service_base}.{s.database}.{s.service_name}.{s.method})".format(s=self)
@@ -158,6 +177,10 @@ class ZERPSession(ApplicationSession):
 
         zerp_params = self.zerp_get(details,uri)
 
+        # Deal with V2 issues
+        if uri.version == 2:
+            args.insert(0,uri.model)
+
         # Return the model's schema. This is used by Tanooki forms
         # to determine the structure of the model data
         # See ticket #2610
@@ -213,7 +236,7 @@ class ZERPSession(ApplicationSession):
 
         try:
             details = kwargs.get('details')
-            _logger.log(logging.INFO,"Received model request '{}'".format(details.procedure))
+            _logger.log(logging.DEBUG,"Received model request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
@@ -235,13 +258,13 @@ class ZERPSession(ApplicationSession):
 
         try:
             details = kwargs.get('details')
-            _logger.log(logging.INFO,"Received request '{}'".format(details.procedure))
+            _logger.log(logging.DEBUG,"Received request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
             zerp_params = list(self.zerp_get(details,uri))
             del kwargs['details']
-            _logger.log(logging.INFO,"Received arguments '{}'".format(zerp_params))
+            _logger.log(logging.DEBUG,"Received arguments '{}'".format(zerp_params))
 
             # Now attempt to dispatch the request to the underlying RPC system
             res = openerp.netsvc.dispatch_rpc(
@@ -249,7 +272,7 @@ class ZERPSession(ApplicationSession):
                             uri.method,
                             zerp_params + list(args)
                         )
-            _logger.log(logging.INFO,"Responding with: '{}'".format(res))
+            _logger.log(logging.DEBUG,"Responding with: '{}'".format(res))
             return res
 
         except Exception as ex:
@@ -303,6 +326,18 @@ class ZERPSession(ApplicationSession):
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_rpc,
+                        service_uri,
+                        options=RegisterOptions(details_arg='details',match=u'prefix')
+                    )
+
+            # Version 2
+
+            # For '*.*' services (such as object.execute)
+            service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
+                                        +':{}'.format(service_name)
+            _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
+            yield self.register(
+                        self.dispatch_model,
                         service_uri,
                         options=RegisterOptions(details_arg='details',match=u'prefix')
                     )
