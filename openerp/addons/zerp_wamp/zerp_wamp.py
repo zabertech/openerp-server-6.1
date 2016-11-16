@@ -372,14 +372,14 @@ class ZERPSession(ApplicationSession):
             (database, model) = message.collection.split(':')
             message.collection = model
             service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
-            data_uri = u'{service_uri}.{database}.{model}.data.{record_id}.{msg}'.format(
+            data_uri = u'{service_uri}.{database}:{model}:data.{record_id}.{msg}'.format(
                 service_uri=service_uri,
                 database=database,
                 model=model,
                 record_id=message.id,
                 msg=message.msg
             )
-            events_uri = u'{service_uri}.{database}.{model}.events.{record_id}.{msg}'.format(
+            events_uri = u'{service_uri}.{database}:{model}:events.{record_id}.{msg}'.format(
                 service_uri=service_uri,
                 database=database,
                 model=model,
