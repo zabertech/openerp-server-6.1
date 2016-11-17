@@ -179,6 +179,7 @@ class ZERPSession(ApplicationSession):
         # Take the service name and parse out the segments
         service_elements = uri.service_name.split('.')
         service_elements_len = len(service_elements)
+        method = None
         if service_elements_len == 2:
             ( service_object, service_method) = service_elements
         elif service_elements_len == 3:
@@ -190,7 +191,6 @@ class ZERPSession(ApplicationSession):
         # model name (so insert(1) vs insert(0))
         if method:
             args.insert(1,method)
-
         res = openerp.netsvc.dispatch_rpc(
                         service_object,
                         service_method,
@@ -225,7 +225,7 @@ class ZERPSession(ApplicationSession):
             raise Exception('WAMP version unhandled')
 
         except Exception as ex:
-            _logger.warning(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
+            _logger.log(logging.WARNING,"Request failed because: '{}'".format(unicode(ex)))
             raise ApplicationError(details.procedure,unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
