@@ -271,10 +271,13 @@ class ZERPSession(ApplicationSession):
         for l in wamp_register:
             if '=' in l:
                 ( service_name, db_name ) = l.split('=',1)
+                service_name = service_name.strip()
+                db_name = db_name.strip()
             else:
                 service_name = l
                 db_name = l
-            DATABASE_MAPPINGS[service_name.strip()] = db_name.strip()
+            if service_name and db_name:
+                DATABASE_MAPPINGS[service_name] = db_name
 
         databases = openerp.service.web_services.db().exp_list()
         if not DATABASE_MAPPINGS:
