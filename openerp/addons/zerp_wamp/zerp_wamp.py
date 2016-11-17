@@ -198,7 +198,6 @@ class ZERPSession(ApplicationSession):
         # model name (so insert(1) vs insert(0))
         if method:
             args.insert(1,method)
-        print service_object, service_method, zerp_params, args
         res = openerp.netsvc.dispatch_rpc(
                         service_object,
                         service_method,
