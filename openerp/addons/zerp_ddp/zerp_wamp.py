@@ -70,6 +70,7 @@ class ZERPWampUri(object):
         if len(uri_elements) != 4:
             raise Exception('URI should be in format "<prefix>:<database>:<model>:<service>:<method>"')
         ( prefix, self.database, self.model, self.service_name ) = uri_elements
+        self.database = DATABASE_MAPPINGS.get(self.database)
         self.version = 2
 
     def __repr__(self):
@@ -157,7 +158,7 @@ class ZERPSession(ApplicationSession):
 
         return
 
-    def dispatch_model_standard(self,args,details,uri):
+    def dispatch_model_standard(self,args,kwargs,details,uri):
         """ Handle the Version 2 schema for URIs:
 
             [prefix].[database]:[model]:[service name]
@@ -175,6 +176,8 @@ class ZERPSession(ApplicationSession):
         # side-channel exploits
         if uri.service_name == 'object.execute':
             raise Exception('FQN must be used. Eg: object.execute.FUNCTIONAME')
+        if uri.service_name == 'rpc.execute':
+            raise Exception('FQN must be used. Eg: rpc.execute.FUNCTIONAME')
 
         # Take the service name and parse out the segments
         service_elements = uri.service_name.split('.')
@@ -194,7 +197,8 @@ class ZERPSession(ApplicationSession):
         res = openerp.netsvc.dispatch_rpc(
                         service_object,
                         service_method,
-                        zerp_params + args
+                        zerp_params + args,
+                        kwargs
                     )
 
         # This is for debugging. Otherwise, this can get really really big!
@@ -208,6 +212,7 @@ class ZERPSession(ApplicationSession):
 
         try:
             details = kwargs.get('details')
+            del kwargs['details']
             _logger.log(logging.DEBUG,"Received model request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
@@ -221,7 +226,7 @@ class ZERPSession(ApplicationSession):
             if uri.version == 1:
                 return self.dispatch_model_standard_legacy_v1(list(args),details,uri)
             elif uri.version == 2:
-                return self.dispatch_model_standard(list(args),details,uri)
+                return self.dispatch_model_standard(list(args),dict(kwargs),details,uri)
             raise Exception('WAMP version unhandled')
 
         except Exception as ex:
@@ -246,7 +251,8 @@ class ZERPSession(ApplicationSession):
             res = openerp.netsvc.dispatch_rpc(
                             uri.service_name,
                             uri.method,
-                            zerp_params + list(args)
+                            zerp_params + list(args),
+                            kwargs
                         )
             _logger.log(logging.DEBUG,"Responding with: '{}'".format(res))
             return res
