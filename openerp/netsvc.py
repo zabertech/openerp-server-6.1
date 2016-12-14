@@ -417,10 +417,12 @@ def dispatch_rpc(service_name, method, params, kwargs=None):
         if rpc_request_flag or rpc_response_flag or rpc_user_flag:
             start_time = time.time()
             if rpc_request and rpc_response_flag:
-                log(rpc_request,logging.DEBUG,'%s.%s.%s'%(service_name,method), replace_request_password(params), kwargs)
+                log(rpc_request,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
+                log(rpc_request,logging.DEBUG,'%s.%s KWARGS:'%(service_name,method), kwargs)
 
             if rpc_user_flag:
-                log(rpc_user,logging.DEBUG,'%s.%s.%s'%(service_name,method), replace_request_password(params), kwargs)
+                log(rpc_user,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
+                log(rpc_user,logging.DEBUG,'%s.%s KWARGS:'%(service_name,method), kwargs)
 
         # Throw error if sensitve keys are found in kwargs.
         # This really shouldn't matter as the system should
