@@ -99,7 +99,7 @@ class db(netsvc.ExportService):
 
         self._pg_psw_env_var_is_set = False # on win32, pg_dump need the PGPASSWORD env var
 
-    def dispatch(self, method, params):
+    def dispatch(self, method, params, kwargs=None):
         if method in [ 'create', 'get_progress', 'drop', 'dump',
             'restore', 'rename',
             'change_admin_password', 'migrate_databases',
@@ -114,7 +114,7 @@ class db(netsvc.ExportService):
         else:
             raise KeyError("Method not found: %s" % method)
         fn = getattr(self, 'exp_'+method)
-        return fn(*params)
+        return fn(*params, **kwargs)
 
     def _create_empty_database(self, name):
         db = sql_db.db_connect('template1')
@@ -381,7 +381,7 @@ class common(netsvc.ExportService):
     def __init__(self,name="common"):
         netsvc.ExportService.__init__(self,name)
 
-    def dispatch(self, method, params):
+    def dispatch(self, method, params, kwargs=None):
         if method in ['login', 'about', 'timezone_get', 'get_server_environment',
                       'login_message','get_stats', 'check_connectivity',
                       'list_http_services', 'version', 'authenticate']:
@@ -394,7 +394,7 @@ class common(netsvc.ExportService):
             raise Exception("Method not found: %s" % method)
 
         fn = getattr(self, 'exp_'+method)
-        return fn(*params)
+        return fn(*params, **kwargs)
 
     def exp_login(self, db, login, password):
         # TODO: legacy indirection through 'security', should use directly
@@ -572,7 +572,7 @@ class objects_proxy(netsvc.ExportService):
     def __init__(self, name="object"):
         netsvc.ExportService.__init__(self,name)
 
-    def dispatch(self, method, params):
+    def dispatch(self, method, params, kwargs=None):
         (db, uid, passwd ) = params[0:3]
         params = params[3:]
         if method == 'obj_list':
@@ -583,10 +583,9 @@ class objects_proxy(netsvc.ExportService):
         assert openerp.osv.osv.service, "The object_proxy class must be started with start_object_proxy."
         openerp.modules.registry.RegistryManager.check_registry_signaling(db)
         fn = getattr(openerp.osv.osv.service, method)
-        res = fn(db, uid, *params)
+        res = fn(db, uid, *params, **kwargs)
         openerp.modules.registry.RegistryManager.signal_caches_change(db)
         return res
-
 
 #
 # Wizard ID: 1
@@ -607,14 +606,14 @@ class wizard(netsvc.ExportService):
         self.wiz_name = {}
         self.wiz_uid = {}
 
-    def dispatch(self, method, params):
+    def dispatch(self, method, params, kwargs=None):
         (db, uid, passwd ) = params[0:3]
         params = params[3:]
         if method not in ['execute','create']:
             raise KeyError("Method not supported %s" % method)
         security.check(db,uid,passwd)
         fn = getattr(self, 'exp_'+method)
-        res = fn(db, uid, *params)
+        res = fn(db, uid, *params, **kwargs)
         return res
 
     def _execute(self, db, uid, wiz_id, datas, action, context):
@@ -658,7 +657,7 @@ class report_spool(netsvc.ExportService):
         self.id = 0
         self.id_protect = threading.Semaphore()
 
-    def dispatch(self, method, params):
+    def dispatch(self, method, params, kwargs=None):
         (db, uid, passwd ) = params[0:3]
         params = params[3:]
         if method not in ['report', 'report_get', 'render_report']:
@@ -666,7 +665,7 @@ class report_spool(netsvc.ExportService):
         security.check(db,uid,passwd)
         openerp.modules.registry.RegistryManager.check_registry_signaling(db)
         fn = getattr(self, 'exp_' + method)
-        res = fn(db, uid, *params)
+        res = fn(db, uid, *params, **kwargs)
         openerp.modules.registry.RegistryManager.signal_caches_change(db)
         return res
 
