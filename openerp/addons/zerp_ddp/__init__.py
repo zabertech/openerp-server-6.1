@@ -101,7 +101,7 @@ def execute(self, db, uid, obj, method, *args, **kw):
     try:
         try:
             if method.startswith('_'):
-                raise except_osv('Access Denied', 'Private methods (such as %s) cannot be called remotely.' % (method,))
+                raise osv.except_osv('Access Denied', 'Private methods (such as %s) cannot be called remotely.' % (method,))
             res = self.execute_cr(cr, uid, obj, method, *args, **kw)
             if res is None:
                 _logger.warning('The method %s of the object %s can not return `None` !', method, obj)
