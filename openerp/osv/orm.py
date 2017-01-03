@@ -2910,7 +2910,13 @@ class BaseModel(object):
 
                 else:
                     if isinstance(f, fields.encrypted):
-                        cr.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
+                        try:
+                            cr.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
+                        except:
+                            _logger.error("Was unable to install the 'pgcrypto'. "+\
+                                        "This might be because the module is unavailable. "+\
+                                        "On Ubuntu 14.04, try: 'apt-get install postgresql-contrib-9.3' and reinstall module")
+                            raise
                     res = column_data.get(k)
 
                     # The field is not found as-is in database, try if it
