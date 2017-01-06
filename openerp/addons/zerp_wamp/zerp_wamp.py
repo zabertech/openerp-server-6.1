@@ -3,6 +3,8 @@
 To be able to use this library, one will probably have to:
 
 sudo apt-get install python-dev
+sudo apt-get install openssl libssl-dev
+sudo pip install posix_ipc
 sudo pip install crossbar
 
 Configuration Options to place into openerp.conf:
