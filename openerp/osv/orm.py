@@ -579,6 +579,8 @@ def get_pg_type(f, type_override=None):
             pg_type = ('numeric', 'NUMERIC')
         else:
             pg_type = ('float8', 'DOUBLE PRECISION')
+    elif issubclass(field_type, fields.encrypted):
+        pg_type = ('bytea', 'BYTEA')
     elif issubclass(field_type, (fields.char, fields.reference)):
         pg_type = ('varchar', pg_varchar(f.size))
     elif issubclass(field_type, fields.selection):
@@ -2907,6 +2909,14 @@ class BaseModel(object):
                     self._m2m_raise_or_create_relation(cr, f)
 
                 else:
+                    if isinstance(f, fields.encrypted):
+                        try:
+                            cr.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
+                        except:
+                            _logger.error("Was unable to install the 'pgcrypto'. "+\
+                                        "This might be because the module is unavailable. "+\
+                                        "On Ubuntu 14.04, try: 'apt-get install postgresql-contrib-9.3' and reinstall module")
+                            raise
                     res = column_data.get(k)
 
                     # The field is not found as-is in database, try if it
