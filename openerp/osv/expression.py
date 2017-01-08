@@ -784,7 +784,7 @@ class expression(object):
                 params = table._columns[left]._symbol_set[1](right)
 
             if add_null:
-                query = '(%s OR '+sql_left+' IS NULL)' % (query, table._table, left)
+                query = ('(%s OR '+sql_left+' IS NULL)') % (query, table._table, left)
 
         if isinstance(params, basestring):
             params = [params]
