@@ -168,6 +168,14 @@ class users(osv.osv):
         "If you aren't %(name)s, this email reached you errorneously, "\
         "please delete it."
 
+    def __init__(self,*args,**kwargs):
+        super(users,self).__init__(*args,**kwargs)
+        cr = args[1]
+        if not cr.dbname in netsvc.UID_NAME_CACHE:
+            cr.execute('select id,login from res_users')
+            for uid,login in cr.fetchall():
+                netsvc.UID_NAME_CACHE.setdefault(cr.dbname,{})[uid] = login
+
     def get_welcome_mail_subject(self, cr, uid, context=None):
         """ Returns the subject of the mail new users receive (when
         created via the res.config.users wizard), default implementation

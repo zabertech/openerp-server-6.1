@@ -40,6 +40,8 @@ import openerp
 
 _logger = logging.getLogger(__name__)
 
+UID_NAME_CACHE = {}
+
 def close_socket(sock):
     """ Closes a socket instance cleanly
 
@@ -381,7 +383,7 @@ def log(logger, level, prefix, msg, depth=None):
         logger.log(level, indent+line)
         indent=indent_after
 
-def dispatch_rpc(service_name, method, params):
+def dispatch_rpc(service_name, method, params, kwargs=None):
     """ Handle a RPC call.
 
     This is pure Python code, the actual marshalling (from/to XML-RPC or
@@ -390,6 +392,13 @@ def dispatch_rpc(service_name, method, params):
     try:
         rpc_request = logging.getLogger(__name__ + '.rpc.request')
         rpc_response = logging.getLogger(__name__ + '.rpc.response')
+
+        # Try checking up on the UID cache
+        try:
+            db_name = params[0]
+        except:
+            db_name = ''
+
 
         # Add a new RPC logger targetting a specific user
         try:
@@ -409,11 +418,24 @@ def dispatch_rpc(service_name, method, params):
             start_time = time.time()
             if rpc_request and rpc_response_flag:
                 log(rpc_request,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
+                log(rpc_request,logging.DEBUG,'%s.%s KWARGS:'%(service_name,method), kwargs)
 
             if rpc_user_flag:
                 log(rpc_user,logging.DEBUG,'%s.%s'%(service_name,method), replace_request_password(params))
+                log(rpc_user,logging.DEBUG,'%s.%s KWARGS:'%(service_name,method), kwargs)
 
-        result = ExportService.getService(service_name).dispatch(method, params)
+        # Throw error if sensitve keys are found in kwargs.
+        # This really shouldn't matter as the system should
+        # complain automatically due to arguments defined twice
+        # but we'll make it explicit here.
+        if kwargs == None:
+            kwargs = {}
+        for k in ['uid','cr']:
+            if k in kwargs:
+                raise openerp.exceptions.AccessDenied()
+
+        # Pass the request on.
+        result = ExportService.getService(service_name).dispatch(method, params, kwargs)
 
         if (rpc_request_flag or rpc_response_flag) or rpc_user_flag:
             end_time = time.time()
@@ -431,13 +453,23 @@ def dispatch_rpc(service_name, method, params):
     except openerp.exceptions.AccessDenied:
         raise
     except openerp.exceptions.Warning:
+        _logger.error(u"uid {} login {}: ".format(
+                    int(uid),
+                    UID_NAME_CACHE.get(db_name,{}).get(uid,'unknown')
+                )+tools.exception_to_unicode(e))
         raise
     except openerp.exceptions.DeferredException, e:
-        _logger.error(u"uid {}: ".format(int(uid))+tools.exception_to_unicode(e))
+        _logger.error(u"uid {} login {}: ".format(
+                    int(uid),
+                    UID_NAME_CACHE.get(db_name,{}).get(uid,'unknown')
+                )+tools.exception_to_unicode(e))
         post_mortem(e.traceback)
         raise
     except Exception, e:
-        _logger.error(u"uid {}: ".format(int(uid))+tools.exception_to_unicode(e))
+        _logger.error(u"uid {} login {}: ".format(
+                    int(uid),
+                    UID_NAME_CACHE.get(db_name,{}).get(uid,'unknown')
+                )+tools.exception_to_unicode(e))
         post_mortem(sys.exc_info())
         raise
 

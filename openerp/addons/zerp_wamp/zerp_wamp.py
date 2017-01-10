@@ -72,11 +72,12 @@ class ZERPWampUri(object):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
 
         # Format should be
-        # <prefix>:<database>:<model>:<service>
+        # <prefix>:<database>:<model>:<service>:<method>
         uri_elements = details.procedure.split(':')
         if len(uri_elements) != 4:
             raise Exception('URI should be in format "<prefix>:<database>:<model>:<service>:<method>"')
         ( prefix, self.database, self.model, self.service_name ) = uri_elements
+        self.database = DATABASE_MAPPINGS.get(self.database)
         self.version = 2
 
     def __repr__(self):
@@ -166,7 +167,7 @@ class ZERPSession(ApplicationSession):
 
         return
 
-    def dispatch_model_standard(self,args,details,uri):
+    def dispatch_model_standard(self,args,kwargs,details,uri):
         """ Handle the Version 2 schema for URIs:
 
             [prefix].[database]:[model]:[service name]
@@ -184,6 +185,8 @@ class ZERPSession(ApplicationSession):
         # side-channel exploits
         if uri.service_name == 'object.execute':
             raise Exception('FQN must be used. Eg: object.execute.FUNCTIONAME')
+        if uri.service_name == 'rpc.execute':
+            raise Exception('FQN must be used. Eg: rpc.execute.FUNCTIONAME')
 
         # Take the service name and parse out the segments
         service_elements = uri.service_name.split('.')
@@ -203,7 +206,8 @@ class ZERPSession(ApplicationSession):
         res = openerp.netsvc.dispatch_rpc(
                         service_object,
                         service_method,
-                        zerp_params + args
+                        zerp_params + args,
+                        kwargs
                     )
 
         # This is for debugging. Otherwise, this can get really really big!
@@ -217,6 +221,7 @@ class ZERPSession(ApplicationSession):
 
         try:
             details = kwargs.get('details')
+            del kwargs['details']
             _logger.log(logging.DEBUG,"Received model request '{}'".format(details.procedure))
 
             # Check to see if request is somewhat sane
@@ -230,7 +235,7 @@ class ZERPSession(ApplicationSession):
             if uri.version == 1:
                 return self.dispatch_model_standard_legacy_v1(list(args),details,uri)
             elif uri.version == 2:
-                return self.dispatch_model_standard(list(args),details,uri)
+                return self.dispatch_model_standard(list(args),dict(kwargs),details,uri)
             raise Exception('WAMP version unhandled')
 
         except Exception as ex:
@@ -255,7 +260,8 @@ class ZERPSession(ApplicationSession):
             res = openerp.netsvc.dispatch_rpc(
                             uri.service_name,
                             uri.method,
-                            zerp_params + list(args)
+                            zerp_params + list(args),
+                            kwargs
                         )
             _logger.log(logging.DEBUG,"Responding with: '{}'".format(res))
             return res
@@ -279,11 +285,14 @@ class ZERPSession(ApplicationSession):
         wamp_register = config.get('wamp_register','').split(',')
         for l in wamp_register:
             if '=' in l:
-                ( alias, db_name ) = l.split('=',1)
+                ( service_name, db_name ) = l.split('=',1)
+                service_name = service_name.strip()
+                db_name = db_name.strip()
             else:
                 alias = l
                 db_name = l
-            DATABASE_MAPPINGS[alias.strip()] = db_name.strip()
+            if service_name and db_name:
+                DATABASE_MAPPINGS[service_name] = db_name
 
         databases = openerp.service.web_services.db().exp_list()
         if not DATABASE_MAPPINGS:
@@ -298,7 +307,7 @@ class ZERPSession(ApplicationSession):
             # Version 2 Support
             # For '*.*' services (such as object.execute)
             service_uri = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')\
-                                        +':{}:'.format(alias)
+                                        +':{}:'.format(service_name)
             _logger.log(logging.INFO,"Registering '{}' on WAMP server".format(service_uri))
             yield self.register(
                         self.dispatch_model,

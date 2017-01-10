@@ -123,6 +123,7 @@ class PageCount(platypus.Flowable):
         self.story_count = story_count
 
     def draw(self):
+
         self.canv.beginForm("pageCount%d" % (self.story_count))
         self.canv.setFont("Helvetica", utils.unit_get(str(8)))
         # #1289 add the total page count to outgoing document footer
