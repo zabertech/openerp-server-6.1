@@ -3,6 +3,8 @@
 To be able to use this library, one will probably have to:
 
 sudo apt-get install python-dev
+sudo apt-get install openssl libssl-dev
+sudo pip install posix_ipc
 sudo pip install crossbar
 
 Configuration Options to place into openerp.conf:
@@ -12,6 +14,8 @@ wamp_login = someuser
 wamp_password = somepass
 wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
+wamp_mqueue = /zerp.mqueue
+wamp_max_message_size = 65536
 
 Optional configuration
 
@@ -21,9 +25,12 @@ wamp_register = databasename,registername2=database2
 
 
 """
-
+import traceback
 import os
 import re
+import posix_ipc
+import openerp.modules.ddp as ddp
+import json
 
 from tools import config
 import logging
@@ -74,7 +81,7 @@ class ZERPWampUri(object):
         self.version = 2
 
     def __repr__(self):
-        return "ZERPWampUri({s.service_base}.{s.database}.{s.service_name}.{s.method})".format(s=self)
+        return "ZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
 
 class ZERPSession(ApplicationSession):
 
@@ -85,7 +92,9 @@ class ZERPSession(ApplicationSession):
 
         # authid is the login of the authenticated user
         login = details.caller_authid
-        if not login: return
+        if not login:
+            raise ApplicationError("com.izaber.zerp.error.invalid_login",
+                    "could not authenticate session")
 
         # Parse out what database the user is trying to attach to
         if uri is None:
@@ -272,6 +281,7 @@ class ZERPSession(ApplicationSession):
         """ Executed when the script attaches to the server
         """
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
+        _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
 
         wamp_register = config.get('wamp_register','').split(',')
         for l in wamp_register:
@@ -280,7 +290,7 @@ class ZERPSession(ApplicationSession):
                 service_name = service_name.strip()
                 db_name = db_name.strip()
             else:
-                service_name = l
+                alias = l
                 db_name = l
             if service_name and db_name:
                 DATABASE_MAPPINGS[service_name] = db_name
@@ -290,7 +300,7 @@ class ZERPSession(ApplicationSession):
             for database in databases:
                 DATABASE_MAPPINGS[database] = database
 
-        for service_name,db_name in DATABASE_MAPPINGS.items():
+        for alias,db_name in DATABASE_MAPPINGS.items():
             if not db_name in databases:
                 _logger.warn("Database '{}' does not exist for registering on WAMP!".format(db_name))
                 continue
@@ -312,6 +322,37 @@ class ZERPSession(ApplicationSession):
                     u'wamp.session.on_leave',
                     options=SubscribeOptions(details_arg='details')
                 )
+
+
+        reactor.callInThread(self.receive_and_publish)
+
+    def receive_and_publish(self):
+        _logger.info("Starting ORM data subscription manager")
+        mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
+        max_message_size = config.get("wamp_max_message_size", 0xffff)
+        MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
+        while True:
+            (message, prio) = MESSAGE_QUEUE.receive()
+            message = ddp.deserialize(message, serializer=json)
+            (database, model) = message.collection.split(':')
+            message.collection = model
+            service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
+            data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
+                service_uri=service_uri,
+                database=database,
+                model=model,
+                record_id=message.id,
+                msg=message.msg
+            )
+            events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
+                service_uri=service_uri,
+                database=database,
+                model=model,
+                record_id=message.id,
+                msg=message.msg
+            )
+            reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
+            reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
@@ -361,6 +402,7 @@ def wamp_start(*a):
     transport_factory.port = port
     websocket.connectWS(transport_factory)
 
-    reactor.run()
+    if not reactor.running:
+        reactor.run()
 
 
