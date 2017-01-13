@@ -29,7 +29,7 @@ import traceback
 import os
 import re
 import posix_ipc
-from ddp import ddp
+import openerp.modules.ddp as ddp
 import json
 
 from tools import config
@@ -280,6 +280,7 @@ class ZERPSession(ApplicationSession):
     def onJoin(self, details):
         """ Executed when the script attaches to the server
         """
+        _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
 
         wamp_register = config.get('wamp_register','').split(',')

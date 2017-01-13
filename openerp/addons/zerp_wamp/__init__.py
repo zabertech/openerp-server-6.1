@@ -18,7 +18,7 @@
 #
 #################################################################################
 
-from ddp import ddp
+import openerp.modules.ddp as ddp
 from openerp.osv import orm
 from openerp.sql_db import Cursor
 from tools import config
@@ -32,6 +32,7 @@ from zerp_wamp import wamp_start
 
 import posix_ipc
 import json
+import ejson
 
 _logger = logging.getLogger(__name__)
 ddp_temp_message_queues = {}
@@ -67,7 +68,8 @@ def ddp_decorated_create(fn):
 
         # Create a new added message for each id of this
         # model which gets created
-        message = ddp.Added(model, id, vals)
+        rec = orm.BaseModel.read(self, cr, user, id, vals.keys(), context)
+        message = ddp.Added(model, id, rec)
         ddp_temp_message_queues[cr].append(message)
         return id
     return inner_create
@@ -102,7 +104,7 @@ def ddp_decorated_commit(fn):
         else:
             if len(ddp_temp_message_queues.get(self, [])):
                 mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue") 
-                max_message_size = config.get("wamp_max_message_size", 0xffff)
+                max_message_size = config.get("wamp_max_message_size", 8192)
                 try:
                     # TODO: Open the mqueue on cursor instantiation so we don't do it so often
                     MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
