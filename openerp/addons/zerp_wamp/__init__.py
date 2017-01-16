@@ -66,6 +66,11 @@ def ddp_decorated_create(fn):
 
         id = fn(self, cr, user, vals, context)
 
+        # Don't publish transient models. They can't be read yet
+        # for some reason.
+        if self._transient:
+            return id
+
         # Create a new added message for each id of this
         # model which gets created
         rec = orm.BaseModel.read(self, cr, user, id, vals.keys(), context)
@@ -130,6 +135,7 @@ def ddp_decorated_rollback(fn):
 
 def start_ddp_ormlog():
     # Monkeypatch osv and orm methods
+    print start_ddp_ormlog
     orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
     orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
