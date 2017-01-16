@@ -40,13 +40,20 @@ ddp_temp_message_queues = {}
 def ddp_decorated_write(fn):
     global ddp_temp_message_queues
     def inner_write(self, cr, user, ids, vals, context=None):
-        if type(ids) in [int, long]:
-            ids = [ids]
+        ret = fn(self, cr, user, ids, vals, context)
+
+        # Don't publish transient models. They can't be read yet
+        # for some reason.
+        if self._transient:
+            return ret
+
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
         model = "{}:{}".format(cr.dbname, self._name)
-        ret = fn(self, cr, user, ids, vals, context)
+
+        if type(ids) in [int, long]:
+            ids = [ids]
 
         # Send read records as changed messages
         recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
@@ -59,31 +66,35 @@ def ddp_decorated_write(fn):
 def ddp_decorated_create(fn):
     global ddp_temp_message_queues
     def inner_create(self, cr, user, vals, context=None):
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
-
-        id = fn(self, cr, user, vals, context)
+        ret = fn(self, cr, user, vals, context)
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
-            return id
+            return ret
 
+        global ddp_temp_message_queues
+        if not cr in ddp_temp_message_queues:
+            ddp_temp_message_queues[cr] = []
+        model = "{}:{}".format(cr.dbname, self._name)
         # Create a new added message for each id of this
         # model which gets created
-        rec = orm.BaseModel.read(self, cr, user, id, vals.keys(), context)
-        message = ddp.Added(model, id, rec)
+        rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
+        message = ddp.Added(model, ret, rec)
         ddp_temp_message_queues[cr].append(message)
-        return id
+        return ret
     return inner_create
 
 def ddp_decorated_unlink(fn):
     global ddp_temp_message_queues
     def inner_unlink(self, cr, user, ids, context=None):
-        if type(ids) in [int, long]:
-            ids = [ids]
+        ret = fn(self, cr, user, ids, context)
+
+        # Don't publish transient models. They can't be read yet
+        # for some reason.
+        if self._transient:
+            return ret
+
         global ddp_temp_message_queues
         if not cr in ddp_temp_message_queues:
             ddp_temp_message_queues[cr] = []
@@ -91,10 +102,12 @@ def ddp_decorated_unlink(fn):
 
         # Create a new removed message for each id of this
         # model which gets unlinked
+        if type(ids) in [int, long]:
+            ids = [ids]
         for id in ids:
             message = ddp.Removed(model, id)
             ddp_temp_message_queues[cr].append(message)
-        return fn(self, cr, user, ids, context)
+        return ret
     return inner_unlink
 
 def ddp_decorated_commit(fn):
