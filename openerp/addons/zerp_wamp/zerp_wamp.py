@@ -281,7 +281,6 @@ class ZERPSession(ApplicationSession):
         """ Executed when the script attaches to the server
         """
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
-        _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
 
         wamp_register = config.get('wamp_register','').split(',')
         for l in wamp_register:

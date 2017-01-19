@@ -153,7 +153,6 @@ def ddp_decorated_rollback(fn):
 
 def start_ddp_ormlog():
     # Monkeypatch osv and orm methods
-    print start_ddp_ormlog
     orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
     orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
     orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
