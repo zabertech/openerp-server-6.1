@@ -330,29 +330,36 @@ class ZERPSession(ApplicationSession):
         _logger.info("Starting ORM data subscription manager")
         mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
         max_message_size = config.get("wamp_max_message_size", 0xffff)
-        MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
-        while True:
-            (message, prio) = MESSAGE_QUEUE.receive()
-            message = ddp.deserialize(message, serializer=json)
-            (database, model) = message.collection.split(':')
-            message.collection = model
-            service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
-            data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
-                service_uri=service_uri,
-                database=database,
-                model=model,
-                record_id=message.id,
-                msg=message.msg
-            )
-            events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
-                service_uri=service_uri,
-                database=database,
-                model=model,
-                record_id=message.id,
-                msg=message.msg
-            )
-            reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
-            reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
+        try:
+            message_queue = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
+            while True:
+                (message, prio) = MESSAGE_QUEUE.receive()
+                message = ddp.deserialize(message, serializer=json)
+                (database, model) = message.collection.split(':')
+                message.collection = model
+                service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
+                data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
+                    service_uri=service_uri,
+                    database=database,
+                    model=model,
+                    record_id=message.id,
+                    msg=message.msg
+                )
+                events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
+                    service_uri=service_uri,
+                    database=database,
+                    model=model,
+                    record_id=message.id,
+                    msg=message.msg
+                )
+                reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
+                reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
+        except Exception as err:
+            _logger.error("ORM data subscription manager failed: %s", err)
+        finally:
+            if message_queue:
+                message_queue.close()
+
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
