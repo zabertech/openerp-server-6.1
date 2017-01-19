@@ -114,7 +114,7 @@ def ddp_decorated_commit(fn):
     global ddp_temp_message_queues
     def inner_commit(self):
         global ddp_temp_message_queues
-        global MESSAGE_QUEUE
+        global message_queue
         try:
             ret = fn(self)
         except:
@@ -122,18 +122,24 @@ def ddp_decorated_commit(fn):
         else:
             if len(ddp_temp_message_queues.get(self, [])):
                 mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue") 
-                max_message_size = config.get("wamp_max_message_size", 8192)
+                max_message_size = config.get("wamp_max_message_size", 8192)a
+                message_queue = None
                 try:
                     # TODO: Open the mqueue on cursor instantiation so we don't do it so often
-                    MESSAGE_QUEUE = posix_ipc.MessageQueue(mqueue_name,
+                    message_queue = posix_ipc.MessageQueue(mqueue_name,
                                                            flags=posix_ipc.O_CREAT,
                                                            max_message_size=int(max_message_size))
                     # With each message we pull off the queue
                     for message in ddp_temp_message_queues.get(self, []):
                         message = ddp.serialize(message, serializer=json)
-                        MESSAGE_QUEUE.send(message)
+                        message_queue.send(message)
                 except Exception, err:
                     logging.warn("Error logging commit to socket {}: {}".format(mqueue_name, err))
+                finally:
+                    # Mqueue must be explicitely closed or this process will hit it's open files limit.
+                    # Thanks, Stephen for finding this!
+                    if message_queue:
+                        message_queue.close(close)
         return ret
     return inner_commit
 
