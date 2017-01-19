@@ -114,7 +114,6 @@ def ddp_decorated_commit(fn):
     global ddp_temp_message_queues
     def inner_commit(self):
         global ddp_temp_message_queues
-        global message_queue
         try:
             ret = fn(self)
         except:
