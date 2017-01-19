@@ -139,7 +139,7 @@ def ddp_decorated_commit(fn):
                     # Mqueue must be explicitely closed or this process will hit it's open files limit.
                     # Thanks, Stephen for finding this!
                     if message_queue:
-                        message_queue.close(close)
+                        message_queue.close()
         return ret
     return inner_commit
 
