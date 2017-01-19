@@ -122,7 +122,7 @@ def ddp_decorated_commit(fn):
         else:
             if len(ddp_temp_message_queues.get(self, [])):
                 mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue") 
-                max_message_size = config.get("wamp_max_message_size", 8192)a
+                max_message_size = config.get("wamp_max_message_size", 8192)
                 message_queue = None
                 try:
                     # TODO: Open the mqueue on cursor instantiation so we don't do it so often
