@@ -579,6 +579,8 @@ def get_pg_type(f, type_override=None):
             pg_type = ('numeric', 'NUMERIC')
         else:
             pg_type = ('float8', 'DOUBLE PRECISION')
+    elif issubclass(field_type, fields.encrypted):
+        pg_type = ('bytea', 'BYTEA')
     elif issubclass(field_type, (fields.char, fields.reference)):
         pg_type = ('varchar', pg_varchar(f.size))
     elif issubclass(field_type, fields.selection):
@@ -1461,6 +1463,123 @@ class BaseModel(object):
         if context.get('defer_parent_store_computation'):
             self._parent_store_compute(cr)
         return position, 0, 0, 0
+
+    def json_export_rec_ids(self, cr, uid, model, ids, export_rec_ids=set(), filter_rec_ids=[]):
+        obj = self.pool.get(model)
+        schema = obj.fields_get(cr, uid)
+        for rec in obj.read(cr, uid, ids, []):
+            # why does this ever happen?
+            if type(rec) != dict:
+                continue
+            for key, column in schema.items():
+                if 'function' in column.keys():
+                    continue
+                elif column['type'] == 'many2one' and rec[key]:
+                    if not filter_rec_ids or (column['relation'], rec[key][0]) in filter_rec_ids:
+                        if (column['relation'], rec[key][0]) in export_rec_ids:
+                            continue
+                        export_rec_ids.add((column['relation'], rec[key][0]))
+                        export_rec_ids = self.json_export_rec_ids(cr, uid, column['relation'], [rec[key][0]], export_rec_ids=export_rec_ids, filter_rec_ids=filter_rec_ids)
+                elif column['type'] in ('one2many', 'many2many') and rec[key]:
+                    for val in rec[key]:
+                        if (column['relation'], val) in export_rec_ids:
+                            continue
+                        export_rec_ids = self.json_export_rec_ids(cr, uid, column['relation'], [val], export_rec_ids=export_rec_ids, filter_rec_ids=filter_rec_ids)
+                elif not filter_rec_ids or (model, rec['id']) in filter_rec_ids:
+                        export_rec_ids.add((model, rec['id']))
+        return export_rec_ids
+
+    def json_export_recs(self, cr, uid, export_rec_ids):
+        def export_id(time, model, id_):
+            return "export-{}-{}-{}".format(time, model, id_)
+
+        from time import time
+        import json
+        time = time()
+        recs = []
+        for (model, id_) in export_rec_ids:
+            obj = self.pool.get(model)
+            try:
+                inherit_key = obj._inherits.values()[0]
+            except:
+                inherit_key = None
+            schema = obj.fields_get(cr, uid)
+            rec = obj.read(cr, uid, id_, [])
+            for key, column in schema.items():
+                if 'function' in column.keys():
+                    del rec[key]
+                elif column['type'] == 'many2one' and rec[key]:
+                    if key == inherit_key:
+                        del rec[key]
+                    elif (column['relation'], rec[key][0]) in export_rec_ids:
+                        rec[key] = export_id(time, column['relation'], rec[key][0])
+                    else:
+                        rec[key] = rec[key][0]
+                elif column['type'] in ('one2many', 'many2many') and rec[key]:
+                    for idx, id__ in enumerate(rec[key]):
+                        if (column['relation'], id__) in export_rec_ids:
+                            rec[key][idx] = export_id(time, column['relation'], id__)
+            recs.append((export_id(time, model, id_), rec))
+        return json.dumps(recs)
+
+    def json_export(self, cr, uid, recs, filter_rec_ids=[]):
+        """
+        """
+        export_rec_ids = set()
+        for (model, id_) in recs:
+            export_rec_ids = self.json_export_rec_ids(cr, uid, model, [id_], export_rec_ids=export_rec_ids, filter_rec_ids=filter_rec_ids)
+        json_data = self.json_export_recs(cr, uid, export_rec_ids)
+        return json_data
+
+    def _json_import_create_rec(self, cr, uid, import_recs, rec_id, created_recs={}, context=None):
+        if rec_id in created_recs:
+            return created_recs
+        rec = import_recs[rec_id].copy()
+        model = rec_id.split('-')[2]
+        obj = self.pool.get(model)
+        schema = obj.fields_get(cr, uid)
+        for key, column in schema.items():
+            if key not in rec or 'function' in column:
+                continue
+            elif column['type'] == 'many2one' and rec[key] and type(rec[key]) in (str, unicode):
+                created_recs = self._json_import_create_rec(cr, uid, import_recs, rec[key], created_recs=created_recs)
+                rec[key] = created_recs[rec[key]]
+            elif column['type'] in ('one2many', 'many2many') and rec[key]:
+                rec[key] = [[6, 0, []]] # we'll fill this in once everything's created
+        created_recs[rec_id] = obj.create(cr, uid, rec, context=context)
+        return created_recs
+
+    def _json_import_fix_rels(self, cr, uid, import_recs, rec_id, created_recs={}, context=None):
+        update_vals = {}
+        model = rec_id.split('-')[2]
+        rec = import_recs[rec_id].copy()
+        obj = self.pool.get(model)
+        schema = obj.fields_get(cr, uid)
+        for key, column in schema.items():
+            if key not in rec or 'function' in column:
+                continue
+            elif column['type'] !='many2many' or not rec[key]:
+                continue
+            for idx, val in enumerate(rec[key]):
+                try:
+                    rec[key][idx] = created_recs[val]
+                except:
+                    pass
+            update_vals[key] = [[6, 0, rec[key]]]
+        if update_vals:
+            obj.write(cr, uid, [created_recs[rec_id]], update_vals, context=context)
+
+    def json_import(self, cr, uid, json_data, noupdate=True, context=None):
+        """
+        """
+        import json
+        import_recs = json.loads(json_data)
+        import_recs = dict(import_recs)
+        created_recs = {}
+        for rec_id, rec in import_recs.items():
+            created_recs = self._json_import_create_rec(cr, uid, import_recs, rec_id, created_recs=created_recs)
+        for rec_id, rec in import_recs.items():
+            self._json_import_fix_rels(cr, uid, import_recs, rec_id, created_recs=created_recs)
 
     def get_invalid_fields(self, cr, uid):
         return list(self._invalids)
@@ -2907,6 +3026,14 @@ class BaseModel(object):
                     self._m2m_raise_or_create_relation(cr, f)
 
                 else:
+                    if isinstance(f, fields.encrypted):
+                        try:
+                            cr.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
+                        except:
+                            _logger.error("Was unable to install the 'pgcrypto'. "+\
+                                        "This might be because the module is unavailable. "+\
+                                        "On Ubuntu 14.04, try: 'apt-get install postgresql-contrib-9.3' and reinstall module")
+                            raise
                     res = column_data.get(k)
 
                     # The field is not found as-is in database, try if it

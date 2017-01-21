@@ -1660,5 +1660,91 @@ class column_info(object):
         self.parent_column = parent_column
         self.original_parent = original_parent
 
+
+class encrypted(char):
+    _type = 'char'
+    _classic_read = False
+    _classic_write = False
+
+    def __init__(self, string, size=None, crypto_password_name='default_crypto_password', translate=None, **args):
+
+        # Disable translation as it unnecessarily complicates things
+        translate = False
+
+        _column.__init__(self, string=string, size=size, translate=False, **args)
+        self._symbol_set = (self._symbol_c, self._symbol_set_char)
+
+        from openerp.tools.config import config
+        self._crypto_password_name = crypto_password_name
+        self._crypto_password = config.get(crypto_password_name,None)
+        if self._crypto_password is None:
+            _logger.warning("The crypto password '%s' has not been defined in the openerp-server.conf!",crypto_password_name)
+
+    # takes a string (encoded in utf8) and returns a string (encoded in utf8)
+    def _symbol_set_char(self, symb):
+        #TODO:
+        # * we need to remove the "symb==False" from the next line BUT
+        #   for now too many things rely on this broken behavior
+        # * the symb==None test should be common to all data types
+        if symb == None or symb == False:
+            return None
+
+        # we need to convert the string to a unicode object to be able
+        # to evaluate its length (and possibly truncate it) reliably
+        u_symb = tools.ustr(symb)
+
+        return u_symb[:self.size].encode('utf8')
+
+    def sql_field_name(self):
+        sql_field_name = "convert_from(decrypt(%s.\"%s\", {password}, 'bf'),'utf8')".format(
+                password=repr(self._crypto_password),
+            )
+        return sql_field_name
+
+    def get(self, cr, obj, ids, name, uid=None, context=None, values=None):
+        result = {}
+        for v in values:
+            result[v['id']] = ''
+
+        if self._crypto_password is None:
+            _logger.warning("The crypto password '%s' has not been defined in the openerp-server.conf!",self._crypto_password_name)
+            for v in values:
+                result[v['id']] = None
+            return result
+
+        ids = [unicode(int(v['id'])) for v in values]
+        if not ids: return result
+
+        cr.execute(
+            (u"select id,convert_from(decrypt({name}, {symbol_set}, 'bf'),'utf8') as {name} "+
+            u"from {table} where id in({ids}) and {name} != '' and {name} is not null").format(
+                table=obj._table,
+                name=name,
+                symbol_set=self._symbol_set[0],
+                ids= u",".join(ids)
+            ),
+            (self._symbol_set[1](self._crypto_password),)
+        )
+
+        for (v_id,v_value) in cr.fetchall():
+            result[v['id']] = v_value
+
+        return result
+
+    def set(self, cr, obj, id, name, value, user=None, context=None):
+        if self._crypto_password is None:
+            _logger.warning("The crypto password '%s' has not been defined in the openerp-server.conf!",self._crypto_password_name)
+            return
+        if not context:
+            context = {}
+        cr.execute(
+            u"update {table} set {name} = encrypt({symbol_set}, {symbol_set}, 'bf') where id=%s".format(
+                table=obj._table,
+                name=name,
+                symbol_set=self._symbol_set[0]
+            ),
+            (self._symbol_set[1](value), self._symbol_set[1](self._crypto_password), id)
+        )
+
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
 

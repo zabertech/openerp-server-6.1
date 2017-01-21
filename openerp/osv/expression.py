@@ -661,6 +661,12 @@ class expression(object):
         assert leaf in (TRUE_LEAF, FALSE_LEAF) or left in table._all_columns \
             or left in MAGIC_COLUMNS, "Invalid field %r in domain term %r" % (left, leaf)
 
+        sql_left = '%s."%s"'
+        if left in table._all_columns:
+            field = table._columns[left]
+            if hasattr(field,'sql_field_name'):
+                sql_left = field.sql_field_name()
+
         if leaf == TRUE_LEAF:
             query = 'TRUE'
             params = []
@@ -682,7 +688,7 @@ class expression(object):
                     r = 'NOT NULL' if right else 'NULL'
                 else:
                     r = 'NULL' if right else 'NOT NULL'
-                query = '(%s."%s" IS %s)' % (table._table, left, r)
+                query = ('('+sql_left+' IS %s)') % (table._table, left, r)
                 params = []
             elif isinstance(right, (list, tuple)):
                 params = right[:]
@@ -697,34 +703,34 @@ class expression(object):
                         instr = ','.join(['%s'] * len(params))
                     else:
                         instr = ','.join([table._columns[left]._symbol_set[0]] * len(params))
-                    query = '(%s."%s" %s (%s))' % (table._table, left, operator, instr)
+                    query = ('('+sql_left+' %s (%s))') % (table._table, left, operator, instr)
                 else:
                     # The case for (left, 'in', []) or (left, 'not in', []).
                     query = 'FALSE' if operator == 'in' else 'TRUE'
 
                 if check_nulls and operator == 'in':
-                    query = '(%s OR %s."%s" IS NULL)' % (query, table._table, left)
+                    query = ('(%s OR '+sql_left+' IS NULL)') % (query, table._table, left)
                 elif not check_nulls and operator == 'not in':
-                    query = '(%s OR %s."%s" IS NULL)' % (query, table._table, left)
+                    query = ('(%s OR %s."%s" IS NULL)') % (query, table._table, left)
                 elif check_nulls and operator == 'not in':
-                    query = '(%s AND %s."%s" IS NOT NULL)' % (query, table._table, left) # needed only for TRUE.
+                    query = ('(%s AND '+sql_left+' IS NOT NULL)') % (query, table._table, left) # needed only for TRUE.
             else: # Must not happen
                 raise ValueError("Invalid domain term %r" % (leaf,))
 
         elif right == False and (left in table._columns) and table._columns[left]._type=="boolean" and (operator == '='):
-            query = '(%s."%s" IS NULL or %s."%s" = false )' % (table._table, left, table._table, left)
+            query = ('('+sql_left+' IS NULL or '+sql_left+' = false )') % (table._table, left, table._table, left)
             params = []
 
         elif (right is False or right is None) and (operator == '='):
-            query = '%s."%s" IS NULL ' % (table._table, left)
+            query = (sql_left+' IS NULL ') % (table._table, left)
             params = []
 
         elif right == False and (left in table._columns) and table._columns[left]._type=="boolean" and (operator == '!='):
-            query = '(%s."%s" IS NOT NULL and %s."%s" != false)' % (table._table, left, table._table, left)
+            query = ('('+sql_left+' IS NOT NULL and '+sql_left+' != false)') % (table._table, left, table._table, left)
             params = []
 
         elif (right is False or right is None) and (operator == '!='):
-            query = '%s."%s" IS NOT NULL' % (table._table, left)
+            query = (sql_left+' IS NOT NULL') % (table._table, left)
             params = []
 
         elif (operator == '=?'):
@@ -747,11 +753,11 @@ class expression(object):
             if left in table._columns:
                 format = need_wildcard and '%s' or table._columns[left]._symbol_set[0]
                 if self.has_unaccent and sql_operator in ('ilike', 'not ilike'):
-                    query = '(unaccent(%s."%s") %s unaccent(%s))' % (table._table, left, sql_operator, format)
+                    query = ('(unaccent('+sql_left+') %s unaccent(%s))') % (table._table, left, sql_operator, format)
                 else:
-                    query = '(%s."%s" %s %s)' % (table._table, left, sql_operator, format)
+                    query = ('('+sql_left+' %s %s)') % (table._table, left, sql_operator, format)
             elif left in MAGIC_COLUMNS:
-                    query = "(%s.\"%s\" %s %%s)" % (table._table, left, sql_operator)
+                    query = ('('+sql_left+' %s %%s)') % (table._table, left, sql_operator)
                     params = right
             else: # Must not happen
                 raise ValueError("Invalid field %r in domain term %r" % (left, leaf))
@@ -778,7 +784,7 @@ class expression(object):
                 params = table._columns[left]._symbol_set[1](right)
 
             if add_null:
-                query = '(%s OR %s."%s" IS NULL)' % (query, table._table, left)
+                query = ('(%s OR '+sql_left+' IS NULL)') % (query, table._table, left)
 
         if isinstance(params, basestring):
             params = [params]
