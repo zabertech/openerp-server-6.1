@@ -280,6 +280,7 @@ class ZERPSession(ApplicationSession):
     def onJoin(self, details):
         """ Executed when the script attaches to the server
         """
+        reactor.callInThread(self.receive_and_publish)
         _logger.log(logging.INFO,"Joined WAMP router. Attempting registration of calls")
 
         wamp_register = config.get('wamp_register','').split(',')
@@ -323,7 +324,6 @@ class ZERPSession(ApplicationSession):
                 )
 
 
-        reactor.callInThread(self.receive_and_publish)
 
     def receive_and_publish(self):
         _logger.info("Starting ORM data subscription manager")
@@ -357,8 +357,10 @@ class ZERPSession(ApplicationSession):
         except Exception as err:
             _logger.error("ORM data subscription manager failed: %s", err)
         finally:
-            if message_queue:
+            try:
                 message_queue.close()
+            except:
+                pass
 
 
     def onLeave(self, session_id, *args, **kwargs):

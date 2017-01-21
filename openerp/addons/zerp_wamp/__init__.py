@@ -131,14 +131,16 @@ def ddp_decorated_commit(fn):
                     # With each message we pull off the queue
                     for message in ddp_temp_message_queues.get(self, []):
                         message = ddp.serialize(message, serializer=json)
-                        message_queue.send(message)
+                        message_queue.send(message, timeout=0.1)
                 except Exception, err:
                     logging.warn("Error logging commit to socket {}: {}".format(mqueue_name, err))
                 finally:
                     # Mqueue must be explicitely closed or this process will hit it's open files limit.
                     # Thanks, Stephen for finding this!
-                    if message_queue:
+                    try:
                         message_queue.close()
+                    except:
+                        pass
         return ret
     return inner_commit
 
