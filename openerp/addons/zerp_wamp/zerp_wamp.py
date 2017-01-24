@@ -71,14 +71,23 @@ class ZERPWampUri(object):
     def __init__(self,details):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
 
-        # Format should be
-        # <prefix>:<database>:<model>:<service>:<method>
         uri_elements = details.procedure.split(':')
-        if len(uri_elements) != 4:
+
+        # Format should be
+        # For reports it can be
+        # <prefix>:<database>:<service>
+        if len(uri_elements) == 3:
+            ( prefix, self.database, self.service_name ) = uri_elements
+            self.database = DATABASE_MAPPINGS.get(self.database)
+            self.model = None
+            self.version = 2
+        # <prefix>:<database>:<model>:<service>:<method>
+        elif len(uri_elements) == 4:
+            ( prefix, self.database, self.model, self.service_name ) = uri_elements
+            self.database = DATABASE_MAPPINGS.get(self.database)
+            self.version = 2
+        else:
             raise Exception('URI should be in format "<prefix>:<database>:<model>:<service>:<method>"')
-        ( prefix, self.database, self.model, self.service_name ) = uri_elements
-        self.database = DATABASE_MAPPINGS.get(self.database)
-        self.version = 2
 
     def __repr__(self):
         return "ZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
@@ -179,7 +188,8 @@ class ZERPSession(ApplicationSession):
         zerp_params = self.zerp_get(details,uri)
 
         # We need to ensure model is at the begining of the arguments
-        args.insert(0,uri.model)
+        if uri.model:
+            args.insert(0,uri.model)
 
         # Block calls to object.execute without method name to prevent
         # side-channel exploits
