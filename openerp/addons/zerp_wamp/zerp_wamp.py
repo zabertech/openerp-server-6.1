@@ -91,10 +91,13 @@ class ZERPSession(ApplicationSession):
         global CLIENT_CACHE
 
         # authid is the login of the authenticated user
-        login = details.caller_authid.lower()
+        login = details.caller_authid
         if not login:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
+
+        # Zerp needs lowercase usernames
+        login = login.lower()
 
         # Parse out what database the user is trying to attach to
         if uri is None:
