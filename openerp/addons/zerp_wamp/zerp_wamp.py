@@ -91,7 +91,7 @@ class ZERPSession(ApplicationSession):
         global CLIENT_CACHE
 
         # authid is the login of the authenticated user
-        login = details.caller_authid
+        login = details.caller_authid.lower()
         if not login:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
