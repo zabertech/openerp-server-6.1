@@ -5301,7 +5301,7 @@ class BaseModel(object):
             count=False,
         ):
         ids = self.search(cr,user,args,offset,limit,order,context,count)
-        if ids > 1:
+        if len(ids) > 1:
             raise except_orm(_('Error'), _("More than one result found!"))
         result = self.read(cr,user,ids[0],fields,context)
         return result
