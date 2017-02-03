@@ -105,6 +105,9 @@ class ZERPSession(ApplicationSession):
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
 
+        # Zerp needs lowercase usernames
+        login = login.lower()
+
         # Parse out what database the user is trying to attach to
         if uri is None:
             uri = ZERPWampUri(details)
