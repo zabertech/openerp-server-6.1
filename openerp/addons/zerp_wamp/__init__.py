@@ -46,20 +46,20 @@ def ddp_decorated_write(fn):
         # for some reason.
         if self._transient:
             return ret
-
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
-
-        if type(ids) in [int, long]:
-            ids = [ids]
-
-        # Send read records as changed messages
-        recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
-        for rec in recs:
-            message = ddp.Changed(model, rec['id'], rec)
-            ddp_temp_message_queues[cr].append(message)
+        try:
+            global ddp_temp_message_queues
+            if not cr in ddp_temp_message_queues:
+                ddp_temp_message_queues[cr] = []
+            model = "{}:{}".format(cr.dbname, self._name)
+            if type(ids) in [int, long]:
+                ids = [ids]
+            # Send read records as changed messages
+            recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
+            for rec in recs:
+                message = ddp.Changed(model, rec['id'], rec)
+                ddp_temp_message_queues[cr].append(message)
+        except Exception as err:
+            logging.warn("Error creating DDP Changed message {}: {}".format(model, err))
         return ret
     return inner_write
 
@@ -72,16 +72,18 @@ def ddp_decorated_create(fn):
         # for some reason.
         if self._transient:
             return ret
-
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
-        # Create a new added message for each id of this
-        # model which gets created
-        rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
-        message = ddp.Added(model, ret, rec)
-        ddp_temp_message_queues[cr].append(message)
+        try:
+            global ddp_temp_message_queues
+            if not cr in ddp_temp_message_queues:
+                ddp_temp_message_queues[cr] = []
+            model = "{}:{}".format(cr.dbname, self._name)
+            # Create a new added message for each id of this
+            # model which gets created
+            rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
+            message = ddp.Added(model, ret, rec)
+            ddp_temp_message_queues[cr].append(message)
+        except Exception as err:
+            logging.warn("Error creating DDP Added message {}: {}".format(model, err))
         return ret
     return inner_create
 
