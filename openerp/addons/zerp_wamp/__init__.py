@@ -34,10 +34,10 @@ from zerp_wamp import wamp_start
 import json
 import ejson
 
+_zerp_wamp_monkeypatched = False
 
 _logger = logging.getLogger(__name__)
 ddp_transaction_message_queues = {}
-_zerp_wamp_monkeypatched = False
 
 def ddp_decorated_write(fn):
     global ddp_transaction_message_queues

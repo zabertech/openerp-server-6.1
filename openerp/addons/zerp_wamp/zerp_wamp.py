@@ -27,11 +27,13 @@ wamp_register = databasename,registername2=database2
 """
 import traceback
 import os
+import time
 import re
 import posix_ipc
 import openerp.modules.ddp as ddp
 from openerp.modules.queue import RedisQueue
 import json
+import redis
 
 from tools import config
 import logging
@@ -340,35 +342,41 @@ class ZERPSession(ApplicationSession):
 
 
     def receive_and_publish(self):
-        _logger.info("Starting ORM data subscription manager")
+        _logger.info("Starting WAMP publisher")
         message_queue = None
-        try:
-            # Open the message queue
+        # Open the message queue
+        while True:
             message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"), socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
             while True:
-                message = message_queue.receive()
-                message = ddp.deserialize(message, serializer=json)
-                (database, model) = message.collection.split(':')
-                message.collection = model
-                service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
-                data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
-                    service_uri=service_uri,
-                    database=database,
-                    model=model,
-                    record_id=message.id,
-                    msg=message.msg
-                )
-                events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
-                    service_uri=service_uri,
-                    database=database,
-                    model=model,
-                    record_id=message.id,
-                    msg=message.msg
-                )
-                reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
-                reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
-        except Exception as err:
-            _logger.error("ORM data subscription manager failed: %s", err)
+                try:
+                    message = message_queue.receive()
+                    message = ddp.deserialize(message, serializer=json)
+                    (database, model) = message.collection.split(':')
+                    message.collection = model
+                    service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
+                    data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
+                        service_uri=service_uri,
+                        database=database,
+                        model=model,
+                        record_id=message.id,
+                        msg=message.msg
+                    )
+                    events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
+                        service_uri=service_uri,
+                        database=database,
+                        model=model,
+                        record_id=message.id,
+                        msg=message.msg
+                    )
+                    reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
+                    reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
+                except redis.exceptions.ConnectionError as err:
+                    _logger.error("Error connecting to redis server: %s", err)
+                    del message_queue
+                    break
+                except Exception as err:
+                    _logger.error("ORM data subscription manager failed: %s", err)
+            time.sleep(2)
 
 
     def onLeave(self, session_id, *args, **kwargs):
