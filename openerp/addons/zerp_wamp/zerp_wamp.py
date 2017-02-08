@@ -30,6 +30,7 @@ import os
 import re
 import posix_ipc
 import openerp.modules.ddp as ddp
+from openerp.modules.queue import RedisQueue
 import json
 
 from tools import config
@@ -340,13 +341,13 @@ class ZERPSession(ApplicationSession):
 
     def receive_and_publish(self):
         _logger.info("Starting ORM data subscription manager")
-        mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
-        max_message_size = config.get("wamp_max_message_size", 0xffff)
         message_queue = None
         try:
-            message_queue = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
+            # Open the message queue
+            message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"), socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
             while True:
-                (message, prio) = message_queue.receive()
+                print "****ITER"
+                message = message_queue.receive()
                 message = ddp.deserialize(message, serializer=json)
                 (database, model) = message.collection.split(':')
                 message.collection = model
