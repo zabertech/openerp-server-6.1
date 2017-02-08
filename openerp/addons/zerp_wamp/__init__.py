@@ -134,13 +134,6 @@ def ddp_decorated_commit(fn):
                         message_queue.send(message)
                 except Exception, err:
                     logging.warn("Error logging commit: {}".format(err))
-                finally:
-                    # Mqueue must be explicitely closed or this process will hit it's open files limit.
-                    # Thanks, Stephen for finding this!
-                    try:
-                        message_queue.close()
-                    except:
-                        pass
         return ret
     return inner_commit
 

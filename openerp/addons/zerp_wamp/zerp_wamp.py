@@ -369,11 +369,6 @@ class ZERPSession(ApplicationSession):
                 reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
         except Exception as err:
             _logger.error("ORM data subscription manager failed: %s", err)
-        finally:
-            try:
-                message_queue.close()
-            except:
-                pass
 
 
     def onLeave(self, session_id, *args, **kwargs):
