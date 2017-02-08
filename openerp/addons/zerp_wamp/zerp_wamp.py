@@ -346,7 +346,6 @@ class ZERPSession(ApplicationSession):
             # Open the message queue
             message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"), socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
             while True:
-                print "****ITER"
                 message = message_queue.receive()
                 message = ddp.deserialize(message, serializer=json)
                 (database, model) = message.collection.split(':')

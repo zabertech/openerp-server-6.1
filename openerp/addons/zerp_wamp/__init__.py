@@ -57,7 +57,6 @@ def ddp_decorated_write(fn):
                 ids = [ids]
             # Send read records as changed messages
             recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
-            print recs
             for rec in recs:
                 message = ddp.Changed(model, rec['id'], rec)
                 ddp_transaction_message_queues[cr].append(message)
@@ -130,7 +129,6 @@ def ddp_decorated_commit(fn):
                         config.get('wamp_redis_queue_name', "zerp"),
                         socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
                     # With each message we pull off the queue
-                    print ddp_transaction_message_queues.get(self)
                     for message in ddp_transaction_message_queues.get(self, []):
                         message = ddp.serialize(message, serializer=json)
                         message_queue.send(message)
