@@ -134,6 +134,8 @@ def ddp_decorated_commit(fn):
                         message_queue.send(message)
                 except Exception, err:
                     logging.warn("Error logging commit: {}".format(err))
+                    import traceback
+                    traceback.print_exc()
         return ret
     return inner_commit
 

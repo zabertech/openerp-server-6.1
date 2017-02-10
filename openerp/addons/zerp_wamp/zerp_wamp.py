@@ -48,7 +48,7 @@ from twisted.internet.protocol import ReconnectingClientFactory
 
 from autobahn.twisted import websocket
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner, ApplicationSessionFactory
-from autobahn.wamp.exception import ApplicationError, InvalidUri
+from autobahn.wamp.exception import ApplicationError, InvalidUri, TransportLost
 
 try:
     from autobahn.websocket.util import parse_url
@@ -66,6 +66,7 @@ import openerp.service
 
 CLIENT_CACHE = {}
 DATABASE_MAPPINGS = {}
+
 
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
@@ -346,11 +347,17 @@ class ZERPSession(ApplicationSession):
         message_queue = None
         # Open the message queue
         while True:
-            message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"), socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
-            while True:
-                try:
-                    message = message_queue.receive()
-                    message = ddp.deserialize(message, serializer=json)
+            try:
+                message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"),
+                                           socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
+                message_queue.connect()
+                message_queue.send_backlog()
+                _logger.info("WAMP publisher successfully connected to redis server. %s", self)
+                while True:
+                    # Receive a message from the queue. It must later be acknowledged, otherwise it
+                    # will be received again on the next iteration.
+                    message_json = message_queue.receive()
+                    message = ddp.deserialize(message_json, serializer=json)
                     (database, model) = message.collection.split(':')
                     message.collection = model
                     service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
@@ -368,16 +375,18 @@ class ZERPSession(ApplicationSession):
                         record_id=message.id,
                         msg=message.msg
                     )
-                    reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
-                    reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
-                except redis.exceptions.ConnectionError as err:
-                    _logger.error("Error connecting to redis server: %s", err)
-                    del message_queue
-                    break
-                except Exception as err:
-                    _logger.error("ORM data subscription manager failed: %s", err)
-            time.sleep(2)
-
+                    self.publish(events_uri, message.__dict__['msg'])
+                    self.publish(data_uri, message.__dict__)
+                    # If everything went ok, acknowledge the message so that it is pulled off the queue,
+                    # otherwise it will be received again on the next iteration.
+                    message_queue.acknowledge(message_json)
+            except redis.exceptions.ConnectionError as err:
+                _logger.warning("WAMP publisher cannot connect to redis server. Trying again.")
+                _logger.error(err)
+                time.sleep(2)
+            except TransportLost:
+                _logger.warning("WAMP publisher cannot reach router. Shutting down until next onJoin.")
+                break
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches
