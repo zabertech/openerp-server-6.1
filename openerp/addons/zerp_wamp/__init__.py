@@ -21,6 +21,7 @@
 import openerp.modules.ddp as ddp
 from openerp.modules.queue import RedisQueue
 from openerp.osv import orm
+import openerp.pooler as pooler
 from openerp.sql_db import Cursor
 from tools import config
 import logging
@@ -43,6 +44,9 @@ def ddp_decorated_write(fn):
     global ddp_transaction_message_queues
     def inner_write(self, cr, user, ids, vals, context=None):
         ret = fn(self, cr, user, ids, vals, context)
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
@@ -70,6 +74,10 @@ def ddp_decorated_create(fn):
     def inner_create(self, cr, user, vals, context=None):
         ret = fn(self, cr, user, vals, context)
 
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
+
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
@@ -93,6 +101,10 @@ def ddp_decorated_unlink(fn):
     global ddp_transaction_message_queues
     def inner_unlink(self, cr, user, ids, context=None):
         ret = fn(self, cr, user, ids, context)
+
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
