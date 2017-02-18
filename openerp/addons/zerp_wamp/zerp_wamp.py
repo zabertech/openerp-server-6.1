@@ -27,10 +27,13 @@ wamp_register = databasename,registername2=database2
 """
 import traceback
 import os
+import time
 import re
 import posix_ipc
 import openerp.modules.ddp as ddp
+from openerp.modules.queue import RedisQueue
 import json
+import redis
 
 from tools import config
 import logging
@@ -45,7 +48,7 @@ from twisted.internet.protocol import ReconnectingClientFactory
 
 from autobahn.twisted import websocket
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner, ApplicationSessionFactory
-from autobahn.wamp.exception import ApplicationError, InvalidUri
+from autobahn.wamp.exception import ApplicationError, InvalidUri, TransportLost
 
 try:
     from autobahn.websocket.util import parse_url
@@ -64,6 +67,7 @@ import openerp.service
 CLIENT_CACHE = {}
 DATABASE_MAPPINGS = {}
 
+
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
         constituent parts
@@ -71,14 +75,23 @@ class ZERPWampUri(object):
     def __init__(self,details):
         self.service_base = config.get('wamp_registration_prefix','com.izaber.nexus.zerp')
 
-        # Format should be
-        # <prefix>:<database>:<model>:<service>:<method>
         uri_elements = details.procedure.split(':')
-        if len(uri_elements) != 4:
+
+        # Format should be
+        # For reports it can be
+        # <prefix>:<database>:<service>
+        if len(uri_elements) == 3:
+            ( prefix, self.database, self.service_name ) = uri_elements
+            self.database = DATABASE_MAPPINGS.get(self.database)
+            self.model = None
+            self.version = 2
+        # <prefix>:<database>:<model>:<service>:<method>
+        elif len(uri_elements) == 4:
+            ( prefix, self.database, self.model, self.service_name ) = uri_elements
+            self.database = DATABASE_MAPPINGS.get(self.database)
+            self.version = 2
+        else:
             raise Exception('URI should be in format "<prefix>:<database>:<model>:<service>:<method>"')
-        ( prefix, self.database, self.model, self.service_name ) = uri_elements
-        self.database = DATABASE_MAPPINGS.get(self.database)
-        self.version = 2
 
     def __repr__(self):
         return "ZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
@@ -95,6 +108,9 @@ class ZERPSession(ApplicationSession):
         if not login:
             raise ApplicationError("com.izaber.zerp.error.invalid_login",
                     "could not authenticate session")
+
+        # Zerp needs lowercase usernames
+        login = login.lower()
 
         # Parse out what database the user is trying to attach to
         if uri is None:
@@ -179,7 +195,8 @@ class ZERPSession(ApplicationSession):
         zerp_params = self.zerp_get(details,uri)
 
         # We need to ensure model is at the begining of the arguments
-        args.insert(0,uri.model)
+        if uri.model:
+            args.insert(0,uri.model)
 
         # Block calls to object.execute without method name to prevent
         # side-channel exploits
@@ -326,42 +343,50 @@ class ZERPSession(ApplicationSession):
 
 
     def receive_and_publish(self):
-        _logger.info("Starting ORM data subscription manager")
-        mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue")
-        max_message_size = config.get("wamp_max_message_size", 0xffff)
+        _logger.info("Starting WAMP publisher")
         message_queue = None
-        try:
-            message_queue = posix_ipc.MessageQueue(mqueue_name, flags=posix_ipc.O_CREAT, max_message_size=int(max_message_size))
-            while True:
-                (message, prio) = message_queue.receive()
-                message = ddp.deserialize(message, serializer=json)
-                (database, model) = message.collection.split(':')
-                message.collection = model
-                service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
-                data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
-                    service_uri=service_uri,
-                    database=database,
-                    model=model,
-                    record_id=message.id,
-                    msg=message.msg
-                )
-                events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
-                    service_uri=service_uri,
-                    database=database,
-                    model=model,
-                    record_id=message.id,
-                    msg=message.msg
-                )
-                reactor.callFromThread(ZERPSession.publish, self, data_uri, message.__dict__)
-                reactor.callFromThread(ZERPSession.publish, self, events_uri, message.__dict__['msg'])
-        except Exception as err:
-            _logger.error("ORM data subscription manager failed: %s", err)
-        finally:
+        # Open the message queue
+        while True:
             try:
-                message_queue.close()
-            except:
-                pass
-
+                message_queue = RedisQueue(config.get('wamp_redis_queue_name', "zerp"),
+                                           socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
+                message_queue.connect()
+                message_queue.send_backlog()
+                _logger.info("WAMP publisher successfully connected to redis server. %s", self)
+                while True:
+                    # Receive a message from the queue. It must later be acknowledged, otherwise it
+                    # will be received again on the next iteration.
+                    message_json = message_queue.receive()
+                    message = ddp.deserialize(message_json, serializer=json)
+                    (database, model) = message.collection.split(':')
+                    message.collection = model
+                    service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
+                    data_uri = u'{service_uri}:{database}:{model}:data.{record_id}.{msg}'.format(
+                        service_uri=service_uri,
+                        database=database,
+                        model=model,
+                        record_id=message.id,
+                        msg=message.msg
+                    )
+                    events_uri = u'{service_uri}:{database}:{model}:events.{record_id}.{msg}'.format(
+                        service_uri=service_uri,
+                        database=database,
+                        model=model,
+                        record_id=message.id,
+                        msg=message.msg
+                    )
+                    self.publish(events_uri, message.__dict__['msg'])
+                    self.publish(data_uri, message.__dict__)
+                    # If everything went ok, acknowledge the message so that it is pulled off the queue,
+                    # otherwise it will be received again on the next iteration.
+                    message_queue.acknowledge(message_json)
+            except redis.exceptions.ConnectionError as err:
+                _logger.warning("WAMP publisher cannot connect to redis server. Trying again.")
+                _logger.error(err)
+                time.sleep(2)
+            except TransportLost:
+                _logger.warning("WAMP publisher cannot reach router. Shutting down until next onJoin.")
+                break
 
     def onLeave(self, session_id, *args, **kwargs):
         """ Executed when script detaches

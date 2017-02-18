@@ -19,7 +19,9 @@
 #################################################################################
 
 import openerp.modules.ddp as ddp
+from openerp.modules.queue import RedisQueue
 from openerp.osv import orm
+import openerp.pooler as pooler
 from openerp.sql_db import Cursor
 from tools import config
 import logging
@@ -30,74 +32,88 @@ import os
 
 from zerp_wamp import wamp_start
 
-import posix_ipc
 import json
 import ejson
 
+_zerp_wamp_monkeypatched = False
+
 _logger = logging.getLogger(__name__)
-ddp_temp_message_queues = {}
+ddp_transaction_message_queues = {}
 
 def ddp_decorated_write(fn):
-    global ddp_temp_message_queues
+    global ddp_transaction_message_queues
     def inner_write(self, cr, user, ids, vals, context=None):
         ret = fn(self, cr, user, ids, vals, context)
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
             return ret
-
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
-
-        if type(ids) in [int, long]:
-            ids = [ids]
-
-        # Send read records as changed messages
-        recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
-        for rec in recs:
-            message = ddp.Changed(model, rec['id'], rec)
-            ddp_temp_message_queues[cr].append(message)
+        try:
+            global ddp_transaction_message_queues
+            if not cr in ddp_transaction_message_queues:
+                ddp_transaction_message_queues[cr] = []
+            model = "{}:{}".format(cr.dbname, self._name)
+            if type(ids) in [int, long]:
+                ids = [ids]
+            # Send read records as changed messages
+            recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
+            for rec in recs:
+                message = ddp.Changed(model, rec['id'], rec)
+                ddp_transaction_message_queues[cr].append(message)
+        except Exception as err:
+            logging.warn("Error creating DDP Changed message {}: {}".format(model, err))
         return ret
     return inner_write
 
 def ddp_decorated_create(fn):
-    global ddp_temp_message_queues
+    global ddp_transaction_message_queues
     def inner_create(self, cr, user, vals, context=None):
         ret = fn(self, cr, user, vals, context)
+
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
             return ret
-
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
-        # Create a new added message for each id of this
-        # model which gets created
-        rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
-        message = ddp.Added(model, ret, rec)
-        ddp_temp_message_queues[cr].append(message)
+        try:
+            global ddp_transaction_message_queues
+            if not cr in ddp_transaction_message_queues:
+                ddp_transaction_message_queues[cr] = []
+            model = "{}:{}".format(cr.dbname, self._name)
+            # Create a new added message for each id of this
+            # model which gets created
+            rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
+            message = ddp.Added(model, ret, rec)
+            ddp_transaction_message_queues[cr].append(message)
+        except Exception as err:
+            logging.warn("Error creating DDP Added message {}: {}".format(model, err))
         return ret
     return inner_create
 
 def ddp_decorated_unlink(fn):
-    global ddp_temp_message_queues
+    global ddp_transaction_message_queues
     def inner_unlink(self, cr, user, ids, context=None):
         ret = fn(self, cr, user, ids, context)
+
+        # Don't do any publishing if the database is in migration
+        if pooler.get_pool(cr.dbname)._init:
+            return ret
 
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
             return ret
 
-        global ddp_temp_message_queues
-        if not cr in ddp_temp_message_queues:
-            ddp_temp_message_queues[cr] = []
+        global ddp_transaction_message_queues
+        if not cr in ddp_transaction_message_queues:
+            ddp_transaction_message_queues[cr] = []
         model = "{}:{}".format(cr.dbname, self._name)
 
         # Create a new removed message for each id of this
@@ -106,60 +122,54 @@ def ddp_decorated_unlink(fn):
             ids = [ids]
         for id in ids:
             message = ddp.Removed(model, id)
-            ddp_temp_message_queues[cr].append(message)
+            ddp_transaction_message_queues[cr].append(message)
         return ret
     return inner_unlink
 
 def ddp_decorated_commit(fn):
-    global ddp_temp_message_queues
     def inner_commit(self):
-        global ddp_temp_message_queues
+        global ddp_transaction_message_queues
         try:
             ret = fn(self)
         except:
             raise
         else:
-            if len(ddp_temp_message_queues.get(self, [])):
-                mqueue_name = config.get("wamp_mqueue", "/zerp.mqueue") 
-                max_message_size = config.get("wamp_max_message_size", 8192)
-                message_queue = None
+            if len(ddp_transaction_message_queues.get(self, [])):
                 try:
-                    # TODO: Open the mqueue on cursor instantiation so we don't do it so often
-                    message_queue = posix_ipc.MessageQueue(mqueue_name,
-                                                           flags=posix_ipc.O_CREAT,
-                                                           max_message_size=int(max_message_size))
+                    # Connect to redis queue
+                    message_queue = RedisQueue(
+                        config.get('wamp_redis_queue_name', "zerp"),
+                        socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
                     # With each message we pull off the queue
-                    for message in ddp_temp_message_queues.get(self, []):
+                    for message in ddp_transaction_message_queues.get(self, []):
                         message = ddp.serialize(message, serializer=json)
-                        message_queue.send(message, timeout=0.1)
+                        message_queue.send(message)
                 except Exception, err:
-                    logging.warn("Error logging commit to socket {}: {}".format(mqueue_name, err))
-                finally:
-                    # Mqueue must be explicitely closed or this process will hit it's open files limit.
-                    # Thanks, Stephen for finding this!
-                    try:
-                        message_queue.close()
-                    except:
-                        pass
+                    logging.warn("Error logging commit: {}".format(err))
+                    import traceback
+                    traceback.print_exc()
         return ret
     return inner_commit
 
 def ddp_decorated_rollback(fn):
-    global ddp_temp_message_queues
+    global ddp_transaction_message_queues
     def inner_rollback(self):
-        global ddp_temp_message_queues
-        if self in ddp_temp_message_queues:
-            del ddp_temp_message_queues[self]
+        global ddp_transaction_message_queues
+        if self in ddp_transaction_message_queues:
+            del ddp_transaction_message_queues[self]
         return fn(self)
     return inner_rollback
 
 def start_ddp_ormlog():
     # Monkeypatch osv and orm methods
-    orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
-    orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
-    orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
-    Cursor.commit = ddp_decorated_commit(Cursor.commit)
-    Cursor.rollback = ddp_decorated_rollback(Cursor.rollback)
+    global _zerp_wamp_monkeypatched
+    if not _zerp_wamp_monkeypatched:
+        orm.BaseModel.write = ddp_decorated_write(orm.BaseModel.write)
+        orm.BaseModel.create = ddp_decorated_create(orm.BaseModel.create)
+        orm.BaseModel.unlink = ddp_decorated_unlink(orm.BaseModel.unlink)
+        Cursor.commit = ddp_decorated_commit(Cursor.commit)
+        Cursor.rollback = ddp_decorated_rollback(Cursor.rollback)
+        _zerp_wamp_monkeypatched = True
 
 def start_web_services():
     if (config.get("wamp_uri", False)):
