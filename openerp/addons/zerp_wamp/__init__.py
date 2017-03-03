@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#    along with self.program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #################################################################################
 
@@ -48,6 +48,10 @@ def ddp_decorated_write(fn):
         if pooler.get_pool(cr.dbname)._init:
             return ret
 
+        # Don't publish anything if the model or cursor is flagged
+        if getattr(self, '_disable_wamp_publish', False) or getattr(cr, '_disable_wamp_publish', False):
+            return ret
+
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
@@ -59,11 +63,20 @@ def ddp_decorated_write(fn):
             model = "{}:{}".format(cr.dbname, self._name)
             if type(ids) in [int, long]:
                 ids = [ids]
-            # Send read records as changed messages
-            recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
-            for rec in recs:
-                message = ddp.Changed(model, rec['id'], rec)
-                ddp_transaction_message_queues[cr].append(message)
+
+            if getattr(self, '_disable_wamp_publish_data', False) or getattr(cr, '_disable_wamp_publish_data', False):
+                # Don't publish data if the cursor or model are flagged
+                for id in ids:
+                    message = ddp.Changed(model, id, None)
+                    ddp_transaction_message_queues[cr].append(message)
+
+            else:
+                # Send read records as changed messages
+                recs = orm.BaseModel.read(self, cr, user, ids, vals.keys(), context)
+                for rec in recs:
+                    message = ddp.Changed(model, rec['id'], rec)
+                    ddp_transaction_message_queues[cr].append(message)
+
         except Exception as err:
             logging.warn("Error creating DDP Changed message {}: {}".format(model, err))
         return ret
@@ -78,6 +91,10 @@ def ddp_decorated_create(fn):
         if pooler.get_pool(cr.dbname)._init:
             return ret
 
+        # Don't publish anything if the model or cursor is flagged
+        if getattr(self, '_disable_wamp_publish', False) or getattr(cr, '_disable_wamp_publish', False):
+            return ret
+
         # Don't publish transient models. They can't be read yet
         # for some reason.
         if self._transient:
@@ -89,8 +106,11 @@ def ddp_decorated_create(fn):
             model = "{}:{}".format(cr.dbname, self._name)
             # Create a new added message for each id of this
             # model which gets created
-            rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
-            message = ddp.Added(model, ret, rec)
+            if getattr(self, '_disable_wamp_publish_data', False) or getattr(cr, '_disable_wamp_publish_data', False):
+                message = ddp.Added(model, ret, None)
+            else:
+                rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
+                message = ddp.Added(model, ret, rec)
             ddp_transaction_message_queues[cr].append(message)
         except Exception as err:
             logging.warn("Error creating DDP Added message {}: {}".format(model, err))
@@ -104,6 +124,10 @@ def ddp_decorated_unlink(fn):
 
         # Don't do any publishing if the database is in migration
         if pooler.get_pool(cr.dbname)._init:
+            return ret
+
+        # Don't publish anything if the model or cursor is flagged
+        if getattr(self, '_disable_wamp_publish', False) or getattr(cr, '_disable_wamp_publish', False):
             return ret
 
         # Don't publish transient models. They can't be read yet
@@ -131,6 +155,19 @@ def ddp_decorated_commit(fn):
         global ddp_transaction_message_queues
         try:
             ret = fn(self)
+            # Turn off the disable_wamp_publish and disable_wamp_publish_data flags
+            # as they're only temporary
+            if getattr(self, '_disable_wamp_publish_data', False):
+                self.disable_wamp_publish_data = False
+            # Don't bother checking for data to publish if the cursor is
+            # flagged
+            if getattr(self, '_disable_wamp_publish', False):
+                self.disable_wamp_publish = False
+                try:
+                    del ddp_transaction_message_queues[self]
+                except Exception:
+                    pass
+                return ret
         except:
             raise
         else:
@@ -144,6 +181,8 @@ def ddp_decorated_commit(fn):
                     for message in ddp_transaction_message_queues.get(self, []):
                         message = ddp.serialize(message, serializer=json)
                         message_queue.send(message)
+                    # Destroy the transaction queue
+                    del ddp_transaction_message_queues[self]
                 except Exception, err:
                     logging.warn("Error logging commit: {}".format(err))
                     import traceback
