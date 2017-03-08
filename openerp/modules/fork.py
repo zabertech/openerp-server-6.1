@@ -18,7 +18,7 @@
 #
 #################################################################################
 
-from multiprocessing import Pipe, Queue, Process
+from multiprocessing import Pipe, Process
 import os
 import signal
 
@@ -76,13 +76,13 @@ class fork(object):
                 finally:
                     cr.close()
 
-                # Put the return value on the queue to send it back to caller
+                # Put the return value on the pipe to send it back to caller
                 send.send(ret)
 
             # Get the current db name from the passed cursor
             dbname = args[1].dbname
 
-            # Create a queue through which the forked process can send data back
+            # Create a pipe through which the forked process can send data back
             # to the caller
             (recv, send) = Pipe(False)
 
@@ -93,14 +93,14 @@ class fork(object):
             p.start()
 
             try:
-                # Listen on the queue for the return value from the new process
+                # Listen on the pipe for the return value from the new process
                 ret = recv.recv()
             except Exception, err:
                 # Default to an exception just incase the forked process doesn't respond
                 os.kill(p.pid, signal.SIGKILL)
                 ret = err
 
-            # Join the process just incase it's still running even though the queue timed out.
+            # Join the process just incase it's still running even though the pipe timed out.
             # This will prevent Zombies!
             p.join()
             
