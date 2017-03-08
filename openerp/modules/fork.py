@@ -42,7 +42,6 @@ class fork(object):
 
             # Wrap the decorated function in another function which will replace
             # the passed cursor argument with a new cursor unique to the new process
-            #def forked(dbname, q, *args, **kwargs):
             def forked(dbname, send, *args, **kwargs):
                 # Shut down twisted in this process if it's running
                 from twisted.internet import reactor
@@ -96,10 +95,10 @@ class fork(object):
             try:
                 # Listen on the queue for the return value from the new process
                 ret = recv.recv()
-            except:
+            except Exception, err:
                 # Default to an exception just incase the forked process doesn't respond
-                ret = Exception('Forked process failed to respond')
                 os.kill(p.pid, signal.SIGKILL)
+                ret = err
 
             # Join the process just incase it's still running even though the queue timed out.
             # This will prevent Zombies!
