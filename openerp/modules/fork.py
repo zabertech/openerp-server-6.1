@@ -18,7 +18,7 @@
 #
 #################################################################################
 
-from multiprocessing import Queue, Process
+from multiprocessing import Pipe, Queue, Process
 import os
 import signal
 
@@ -42,7 +42,8 @@ class fork(object):
 
             # Wrap the decorated function in another function which will replace
             # the passed cursor argument with a new cursor unique to the new process
-            def forked(dbname, q, *args, **kwargs):
+            #def forked(dbname, q, *args, **kwargs):
+            def forked(dbname, send, *args, **kwargs):
                 # Shut down twisted in this process if it's running
                 from twisted.internet import reactor
                 from twisted.internet.error import ReactorNotRunning
@@ -77,24 +78,24 @@ class fork(object):
                     cr.close()
 
                 # Put the return value on the queue to send it back to caller
-                q.put(ret)
+                send.send(ret)
 
             # Get the current db name from the passed cursor
             dbname = args[1].dbname
 
             # Create a queue through which the forked process can send data back
             # to the caller
-            q = Queue()
+            (recv, send) = Pipe(False)
 
             # Create a new forked process targetting the forked function wrapper
-            p = Process(target=forked, args=(dbname, q, args), name=__process_name)
+            p = Process(target=forked, args=(dbname, send, args), name=__process_name)
 
             # Start the new process
             p.start()
 
             try:
                 # Listen on the queue for the return value from the new process
-                ret = q.get(True, self.timeout)
+                ret = recv.recv()
             except:
                 # Default to an exception just incase the forked process doesn't respond
                 ret = Exception('Forked process failed to respond')
