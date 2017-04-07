@@ -36,7 +36,7 @@
         'base_menu.xml',
         'res/res_security.xml',
         'res/res_config.xml',
-        'data/res.country.state.csv'
+        #'data/res.country.state.csv'
     ],
     'update_xml': [
         'base_update.xml',
