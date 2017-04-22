@@ -109,7 +109,7 @@ def ddp_decorated_create(fn):
             if getattr(self, '_disable_wamp_publish_data', False) or getattr(cr, '_disable_wamp_publish_data', False):
                 message = ddp.Added(model, ret, None)
             else:
-                rec = orm.BaseModel.read(self, cr, user, ret, vals.keys(), context)
+                rec = orm.BaseModel.read(self, cr, user, ret, [], context)
                 message = ddp.Added(model, ret, rec)
             ddp_transaction_message_queues[cr].append(message)
         except Exception as err:
