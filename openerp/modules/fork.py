@@ -78,6 +78,7 @@ class fork(object):
 
                 # Put the return value on the pipe to send it back to caller
                 send.send(ret)
+                send.close()
 
             # Get the current db name from the passed cursor
             dbname = args[1].dbname
@@ -89,21 +90,20 @@ class fork(object):
             # Create a new forked process targetting the forked function wrapper
             p = Process(target=forked, args=(dbname, send, args), name=__process_name)
 
-            # Start the new process
+            # Start the new process and close our copy of the child's pipe end
             p.start()
+            send.close()
 
             try:
                 # Listen on the pipe for the return value from the new process
                 ret = recv.recv()
             except Exception, err:
                 # Default to an exception just incase the forked process doesn't respond
-                os.kill(p.pid, signal.SIGKILL)
                 ret = err
+            finally:
+                recv.close()
+                p.join()
 
-            # Join the process just incase it's still running even though the pipe timed out.
-            # This will prevent Zombies!
-            p.join()
-            
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
                 raise ret
