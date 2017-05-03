@@ -24,6 +24,8 @@ import sys
 import signal
 from time import sleep
 import openerp.tools.config
+import logging
+_logger = logging.getLogger(__name__)
 
 class fork(object):
 
@@ -48,13 +50,12 @@ class fork(object):
             def forked(dbname, send, *args, **kwargs):
 
                 # Make sure subprocesses exit on sigint
-                def int_handler(signal, fname):
-                    # Sleep to allow the parent process to join which hopefully
-                    # prevents zombies
-                    sleep(1)
+                def term_handler(signal, fname):
+                    sleep(10) 
+                    send.close()
                     sys.exit()
 
-                signal.signal(signal.SIGINT, int_handler)
+                signal.signal(signal.SIGTERM, term_handler)
                 # Shut down twisted in this process if it's running
                 from twisted.internet import reactor
                 from twisted.internet.error import ReactorNotRunning
@@ -110,22 +111,29 @@ class fork(object):
 
             # Start the new process and close our copy of the child's pipe end
             p.start()
-            child_process_pid = p.pid
             send.close()
 
             try:
                 # Listen on the pipe for the return value from the new process
-                if recv.poll(int(openerp.tools.config.get('forked_job_timeout', 3600))):
+                timeout = int(openerp.tools.config.get('forked_job_timeout', 3600))
+                if recv.poll(timeout):
                     ret = recv.recv()
                 else:
-                    raise Exception('Timeout', 'Forked process timed out before returning: {}'.format(process_name))
-            except Exception, err:
-                # Default to an exception just incase the forked process doesn't respond
-                ret = err
-                os.kill(child_process_pid, signal.SIGINT)
+                    ret = Exception('TimeoutError', 'Forked process {} ran for longer than {} seconds and was terminated.'.format(p.pid, timeout))
+                    _logger.warning('Terminating forked proccess {} with SIGTERM'.format(p.pid))
+                    p.terminate()
             finally:
                 recv.close()
-                p.join()
+                p.join(3)
+
+            # If the process is hung, kill it for realsies
+            if p.is_alive():
+                _logger.warning('Terminating forked proccess {} with SIGKILL'.format(p.pid))
+                os.kill(p.pid, signal.SIGKILL)
+                p.join(3)
+
+            if p.is_alive():
+                _logger.error('Unable to terminate forked process {}'.format(p.pid))
 
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
