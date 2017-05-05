@@ -119,8 +119,8 @@ class fork(object):
                 if recv.poll(timeout):
                     ret = recv.recv()
                 else:
-                    ret = Exception('TimeoutError', 'Forked process {} ran for longer than {} seconds and was terminated.'.format(p.pid, timeout))
-                    _logger.warning('Terminating forked proccess {} with SIGTERM'.format(p.pid))
+                    ret = Exception('TimeoutError', 'Forked process {}: {} ran for longer than {} seconds and was terminated.'.format(process_name, p.pid, timeout))
+                    _logger.warning('Terminating forked proccess {}: {} with SIGTERM'.format(process_name, p.pid))
                     p.terminate()
             finally:
                 recv.close()
@@ -128,12 +128,12 @@ class fork(object):
 
             # If the process is hung, kill it for realsies
             if p.is_alive():
-                _logger.warning('Terminating forked proccess {} with SIGKILL'.format(p.pid))
+                _logger.warning('Terminating forked proccess {}: {} with SIGKILL'.format(process_name, p.pid))
                 os.kill(p.pid, signal.SIGKILL)
                 p.join(3)
 
             if p.is_alive():
-                _logger.error('Unable to terminate forked process {}'.format(p.pid))
+                _logger.error('Unable to terminate forked process {}: {}'.format(process_name, p.pid))
 
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
