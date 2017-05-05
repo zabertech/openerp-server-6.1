@@ -20,7 +20,12 @@
 
 from multiprocessing import Pipe, Process
 import os
+import sys
 import signal
+from time import sleep
+import openerp.tools.config
+import logging
+_logger = logging.getLogger(__name__)
 
 class fork(object):
 
@@ -36,13 +41,21 @@ class fork(object):
 
             # If a list of argv index values is passed, append those arguments to the
             # process name
-            __process_name = self.name
+            process_name = self.name
             for arg in self.name_args:
-                __process_name += " {}".format(args[arg])
+                process_name += " {}".format(args[arg])
 
             # Wrap the decorated function in another function which will replace
             # the passed cursor argument with a new cursor unique to the new process
             def forked(dbname, send, *args, **kwargs):
+
+                # Make sure subprocesses exit on sigint
+                def term_handler(signal, fname):
+                    sleep(10) 
+                    send.close()
+                    sys.exit()
+
+                signal.signal(signal.SIGTERM, term_handler)
                 # Shut down twisted in this process if it's running
                 from twisted.internet import reactor
                 from twisted.internet.error import ReactorNotRunning
@@ -52,9 +65,9 @@ class fork(object):
                     pass
                 
                 # Set the proc title of this process for debugging
-                if __process_name:
+                if process_name:
                     from setproctitle import setproctitle
-                    setproctitle(__process_name)
+                    setproctitle(process_name)
 
                 # Get our own db cursor just for this process
                 from sql_db import ConnectionPool, Connection, Cursor
@@ -78,6 +91,10 @@ class fork(object):
 
                 # Put the return value on the pipe to send it back to caller
                 send.send(ret)
+                send.close()
+
+                # can't hurt
+                sys.exit()
 
             # Get the current db name from the passed cursor
             dbname = args[1].dbname
@@ -87,23 +104,37 @@ class fork(object):
             (recv, send) = Pipe(False)
 
             # Create a new forked process targetting the forked function wrapper
-            p = Process(target=forked, args=(dbname, send, args), name=__process_name)
+            p = Process(target=forked, args=(dbname, send, args), name=process_name)
 
-            # Start the new process
+            # Daemon processes should die when the parent is killed
+            p.daemon = True
+
+            # Start the new process and close our copy of the child's pipe end
             p.start()
+            send.close()
 
             try:
                 # Listen on the pipe for the return value from the new process
-                ret = recv.recv()
-            except Exception, err:
-                # Default to an exception just incase the forked process doesn't respond
-                os.kill(p.pid, signal.SIGKILL)
-                ret = err
+                timeout = int(openerp.tools.config.get('forked_job_timeout', 3600))
+                if recv.poll(timeout):
+                    ret = recv.recv()
+                else:
+                    ret = Exception('TimeoutError', 'Forked process {} ran for longer than {} seconds and was terminated.'.format(p.pid, timeout))
+                    _logger.warning('Terminating forked proccess {} with SIGTERM'.format(p.pid))
+                    p.terminate()
+            finally:
+                recv.close()
+                p.join(3)
 
-            # Join the process just incase it's still running even though the pipe timed out.
-            # This will prevent Zombies!
-            p.join()
-            
+            # If the process is hung, kill it for realsies
+            if p.is_alive():
+                _logger.warning('Terminating forked proccess {} with SIGKILL'.format(p.pid))
+                os.kill(p.pid, signal.SIGKILL)
+                p.join(3)
+
+            if p.is_alive():
+                _logger.error('Unable to terminate forked process {}'.format(p.pid))
+
             # If an exception was returned from the caller, raise it
             if type(ret) is Exception:
                 raise ret
