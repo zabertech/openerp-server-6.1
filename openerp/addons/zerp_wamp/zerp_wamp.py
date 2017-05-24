@@ -360,7 +360,8 @@ class ZERPSession(ApplicationSession):
                     # so let's log an error.
                     wait_ok = message_queue.wait_processing()
                     if not wait_ok:
-                        _logger.log(logging.error, "WAMP publisher error: Message delivery appears to have failed. Cannot guarantee data integrity.")
+                        message_queue.flush_processing()
+                        _logger.log(logging.ERROR, "WAMP publisher error: Message delivery appears to have failed. Cannot guarantee data integrity.")
                     # Receive a message from the queue. It must later be acknowledged, otherwise it
                     # will be received again on the next iteration.
                     message_json = message_queue.receive()

@@ -88,7 +88,6 @@ class RedisQueue(object):
         """Get the next message from the queue
         """
         self.connect()
-        self.wait_processing()
         # If  there's nothing there, wait for a new message on the main queue. When one
         # arrives, pop it for processing and push it onto the processing list. if all
         # goes well, it'll be removed from the processing list by calling 'acknowledge()'
@@ -101,12 +100,14 @@ class RedisQueue(object):
         """
         self.connect()
         count = 0
+        start_t = time.time()
         while self.redis_client.llen(self.name_processing):
             count += 1
-            if count > 100: return False
+            elapsed_t = time.time() - start_t > 1
+            if elapsed_t > 1: return False
         return True
 
-    def flush(self):
+    def flush_processing(self):
         """Flush stale messages from the processing queue
         """
         self.connect()
