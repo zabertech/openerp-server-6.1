@@ -103,7 +103,7 @@ class RedisQueue(object):
         start_t = time.time()
         while self.redis_client.llen(self.name_processing):
             count += 1
-            elapsed_t = time.time() - start_t > 1
+            elapsed_t = time.time() - start_t
             if elapsed_t > 1: return False
         return True
 
