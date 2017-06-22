@@ -5249,6 +5249,8 @@ class BaseModel(object):
         result = self.read(cr,user,ids[0],fields,context)
         return result
 
+    def zerp_python_str_eval(self, cr, uid, str_):
+        return eval(str_, globals(), locals())
 
 # keep this import here, at top it will cause dependency cycle errors
 import expression
