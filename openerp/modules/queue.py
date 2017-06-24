@@ -1,4 +1,5 @@
 import redis
+import md5
 import logging
 import time
 from pprint import pprint
@@ -69,7 +70,7 @@ class RedisQueue(object):
             # get the next locally enqueued message
             message = _redis_queue_backlog[self.name][0]
             # push it onto the redis queue
-            self.redis_client.lpush(self.name, message)
+            num = self.redis_client.lpush(self.name, message)
             # pop the message from the end of the local queue now that we're sure
             # it's been safely pushed to redis
             _redis_queue_backlog[self.name].pop(0)
@@ -87,19 +88,34 @@ class RedisQueue(object):
         """Get the next message from the queue
         """
         self.connect()
-        # Non-blocking check for message left on the processing list. If we find something
-        # we should make another attempt at processing it.
-        message = self.redis_client.lindex(self.name_processing, -1)
         # If  there's nothing there, wait for a new message on the main queue. When one
         # arrives, pop it for processing and push it onto the processing list. if all
         # goes well, it'll be removed from the processing list by calling 'acknowledge()'
-        if not message:
-            message = self.redis_client.brpoplpush(self.name, self.name_processing)
+        message = self.redis_client.brpoplpush(self.name, self.name_processing)
         return message
+
+    def wait_processing(self):
+        """Check the processing queue to see if there are still
+        jobs to complete
+        """
+        self.connect()
+        count = 0
+        start_t = time.time()
+        while self.redis_client.llen(self.name_processing):
+            count += 1
+            elapsed_t = time.time() - start_t
+            if elapsed_t > 1: return False
+        return True
+
+    def flush_processing(self):
+        """Flush stale messages from the processing queue
+        """
+        self.connect()
+        return self.redis_client.delete(self.name_processing)
 
     def acknowledge(self, message):
         """Remove the leftmost message from the processing queue once done procesing.
         """
         self.connect()
-        self.redis_client.lrem(self.name_processing, message)
+        ack = self.redis_client.lrem(self.name_processing, message)
 

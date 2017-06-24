@@ -25,6 +25,7 @@ wamp_register = databasename,registername2=database2
 
 
 """
+import md5
 import traceback
 import os
 import time
@@ -354,6 +355,13 @@ class ZERPSession(ApplicationSession):
                 message_queue.send_backlog()
                 _logger.info("WAMP publisher successfully connected to redis server. %s", self)
                 while True:
+                    # Wait for the processing queue to clear. If it doesn't clear within 100
+                    # iterations of a loop, something's probably wrong. Not sure what to do
+                    # so let's log an error.
+                    wait_ok = message_queue.wait_processing()
+                    if not wait_ok:
+                        message_queue.flush_processing()
+                        _logger.log(logging.ERROR, "WAMP publisher error: Message delivery appears to have failed. Cannot guarantee data integrity.")
                     # Receive a message from the queue. It must later be acknowledged, otherwise it
                     # will be received again on the next iteration.
                     message_json = message_queue.receive()
