@@ -308,7 +308,7 @@ class ZERPSession(ApplicationSession):
                 service_name = service_name.strip()
                 db_name = db_name.strip()
             else:
-                alias = l
+                service_name = l
                 db_name = l
             if service_name and db_name:
                 DATABASE_MAPPINGS[service_name] = db_name
@@ -318,7 +318,7 @@ class ZERPSession(ApplicationSession):
             for database in databases:
                 DATABASE_MAPPINGS[database] = database
 
-        for alias,db_name in DATABASE_MAPPINGS.items():
+        for service_name,db_name in DATABASE_MAPPINGS.items():
             if not db_name in databases:
                 _logger.warn("Database '{}' does not exist for registering on WAMP!".format(db_name))
                 continue
