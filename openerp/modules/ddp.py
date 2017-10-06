@@ -5,13 +5,15 @@ from exceptions import NotImplementedError
 
 import datetime
 from time import mktime
+import base64
 
-class JsonDateEncoder(json.JSONEncoder):
+class JsonHelper(json.JSONEncoder):
 
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return int(mktime(obj.timetuple()))
-
+        if isinstance(obj, buffer):
+            return base64.b64encode(obj)
         return json.JSONEncoder.default(self, obj)
 
 
@@ -57,7 +59,7 @@ class Message(object):
             message_dict[arg] = self.__dict__.get(arg, None)
         # JSON doesn't know how to handle dates so we squash them into ints
         if serializer == json:
-            serialized_message = serializer.dumps(message_dict, cls=JsonDateEncoder)
+            serialized_message = serializer.dumps(message_dict, cls=JsonHelper)
         else:
             serialized_message = serializer.dumps(message_dict)
         return serialized_message
