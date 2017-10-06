@@ -57,7 +57,6 @@ import autobahn.wamp.serializer
 
 class MyWampJsonEncoder(json.JSONEncoder):
     def default(self, obj):
-        print 'mnahmnah'
         if isinstance(obj, six.binary_type) or isinstance(obj, buffer):
             return u'\x00' + base64.b64encode(obj).decode('ascii')
         else:
