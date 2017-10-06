@@ -111,7 +111,7 @@ class ZERPWampUri(object):
             raise Exception(u'URI should be in format "<prefix>:<database>:<model>:<service>:<method>"')
 
     def __repr__(self):
-        return "uZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
+        return u"ZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
 
 class ZERPSession(ApplicationSession):
 
