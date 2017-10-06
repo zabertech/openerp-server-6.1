@@ -381,7 +381,7 @@ class ZERPSession(ApplicationSession):
                     # Receive a message from the queue. It must later be acknowledged, otherwise it
                     # will be received again on the next iteration.
                     message_json = message_queue.receive()
-                    message = ddp.deserialize(message_json, serializers=json)
+                    message = ddp.deserialize(message_json, serializer=json)
                     (database, model) = message.collection.split(':')
                     message.collection = model
                     service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
