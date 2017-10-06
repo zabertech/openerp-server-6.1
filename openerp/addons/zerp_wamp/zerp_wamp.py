@@ -25,6 +25,8 @@ wamp_register = databasename,registername2=database2
 
 
 """
+import six
+import base64
 import md5
 import traceback
 import os
@@ -50,6 +52,19 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from autobahn.twisted import websocket
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner, ApplicationSessionFactory
 from autobahn.wamp.exception import ApplicationError, InvalidUri, TransportLost
+
+import autobahn.wamp.serializer
+
+class MyWampJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        print 'mnahmnah'
+        if isinstance(obj, six.binary_type) or isinstance(obj, buffer):
+            return u'\x00' + base64.b64encode(obj).decode('ascii')
+        else:
+             return json.JSONEncoder.default(self, obj)
+
+autobahn.wamp.serializer._WAMPJsonEncoder = MyWampJsonEncoder
+JsonSerializer = autobahn.wamp.serializer.JsonSerializer
 
 try:
     from autobahn.websocket.util import parse_url
@@ -367,7 +382,7 @@ class ZERPSession(ApplicationSession):
                     # Receive a message from the queue. It must later be acknowledged, otherwise it
                     # will be received again on the next iteration.
                     message_json = message_queue.receive()
-                    message = ddp.deserialize(message_json, serializer=json)
+                    message = ddp.deserialize(message_json, serializers=json)
                     (database, model) = message.collection.split(':')
                     message.collection = model
                     service_uri = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
@@ -440,7 +455,7 @@ def wamp_start(*a):
     session_factory = ApplicationSessionFactory(config=component_config)
     session_factory.session = ZERPSession
 
-    transport_factory = ZERPClientFactory(session_factory, url=wamp_uri)
+    transport_factory = ZERPClientFactory(session_factory, url=wamp_uri, serializers=[JsonSerializer()])
 
     isSecure, host, port, resource, path, params = parse_url(wamp_uri)
     transport_factory.host = host
