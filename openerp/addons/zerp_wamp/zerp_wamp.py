@@ -9,7 +9,7 @@ sudo pip install crossbar
 
 Configuration Options to place into openerp.conf:
 
-wamp_uri = wss://nexus.izaber.com/ws
+wamp_url = wss://nexus.izaber.com/ws
 wamp_login = someuser
 wamp_password = somepass
 wamp_realm = izaber
@@ -445,8 +445,8 @@ class ZERPClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClient
 
 def wamp_start(*a):
     # Sanity check, ensure we have something to connect to
-    wamp_uri = unicode(config.get('wamp_uri',''))
-    if not wamp_uri:
+    wamp_url = unicode(config.get('wamp_url',''))
+    if not wamp_url:
         _logger.warn(u"Not starting WAMP services as no configuration found.")
         return
 
@@ -454,9 +454,9 @@ def wamp_start(*a):
     session_factory = ApplicationSessionFactory(config=component_config)
     session_factory.session = ZERPSession
 
-    transport_factory = ZERPClientFactory(session_factory, url=wamp_uri, serializers=[JsonSerializer()])
+    transport_factory = ZERPClientFactory(session_factory, url=wamp_url, serializers=[JsonSerializer()])
 
-    isSecure, host, port, resource, path, params = parse_url(wamp_uri)
+    isSecure, host, port, resource, path, params = parse_url(wamp_url)
     transport_factory.host = host
     transport_factory.port = port
     websocket.connectWS(transport_factory)

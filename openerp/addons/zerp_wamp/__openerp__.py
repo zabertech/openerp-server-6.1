@@ -31,6 +31,7 @@
     'depends': ['users_ldap'],
     'init_xml': [],
     'update_xml': [
+        'res_users.xml'
     ],
     'demo_xml': [],
     'installable': True,

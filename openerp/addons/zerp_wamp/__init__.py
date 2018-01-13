@@ -35,6 +35,8 @@ from zerp_wamp import wamp_start
 import json
 import ejson
 
+import res_users
+
 _zerp_wamp_monkeypatched = False
 
 _logger = logging.getLogger(__name__)
@@ -211,6 +213,6 @@ def start_ddp_ormlog():
         _zerp_wamp_monkeypatched = True
 
 def start_web_services():
-    if (config.get("wamp_uri", False)):
+    if (config.get("wamp_url", False)):
         start_ddp_ormlog()
         wamp_start()
