@@ -15,16 +15,20 @@ class res_users(osv.osv):
         return self.read(cr, uid, uid, ["login"])["login"]
 
     def wamp_conn(self, cr, uid, context=None):
-        username=self.wamp_login(cr, uid)
-        apikey=self.wamp_api_key(cr, uid)
+        if uid != 0:
+            username = unicode(self.wamp_login(cr, uid))
+            password = unicode(self.wamp_api_key(cr, uid))
+        else:
+            username = unicode(config.get("wamp_login"))
+            password = unicode(config.get("wamp_password"))
+            
         uri_base = unicode(config.get("wamp_uri_base", "com.izaber.wamp"))
         url = unicode(config.get("wamp_url"))
         realm = unicode(config.get("wamp_realm"))
         authmethods = [u"ticket"]
-        print username, apikey, uri_base, url, realm, authmethods
         wamp = WAMP()
         wamp.configure(username=username,
-                       password=apikey,
+                       password=password,
                        url=url,
                        uri_base=uri_base,
                        realm=realm,
