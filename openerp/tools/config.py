@@ -261,6 +261,8 @@ class configmanager(object):
         group.add_option("--cache-timeout", dest="cache_timeout", my_default=100000,
                           help="set the timeout for the cache system", type="int")
         group.add_option('--debug', dest='debug_mode', action='store_true', my_default=False, help='enable debug mode')
+        group.add_option("--debug-workflow", dest="debug_workflow", my_default=False, action='store_true',
+                         help="Log workflow transitions. Watch out, this is noisy!")
         group.add_option("--debug-show-views", dest="debug_show_views", my_default=False, action='store_true',
                          help="Cause the server to dump view generation steps to STDOUT")
         group.add_option("--stop-after-init", action="store_true", dest="stop_after_init", my_default=False,
@@ -402,7 +404,7 @@ class configmanager(object):
         # if defined but None take the configfile value
         keys = [
             'language', 'translate_out', 'translate_in', 'overwrite_existing_translations',
-            'debug_mode', 'debug_show_views', 'smtp_ssl', 'load_language',
+            'debug_mode', 'debug_workflow', 'debug_show_views', 'smtp_ssl', 'load_language',
             'stop_after_init', 'logrotate', 'without_demo', 'netrpc', 'xmlrpc', 'syslog',
             'list_db', 'xmlrpcs', 'proxy_mode',
             'test_file', 'test_disable', 'test_commit', 'test_report_directory',

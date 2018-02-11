@@ -19,13 +19,32 @@
 #
 ##############################################################################
 
+import logging
+
 import wkf_logs
 import workitem
 
+from openerp.tools.config import config
 import openerp.netsvc as netsvc
 import openerp.pooler as pooler
 
+_logger = logging.getLogger(__name__)
+
 def create(cr, ident, wkf_id):
+    """ Creates a single record in the database.
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+    @param wkf_id: ID of the workflow this record should follow
+
+    This function will instantiate a new workflow for the provided record by creating
+
+    * workflow instance
+    * workitem instance
+
+    The workflow will be started by calling workitem.process
+
+    """
     (uid,res_type,res_id) = ident
     cr.execute('insert into wkf_instance (res_type,res_id,uid,wkf_id) values (%s,%s,%s,%s) RETURNING id', (res_type,res_id,uid,wkf_id))
     id_new = cr.fetchone()[0]
@@ -37,10 +56,27 @@ def create(cr, ident, wkf_id):
     return id_new
 
 def delete(cr, ident):
+    """ Delete workflow for record
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Simply deletes associated workflow data for the provided record from the database
+
+    """
     (uid,res_type,res_id) = ident
     cr.execute('delete from wkf_instance where res_id=%s and res_type=%s', (res_id,res_type))
 
 def validate(cr, inst_id, ident, signal, force_running=False):
+    """ Run any processing associated with a record
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+    @param signal:
+    @param force_running:
+
+    """
+
     cr.execute("select * from wkf_workitem where inst_id=%s", (inst_id,))
     stack = []
     for witem in cr.dictfetchall():
@@ -51,6 +87,14 @@ def validate(cr, inst_id, ident, signal, force_running=False):
     return stack and stack[0] or False
 
 def update(cr, inst_id, ident):
+    """ Run workitem.process on all workitems associated with the instance id
+
+    @param cr: database handle
+    @param inst_id: instance ID of target record
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Returns: True if all workitems related to an instance are complete
+    """
     cr.execute("select * from wkf_workitem where inst_id=%s", (inst_id,))
     for witem in cr.dictfetchall():
         stack = []
@@ -58,6 +102,14 @@ def update(cr, inst_id, ident):
     return _update_end(cr, inst_id, ident)
 
 def _update_end(cr, inst_id, ident):
+    """ 
+
+    @param cr: database handle
+    @param inst_id: instance ID of target record
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Returns: True if all workitems related to an instance are complete
+    """
     cr.execute('select wkf_id from wkf_instance where id=%s', (inst_id,))
     wkf_id = cr.fetchone()[0]
     cr.execute('select state,flow_stop from wkf_workitem w left join wkf_activity a on (a.id=w.act_id) where w.inst_id=%s', (inst_id,))

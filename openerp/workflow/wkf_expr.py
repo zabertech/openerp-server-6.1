@@ -20,10 +20,14 @@
 ##############################################################################
 
 import sys
+import logging
+
 import openerp.netsvc as netsvc
 import openerp.osv as base
 import openerp.pooler as pooler
 from openerp.tools.safe_eval import safe_eval as eval
+
+_logger = logging.getLogger(__name__)
 
 class Env(dict):
     def __init__(self, cr, uid, model, ids):
@@ -68,6 +72,19 @@ def execute(cr, ident, workitem, activity):
     return _eval_expr(cr, ident, workitem, activity['action'])
 
 def check(cr, workitem, ident, transition, signal):
+    """ Returns true if the workitem is in a state that allows this transition
+
+    @param cr: database handle
+    @param workitem: dict of the workitem to process
+    @param ident: tuple of (uid, dotted model name, resource id )
+    @param signal: desired signal (or transition name) to follow
+                   if this transition's name is not the same signal
+                   name as the target, automatically return none
+                   This only matters if a transition has a signal
+                   name associated with it. Transitions without
+                   signal names will ignore the provided signal
+
+    """
     if transition['signal'] and signal != transition['signal']:
         return False
 
