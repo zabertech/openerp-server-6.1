@@ -25,6 +25,7 @@
 #
 
 import logging
+import datetime
 
 from openerp.tools.config import config
 import openerp.netsvc as netsvc
@@ -168,8 +169,9 @@ def _execute(cr, workitem, activity, ident, stack):
             signal_todo.append((i[0], (ident[0],i[1],i[2]), activity['signal_send']))
 
     if config['debug_workflow']:
-        _logger.debug("  execute {a[kind]} {i[1]},{i[2]}".format(
-              i=ident,w=workitem,a=activity
+        exec_started = datetime.datetime.now()
+        _logger.debug("  execute {a[kind]} {i[1]},{i[2]} {d}".format(
+              i=ident,w=workitem,a=activity,d=exec_started
         ))
 
     # ACTIVITY: dummy
@@ -255,6 +257,12 @@ def _execute(cr, workitem, activity, ident, stack):
     for t in signal_todo:
         instance.validate(cr, t[0], t[1], t[2], force_running=True)
 
+    if config['debug_workflow']:
+        _logger.debug("  /execute {a[kind]} {i[1]},{i[2]} started {d}".format(
+              i=ident,w=workitem,a=activity,d=exec_started
+        ))
+
+
     return result
 
 def _split_test(cr, workitem, split_mode, ident, signal=None, stack=None):
@@ -285,7 +293,8 @@ def _split_test(cr, workitem, split_mode, ident, signal=None, stack=None):
         for transition in alltrans:
             if wkf_expr.check(cr, workitem, ident, transition,signal):
                 if config['debug_workflow']:
-                    _logger.debug(" {m} split {i[1]},{i[2]} workitem,{w[id]} transition {t[id]},{t[signal]} OK".format(
+                    _logger.debug(" {m} split {i[1]},{i[2]} workitem,{w[id]} "\
+                                    "transition {t[id]},{t[signal]} OK".format(
                         w=workitem,i=ident,s=signal,t=transition,m=split_mode)
                     )
                 test = True
@@ -295,7 +304,8 @@ def _split_test(cr, workitem, split_mode, ident, signal=None, stack=None):
                     break
             else:
                 if config['debug_workflow']:
-                    _logger.debug(" {m} split {i[1]},{i[2]} workitem,{w[id]} transition {t[id]},{t[signal]} NOK".format(
+                    _logger.debug(" {m} split {i[1]},{i[2]} workitem,{w[id]} "\
+                                    "transition {t[id]},{t[signal]} NOK".format(
                         w=workitem,i=ident,s=signal,t=transition,m=split_mode)
                     )
 
