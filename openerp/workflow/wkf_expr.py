@@ -23,6 +23,8 @@ import sys
 import logging
 import re
 
+from openerp.tools.config import config
+
 import openerp.netsvc as netsvc
 import openerp.osv as base
 import openerp.pooler as pooler
@@ -130,6 +132,13 @@ def check(cr, workitem, ident, transition, signal):
                 break
         else:
             return False
+
+        if config['debug_workflow']:
+            _logger.debug("restarting workflow {i[1]},{i[2]} workitem,{w[id]} {w[state]} -> {s}".format(
+                w=workitem,
+                i=ident,
+                s=transition['signal']
+            ))
 
     uid = ident[0]
     if transition['group_id'] and uid != 1:
