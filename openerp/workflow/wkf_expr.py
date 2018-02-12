@@ -21,6 +21,7 @@
 
 import sys
 import logging
+import re
 
 import openerp.netsvc as netsvc
 import openerp.osv as base
@@ -86,7 +87,49 @@ def check(cr, workitem, ident, transition, signal):
 
     """
     if transition['signal'] and signal != transition['signal']:
-        return False
+        # Occasionally we will have to restart from a stalled subflow.
+        # There's a really weird bug where if a subflow causes requires the
+        # parent workflow to change state within the same execution as the
+        # start of the subflow, the parent will be marked 'running' and
+        # transition will fail. We'll try and restart it here.
+        # First we ensure that we don't have a subflow
+        if not workitem['subflow_id']:
+            return False
+
+        # We find out if there's a subflow call in this request. If not
+        # let's just ignore it.
+        matches = re.search('^subflow.(.+)$',transition['signal'])
+        if not matches:
+            return False
+        target_subflow_name = matches.group(1)
+
+        # Is the subflow done?
+        subflow_id = workitem['subflow_id']
+        cr.execute("""
+            select
+                        ww.state,
+                        wa.name
+            from
+                        wkf_workitem ww
+              left join wkf_instance wi
+                     on wi.id = ww.inst_id
+              left join wkf_activity wa
+                     on ww.act_id = wa.id
+            where
+                        wi.id = %s
+        """, (subflow_id,))
+        for (subflow_state, subflow_name) in cr.fetchall():
+
+            # We can only progress if the subflow's state has been completed
+            if not subflow_name or subflow_state != 'complete':
+                continue
+
+            # And we can also only proceed if the subflow's state name matches
+            # our current signal's name
+            elif target_subflow_name == subflow_name:
+                break
+        else:
+            return False
 
     uid = ident[0]
     if transition['group_id'] and uid != 1:
