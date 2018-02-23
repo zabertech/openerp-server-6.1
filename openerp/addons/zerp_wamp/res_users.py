@@ -22,7 +22,10 @@ class res_users(osv.osv):
         # Look for a cached connection for this user and reuse it if possible
         # otherwise, configure the new connection for the authenticated user.
         wamp = wamp_client_connections.get(uid, WAMP())
-        if not wamp.is_connected():
+        # An is_connecting state would be nice here so we can wait for a
+        # successful connection tobe established
+        if not wamp.wamp.is_connected():
+            wamp_client_connections[uid] = wamp
             uri_base = unicode(config.get("wamp_uri_base", "com.izaber.wamp"))
             url = unicode(config.get("wamp_url"))
             realm = unicode(config.get("wamp_realm"))
@@ -39,7 +42,6 @@ class res_users(osv.osv):
                            uri_base=uri_base,
                            realm=realm,
                            authmethods=authmethods)
-            wamp_client_connections[uid] = wamp
             wamp.run()
         return wamp
 
