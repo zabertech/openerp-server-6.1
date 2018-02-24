@@ -22,17 +22,41 @@
 #
 # May be uncommented to logs workflows modifications
 #
+import logging
+
+from openerp.tools.config import config
 import openerp.netsvc as netsvc
 
+_logger = logging.getLogger(__name__)
+
 def log(cr,ident,act_id,info=''):
-    return 
-    #    msg = """
-    #res_type: %r
-    #res_id: %d
-    #uid: %d
-    #act_id: %d
-    #info: %s
-    #""" % (ident[1], ident[2], ident[0], act_id, info)
+
+    if not config['debug_workflow']:
+        return
+
+    # Get information about the action if available
+    if act_id:
+        cr.execute('select w.name, wa.name '\
+                  'from wkf_activity wa '\
+                  'left join '\
+                  'wkf w on wa.wkf_id = w.id '\
+                  'where wa.id=%s',(act_id,))
+        (wname,waname) = cr.fetchone()
+
+        act_id = "action: {w}:{wa},{a}".format(
+                          w=wname,
+                          wa=waname,
+                          a=act_id,
+                      )
+
+    msg = "{res},{res_id} {act} (uid:{uid}) {nfo}".format(
+        res=ident[1],
+        res_id=ident[2],
+        uid=ident[0],
+        act=str(act_id),
+        nfo=info
+    )
+    _logger.debug(msg)
 
     #cr.execute('insert into wkf_logs (res_type, res_id, uid, act_id, time, info) values (%s,%s,%s,%s,current_time,%s)', (ident[1],int(ident[2]),int(ident[0]),int(act_id),info))
 
