@@ -19,13 +19,32 @@
 #
 ##############################################################################
 
+import logging
+
 import wkf_logs
 import workitem
 
+from openerp.tools.config import config
 import openerp.netsvc as netsvc
 import openerp.pooler as pooler
 
+_logger = logging.getLogger(__name__)
+
 def create(cr, ident, wkf_id):
+    """ Creates a single record in the database.
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+    @param wkf_id: ID of the workflow this record should follow
+
+    This function will instantiate a new workflow for the provided record by creating
+
+    * workflow instance
+    * workitem instance
+
+    The workflow will be started by calling workitem.process
+
+    """
     (uid,res_type,res_id) = ident
     cr.execute('insert into wkf_instance (res_type,res_id,uid,wkf_id) values (%s,%s,%s,%s) RETURNING id', (res_type,res_id,uid,wkf_id))
     id_new = cr.fetchone()[0]
@@ -37,10 +56,27 @@ def create(cr, ident, wkf_id):
     return id_new
 
 def delete(cr, ident):
+    """ Delete workflow for record
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Simply deletes associated workflow data for the provided record from the database
+
+    """
     (uid,res_type,res_id) = ident
     cr.execute('delete from wkf_instance where res_id=%s and res_type=%s', (res_id,res_type))
 
 def validate(cr, inst_id, ident, signal, force_running=False):
+    """ Run any processing associated with a record
+
+    @param cr: database handle
+    @param ident: tuple of (uid, dotted model name, resource id )
+    @param signal:
+    @param force_running:
+
+    """
+
     cr.execute("select * from wkf_workitem where inst_id=%s", (inst_id,))
     stack = []
     for witem in cr.dictfetchall():
@@ -51,6 +87,14 @@ def validate(cr, inst_id, ident, signal, force_running=False):
     return stack and stack[0] or False
 
 def update(cr, inst_id, ident):
+    """ Run workitem.process on all workitems associated with the instance id
+
+    @param cr: database handle
+    @param inst_id: instance ID of target record
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Returns: True if all workitems related to an instance are complete
+    """
     cr.execute("select * from wkf_workitem where inst_id=%s", (inst_id,))
     for witem in cr.dictfetchall():
         stack = []
@@ -58,23 +102,114 @@ def update(cr, inst_id, ident):
     return _update_end(cr, inst_id, ident)
 
 def _update_end(cr, inst_id, ident):
+    """ Finish processing changes to the instance and trigger parent workflows
+        if any are pending.
+
+    @param cr: database handle
+    @param inst_id: instance ID of target record
+    @param ident: tuple of (uid, dotted model name, resource id )
+
+    Returns: True if all workitems related to an instance are complete
+    """
     cr.execute('select wkf_id from wkf_instance where id=%s', (inst_id,))
     wkf_id = cr.fetchone()[0]
-    cr.execute('select state,flow_stop from wkf_workitem w left join wkf_activity a on (a.id=w.act_id) where w.inst_id=%s', (inst_id,))
+
+    # If all the incoming workitems have completed their tasks and haven't been
+    # abruptly terminated via 'flow_stop' then we're okay to proceed
+    if config['debug_workflow']:
+        cr.execute('select state,flow_stop,a.id,a.name '\
+                    'from wkf_workitem w '\
+                    'left join wkf_activity a '\
+                      'on (a.id=w.act_id) '\
+                    'where w.inst_id=%s', (inst_id,))
+
+    else:
+        cr.execute('select state,flow_stop '\
+                    'from wkf_workitem w '\
+                    'left join wkf_activity a '\
+                      'on (a.id=w.act_id) '\
+                    'where w.inst_id=%s', (inst_id,))
+
     ok=True
     for r in cr.fetchall():
-        if (r[0]<>'complete') or not r[1]:
-            ok=False
-            break
-    if ok:
-        cr.execute('select distinct a.name from wkf_activity a left join wkf_workitem w on (a.id=w.act_id) where w.inst_id=%s', (inst_id,))
-        act_names = cr.fetchall()
-        cr.execute("update wkf_instance set state='complete' where id=%s", (inst_id,))
-        cr.execute("update wkf_workitem set state='complete' where subflow_id=%s", (inst_id,))
-        cr.execute("select i.id,w.osv,i.res_id from wkf_instance i left join wkf w on (i.wkf_id=w.id) where i.id IN (select inst_id from wkf_workitem where subflow_id=%s)", (inst_id,))
-        for i in cr.fetchall():
-            for act_name in act_names:
-                validate(cr, i[0], (ident[0],i[1],i[2]), 'subflow.'+act_name[0])
+        # Use slow richer debug info if we've got to
+        if not config['debug_workflow']:
+            if (r[0]<>'complete') or not r[1]:
+                ok=False
+                break
+        else:
+            if r[0]<>'complete':
+                ok=False
+                _logger.debug(' _update_end {i[1]},{i[2]} {r[0]}<>complete activity,{r[2]},{r[3]} NOK'.format(
+                    i=ident,
+                    r=r
+                ))
+                break
+            if not r[1]:
+                ok=False
+                _logger.debug(' _update_end {i[1]},{i[2]} flow_stop activity,{r[2]},{r[3]} NOK'.format(
+                    i=ident,
+                    r=r
+                ))
+                break
+            _logger.debug(' _update_end {i[1]},{i[2]} OK activity,{r[2]},{r[3]}'.format(
+                i=ident,
+                r=r
+            ))
+
+
+    if not ok:
+        if config['debug_workflow']:
+            _logger.debug(' _update_end {i[1]},{i[2]} found one not complete'.format(
+                i=ident,
+            ))
+        return False
+
+    # So we're okay. In that case let's proceed to cascade trigger
+    if config['debug_workflow']:
+        _logger.debug(' _update_end {i[1]},{i[2]} triggering parent subflows'.format(
+            i=ident,
+        ))
+
+    # Get instance's current activities name from workitem
+    cr.execute('select distinct a.name '\
+                'from wkf_activity a '\
+                'left join wkf_workitem w '\
+                  'on (a.id=w.act_id) '\
+                'where w.inst_id=%s', (inst_id,))
+    act_names = cr.fetchall()
+    cr.execute("update wkf_instance set state='complete' where id=%s", (inst_id,))
+    cr.execute("update wkf_workitem set state='complete' where subflow_id=%s", (inst_id,))
+
+    # Find out if there are any parent workflows that are relying upon this
+    # as a subprocess
+    cr.execute("select i.id,w.osv,i.res_id "\
+                "from wkf_instance i "\
+                "left join wkf w "\
+                  "on (i.wkf_id=w.id) "\
+                "where "\
+                "i.id IN ("\
+                    "select inst_id "\
+                    "from wkf_workitem "\
+                    "where subflow_id=%s"\
+                    ")", (inst_id,))
+    for i in cr.fetchall():
+        for act_name in act_names:
+            signal = 'subflow.'+act_name[0]
+            if config['debug_workflow']:
+                _logger.debug(' _update_end {i[1]},{i[2]} triggering parent {ti[1]},{ti[2]}:{s}'.format(
+                    i=ident,
+                    ti=i,
+                    s=signal
+                ))
+
+            validate(
+                cr,
+                i[0], # instance_id
+                (ident[0],i[1],i[2]), # ident
+                signal
+            )
+
     return ok
 
 

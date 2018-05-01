@@ -177,21 +177,20 @@ class res_partner_bank(osv.osv):
             return []
         bank_type_obj = self.pool.get('res.partner.bank.type')
         res = []
-        for val in self.browse(cr, uid, ids, context=context):
-            result = val.acc_number
-            if val.state:
-                type_ids = bank_type_obj.search(cr, uid, [('code','=',val.state)])
+        for val in self.read(cr, uid, ids, ['id', 'state', 'bank_name', 'acc_number'], context=context):
+            result = val['acc_number']
+            if val['state']:
+                type_ids = bank_type_obj.search(cr, uid, [('code','=',val['state'])])
                 if type_ids:
-                    t = bank_type_obj.browse(cr, uid, type_ids[0], context=context)
+                    t = bank_type_obj.read(cr, uid, type_ids[0], ['format_layout'], context=context)
                     try:
-                        # avoid the default format_layout to result in "False: ..."
-                        if not val._data[val.id]['bank_name']:
-                            val._data[val.id]['bank_name'] = _('BANK')
-                        result = t.format_layout % val._data[val.id]
+                        if not val.get('bank_name', False):
+                            val['bank_name'] = _('BANK')
+                        result = t['format_layout'] % val
                     except:
                         result += ' [Formatting Error]'
                         raise
-            res.append((val.id, result))
+            res.append((val['id'], result))
         return res
 
     def onchange_company_id(self, cr, uid, ids, company_id, context=None):

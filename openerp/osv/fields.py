@@ -65,7 +65,7 @@ class _column(object):
     """
     _classic_read = True
     _classic_write = True
-    _prefetch = True
+    _prefetch = False
     _properties = False
     _type = 'unknown'
     _obj = None
