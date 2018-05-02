@@ -19,7 +19,6 @@
 #################################################################################
 
 import openerp.modules.ddp as ddp
-from openerp.modules.queue import RedisQueue
 from openerp.osv import orm
 import openerp.pooler as pooler
 from openerp.sql_db import Cursor

@@ -34,9 +34,7 @@ import time
 import re
 import posix_ipc
 import openerp.modules.ddp as ddp
-from openerp.modules.queue import RedisQueue
 import json
-import redis
 
 from tools import config
 import logging
