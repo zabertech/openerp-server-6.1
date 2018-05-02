@@ -19,7 +19,6 @@
 #################################################################################
 
 import openerp.modules.ddp as ddp
-from openerp.modules.queue import RedisQueue
 from openerp.osv import orm
 import openerp.pooler as pooler
 from openerp.sql_db import Cursor
@@ -34,6 +33,8 @@ from zerp_wamp import wamp_start
 
 import json
 import ejson
+
+import res_users
 
 _zerp_wamp_monkeypatched = False
 
@@ -173,14 +174,22 @@ def ddp_decorated_commit(fn):
         else:
             if len(ddp_transaction_message_queues.get(self, [])):
                 try:
-                    # Connect to redis queue
-                    message_queue = RedisQueue(
-                        config.get('wamp_redis_queue_name', "zerp"),
-                        socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
-                    # With each message we pull off the queue
+                    wamp = pooler.get_pool(self.dbname).get('res.users').wamp_connect(self, 0)
                     for message in ddp_transaction_message_queues.get(self, []):
-                        message = ddp.serialize(message, serializer=json)
-                        message_queue.send(message)
+                        data_uri = u'{service_uri}:{collection}:data.{record_id}.{msg}'.format(
+                            service_uri='zerp',
+                            collection=message.collection,
+                            record_id=message.id,
+                            msg=message.msg
+                        )
+                        wamp.publish(data_uri, args=[message.__dict__])
+                        events_uri = u'{service_uri}:{collection}:events.{record_id}.{msg}'.format(
+                            service_uri='zerp',
+                            collection=message.collection,
+                            record_id=message.id,
+                            msg=message.msg
+                        )
+                        wamp.publish(events_uri, args=[message.__dict__['msg']])
                     # Destroy the transaction queue
                     del ddp_transaction_message_queues[self]
                 except Exception, err:
@@ -211,6 +220,6 @@ def start_ddp_ormlog():
         _zerp_wamp_monkeypatched = True
 
 def start_web_services():
-    if (config.get("wamp_uri", False)):
+    if (config.get("wamp_url", False)):
         start_ddp_ormlog()
         wamp_start()
