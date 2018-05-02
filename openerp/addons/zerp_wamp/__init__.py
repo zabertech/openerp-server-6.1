@@ -175,14 +175,22 @@ def ddp_decorated_commit(fn):
         else:
             if len(ddp_transaction_message_queues.get(self, [])):
                 try:
-                    # Connect to redis queue
-                    message_queue = RedisQueue(
-                        config.get('wamp_redis_queue_name', "zerp"),
-                        socket=config.get('wamp_redis_socket', "/var/run/redis/redis.sock"))
-                    # With each message we pull off the queue
+                    wamp = pooler.get_pool(self.dbname).get('res.users').wamp_connect(self, 0)
                     for message in ddp_transaction_message_queues.get(self, []):
-                        message = ddp.serialize(message, serializer=json)
-                        message_queue.send(message)
+                        data_uri = u'{service_uri}:{collection}:data.{record_id}.{msg}'.format(
+                            service_uri='zerp',
+                            collection=message.collection,
+                            record_id=message.id,
+                            msg=message.msg
+                        )
+                        wamp.publish(data_uri, args=[message.__dict__])
+                        events_uri = u'{service_uri}:{collection}:events.{record_id}.{msg}'.format(
+                            service_uri='zerp',
+                            collection=message.collection,
+                            record_id=message.id,
+                            msg=message.msg
+                        )
+                        wamp.publish(events_uri, args=[message.__dict__['msg']])
                     # Destroy the transaction queue
                     del ddp_transaction_message_queues[self]
                 except Exception, err:

@@ -1,6 +1,7 @@
 from osv import fields, osv
 from tools import config
 from izaber_wamp import WAMP
+import os
 
 wamp_client_connections = {}
 
@@ -21,11 +22,12 @@ class res_users(osv.osv):
 
         # Look for a cached connection for this user and reuse it if possible
         # otherwise, configure the new connection for the authenticated user.
-        wamp = wamp_client_connections.get(uid, WAMP())
+        connection_hash = (os.getpid(), uid)
+        wamp = wamp_client_connections.get(connection_hash, WAMP())
         # An is_connecting state would be nice here so we can wait for a
         # successful connection tobe established
         if not wamp.wamp.is_connected():
-            wamp_client_connections[uid] = wamp
+            wamp_client_connections[connection_hash] = wamp
             uri_base = unicode(config.get("wamp_uri_base", "com.izaber.wamp"))
             url = unicode(config.get("wamp_url"))
             realm = unicode(config.get("wamp_realm"))
