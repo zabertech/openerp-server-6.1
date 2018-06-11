@@ -5250,7 +5250,7 @@ class BaseModel(object):
         return result
 
     def zerp_python_str_eval(self, cr, uid, str_, vars={}):
-        return eval(str_, globals().update(vars), locals())
+        return eval(str_, globals(), vars)
 
     def zerp_domain_normalize(self, cr, uid, domain, context=None):
         import expression
