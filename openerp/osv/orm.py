@@ -5249,16 +5249,13 @@ class BaseModel(object):
         result = self.read(cr,user,ids[0],fields,context)
         return result
 
-    def zerp_python_str_eval(self, cr, uid, str_, vars=None):
-        if vars:
-            return eval(str_, vars)
-        else:
-            return eval(str_, globals(), locals())
+    def zerp_python_str_eval(self, cr, uid, str_, vars={}):
+        return eval(str_, globals(), vars)
 
-    def zerp_domain_normalize(self, cr, uid, domain):
+    def zerp_domain_normalize(self, cr, uid, domain, context=None):
         import expression
         if type(domain) in (str, unicode):
-            domain = self.zerp_python_str_eval(cr, uid, domain)
+            domain = self.zerp_python_str_eval(cr, uid, domain, vars=context)
         return expression.normalize(domain)
 
 # keep this import here, at top it will cause dependency cycle errors
