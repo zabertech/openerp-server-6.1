@@ -182,13 +182,14 @@ def ddp_decorated_commit(fn):
                             record_id=message.id,
                             msg=message.msg
                         )
-                        wamp.publish(data_uri, args=[message.__dict__])
                         events_uri = u'{service_uri}:{collection}:events.{record_id}.{msg}'.format(
                             service_uri='zerp',
                             collection=message.collection,
                             record_id=message.id,
                             msg=message.msg
                         )
+                        message.collection = message.collection.split(':')[1] # Remove database name from collection
+                        wamp.publish(data_uri, args=[message.__dict__])
                         wamp.publish(events_uri, args=[message.__dict__['msg']])
                     # Destroy the transaction queue
                     del ddp_transaction_message_queues[self]
