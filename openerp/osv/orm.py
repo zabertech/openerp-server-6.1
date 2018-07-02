@@ -3591,6 +3591,7 @@ class BaseModel(object):
             return result and result[0] or False
         return result
 
+
     def _read_flat(self, cr, user, ids, fields_to_read, context=None, load='_classic_read'):
         if not context:
             context = {}
@@ -5215,6 +5216,29 @@ class BaseModel(object):
             record_dicts.append(item)
         return record_dicts
 
+    def zerp_read(self, cr, user, ids, fields=None, context=None, load='_classic_read'):
+        """ Returns the records in the same order as requested via ids
+            Weirdly enough, using the read directly doesn't return the
+            results in the order provided by ids. This makes applying
+            the order on sort really annoying
+        """
+        results = self.read(cr, user, ids, fields, context, load)
+
+        # Single item search, return the result directly
+        if not isinstance(results,list):
+            return results
+
+        # Otherwise, we need to resort
+        keyed_results = {}
+        for r in results:
+            keyed_results[r['id']] = r
+        ordered_results = []
+        for id in ids:
+            ordered_results.append(
+                keyed_results.get(id)
+            )
+        return ordered_results
+
     def zerp_search_read(
             self,
             cr,
@@ -5228,7 +5252,7 @@ class BaseModel(object):
             count=False,
         ):
         ids = self.search(cr,user,args,offset,limit,order,context,count)
-        results = self.read(cr,user,ids,fields,context)
+        results = self.zerp_read(cr,user,ids,fields,context)
         return results
 
     def zerp_search_read_one(
@@ -5246,7 +5270,7 @@ class BaseModel(object):
         ids = self.search(cr,user,args,offset,limit,order,context,count)
         if len(ids) > 1:
             raise except_orm(_('Error'), _("More than one result found!"))
-        result = self.read(cr,user,ids[0],fields,context)
+        result = self.zerp_read(cr,user,ids[0],fields,context)
         return result
 
     def zerp_python_str_eval(self, cr, uid, str_, vars={}):
