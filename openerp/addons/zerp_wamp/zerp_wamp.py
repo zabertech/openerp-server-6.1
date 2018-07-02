@@ -80,6 +80,14 @@ import openerp.service
 CLIENT_CACHE = {}
 DATABASE_MAPPINGS = {}
 
+SERVICE_REWRITES = {
+
+
+    # If the sevice is trying to access read, we'll just redirect it
+    # to zerp_read. The reason is that read does not return the list of
+    # results in the same order as passed in which breaks sorting
+    'object.execute.read': 'object.execute.zerp_read',
+}
 
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
@@ -102,6 +110,9 @@ class ZERPWampUri(object):
         # <prefix>:<database>:<model>:<service>:<method>
         elif len(uri_elements) == 4:
             ( prefix, self.database, self.model, self.service_name ) = uri_elements
+            # Handle rewrites
+            if self.service_name in SERVICE_REWRITES:
+                self.service_name = SERVICE_REWRITES[self.service_name]
             self.database = DATABASE_MAPPINGS.get(self.database)
             self.version = 2
         else:
