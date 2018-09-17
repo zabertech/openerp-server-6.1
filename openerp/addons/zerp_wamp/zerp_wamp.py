@@ -4,7 +4,6 @@ To be able to use this library, one will probably have to:
 
 sudo apt-get install python-dev
 sudo apt-get install openssl libssl-dev
-sudo pip install posix_ipc
 sudo pip install crossbar
 
 Configuration Options to place into openerp.conf:
@@ -14,8 +13,6 @@ wamp_login = someuser
 wamp_password = somepass
 wamp_realm = izaber
 wamp_registration_prefix = com.izaber.nexus.zerp
-wamp_mqueue = /zerp.mqueue
-wamp_max_message_size = 65536
 
 Optional configuration
 
@@ -25,53 +22,13 @@ wamp_register = databasename,registername2=database2
 
 
 """
-import six
-import base64
-import md5
-import traceback
-import os
-import time
-import re
-import posix_ipc
-import openerp.modules.ddp as ddp
-import json
-
 from tools import config
 import logging
 import netsvc
 
 _logger = logging.getLogger(__name__)
 
-from twisted.logger import Logger
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.protocol import ReconnectingClientFactory
-
-from autobahn.twisted import websocket
-from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner, ApplicationSessionFactory
-from autobahn.wamp.exception import ApplicationError, InvalidUri, TransportLost
-
-import autobahn.wamp.serializer
-
-class MyWampJsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, six.binary_type) or isinstance(obj, buffer):
-            return u'\x00' + base64.b64encode(obj).decode('ascii')
-        else:
-             return json.JSONEncoder.default(self, obj)
-
-autobahn.wamp.serializer._WAMPJsonEncoder = MyWampJsonEncoder
-JsonSerializer = autobahn.wamp.serializer.JsonSerializer
-
-try:
-    from autobahn.websocket.util import parse_url
-except ImportError:
-    from autobahn.websocket.protocol import parseWsUrl
-    parse_url = parseWsUrl
-
-from autobahn.wamp.types import SubscribeOptions, RegisterOptions, ComponentConfig
-
-from pprint import pprint
+import swampyer
 
 import openerp
 from openerp import pooler
@@ -79,15 +36,13 @@ import openerp.service
 
 CLIENT_CACHE = {}
 DATABASE_MAPPINGS = {}
-
 SERVICE_REWRITES = {
-
-
     # If the sevice is trying to access read, we'll just redirect it
     # to zerp_read. The reason is that read does not return the list of
     # results in the same order as passed in which breaks sorting
     'object.execute.read': 'object.execute.zerp_read',
 }
+
 
 class ZERPWampUri(object):
     """ Handles the parsing of the procedure URI and converts it into its
@@ -97,7 +52,7 @@ class ZERPWampUri(object):
         self.service_base = config.get('wamp_registration_prefix',u'com.izaber.nexus.zerp')
         self.service_base = unicode(self.service_base)
 
-        uri_elements = details.procedure.split(':')
+        uri_elements = details["procedure"].split(':')
 
         # Format should be
         # For reports it can be
@@ -121,7 +76,8 @@ class ZERPWampUri(object):
     def __repr__(self):
         return u"ZERPWampUri({s.service_base}:{s.database}:{s.model}:{s.service_name})".format(s=self)
 
-class ZERPSession(ApplicationSession):
+
+class ZERPSession(swampyer.WAMPClientTicket):
 
     def zerp_get(self,details,uri=None):
         """ Returns a user session from database or creates a new one
@@ -129,7 +85,7 @@ class ZERPSession(ApplicationSession):
         global CLIENT_CACHE
 
         # authid is the login of the authenticated user
-        login = details.caller_authid
+        login = details["caller_authid"]
         if not login:
             raise ApplicationError(u"com.izaber.zerp.error.invalid_login",
                     u"could not authenticate session")
@@ -148,7 +104,7 @@ class ZERPSession(ApplicationSession):
                     u"could not authenticate session")
 
         # Try and find the record based upon the session
-        session = details.caller
+        session = details["caller"]
         if not session: return
 
         # If we've got a cached session, let's use that
@@ -214,7 +170,6 @@ class ZERPSession(ApplicationSession):
             [prefix].[database]:[model]:[service name]
 
         """
-
         # Returns the ZERP standard arguments that netsvc expects
         # zerp_params = [uri.database, user_uid, sess_key]
         zerp_params = self.zerp_get(details,uri)
@@ -256,15 +211,16 @@ class ZERPSession(ApplicationSession):
         # _logger.log(logging.INFO,"Responding with: '{}'".format(res))
         return res
 
-    def dispatch_model(self,*args,**kwargs):
+    def dispatch_model(self, request, *args,**kwargs):
         """ The function to catch 'model' service based actions in
             ZERP.
         """
 
         try:
-            details = kwargs.get('details')
-            del kwargs['details']
-            _logger.debug(u"Received model request '{}'".format(details.procedure))
+            details = request.details
+            #details = kwargs.get('details')
+            #del kwargs['details']
+            _logger.debug(u"Received model request '{}'".format(details["procedure"]))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
@@ -282,15 +238,14 @@ class ZERPSession(ApplicationSession):
 
         except Exception as ex:
             _logger.warning(u"Request failed because: '{}'".format(unicode(ex)))
-            raise ApplicationError(details.procedure,unicode(ex))
+            raise ApplicationError(details["procedure"],unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
         """ The standard function to do various RPC functions with ZERP.
         """
-
         try:
             details = kwargs.get('details')
-            _logger.debug(u"Received request '{}'".format(details.procedure))
+            _logger.debug(u"Received request '{}'".format(details["procedure"]))
 
             # Check to see if request is somewhat sane
             uri = ZERPWampUri(details)
@@ -312,22 +267,21 @@ class ZERPSession(ApplicationSession):
             import traceback
             traceback.print_exc()
             _logger.warn(u"Error in dispatch because: '{}'".format(ex))
-            raise ApplicationError(details.procedure,unicode(ex))
+            raise ApplicationError(details["procedure"],unicode(ex))
 
     ##########################################################
     # Setup/Teardown callbacks
     ##########################################################
 
-    @inlineCallbacks
-    def onJoin(self, details):
+    def handle_join(self, details):
         """ Executed when the script attaches to the server
         """
-        _logger.info(u"Joined WAMP router. Attempting registration of calls")
+        _logger.info(u"Joined WAMP router. Attempting registration of calls: {}".format(details))
 
         wamp_register = config.get('wamp_register','').split(',')
         for l in wamp_register:
             if '=' in l:
-                ( service_name, db_name ) = l.split('=',1)
+                (service_name, db_name) = l.split('=',1)
                 service_name = service_name.strip()
                 db_name = db_name.strip()
             else:
@@ -352,67 +306,30 @@ class ZERPSession(ApplicationSession):
                                         +':{}:'.format(service_name)
             service_uri = unicode(service_uri)
             _logger.info(u"Registering '{}' on WAMP server".format(service_uri))
-            yield self.register(
-                        self.dispatch_model,
+            res = self.register(
                         service_uri,
-                        options=RegisterOptions(details_arg='details',match=u'prefix')
+                        self.dispatch_model,
+                        details={"match": u"prefix"}
                     )
 
-        yield self.subscribe(
-                    self.onLeave,
-                    u'wamp.session.on_leave',
-                    options=SubscribeOptions(details_arg='details')
-                )
-
-    def onLeave(self, session_id, *args, **kwargs):
+    def handle_disconnect(self):
         """ Executed when script detaches
         """
-        self.zerp_del(session_id)
-
-    def onConnect(self):
-        """ Executed upon ZERP connecting to WAMP router
-        """
-        _logger.info(u"Connected to WAMP router. Attempting login")
-        self.join(unicode(self.config.realm), [u"ticket"], unicode(config.get('wamp_login')))
-
-    def onChallenge(self, challenge):
-        """ Executed when script requires itself to authenticate with the router
-        """
-        if challenge.method == u"ticket":
-            _logger.info(u"WAMP-Ticket challenge received: {}".format(challenge))
-            return config.get(u'wamp_password')
-        else:
-            raise Exception(u"Invalid authmethod {}".format(challenge.method))
-
-class ZERPClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
-    maxDelay = 30
-    def clientConnectionFailed(self, connector, reason):
-        _logger.warn(u"Connection Failed because '{}'".format(reason))
-        ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
-
-    def clientConnectionLost(self, connector, reason):
-        _logger.warn(u"Connection lost because '{}'".format(reason))
-        ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
+        self.zerp_del(self.session_id)
+        _logger.info(u"Disconnected from WAMP router.")
 
 def wamp_start(*a):
     # Sanity check, ensure we have something to connect to
-    wamp_url = unicode(config.get('wamp_url',''))
-    if not wamp_url:
+    wamp_url = unicode(config.get('wamp_url', False))
+    wamp_realm = unicode(config.get('wamp_realm', False))
+    if not (wamp_url and wamp_realm):
         _logger.warn(u"Not starting WAMP services as no configuration found.")
         return
-
-    component_config = ComponentConfig(realm=unicode(config.get('wamp_realm',u'izaber')))
-    session_factory = ApplicationSessionFactory(config=component_config)
-    session_factory.session = ZERPSession
-
-    transport_factory = ZERPClientFactory(session_factory, url=wamp_url, serializers=[JsonSerializer()])
-
-    isSecure, host, port, resource, path, params = parse_url(wamp_url)
-    transport_factory.host = host
-    transport_factory.port = port
-    websocket.connectWS(transport_factory)
-
-    if not reactor.running:
-        reactor.run()
-
+    client = ZERPSession(
+        url=wamp_url,
+        realm=wamp_realm,
+        username=unicode(config.get('wamp_login', '')),
+        password=unicode(config.get('wamp_password', '')),
+        timeout=int(config.get('wamp_timeout', 10)))
+    client.start()
 
