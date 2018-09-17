@@ -36,9 +36,6 @@ import ejson
 
 import res_users
 
-import time
-from random import random
-from time import sleep
 
 _zerp_wamp_monkeypatched = False
 
