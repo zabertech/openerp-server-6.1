@@ -36,6 +36,10 @@ import ejson
 
 import res_users
 
+import time
+from random import random
+from time import sleep
+
 _zerp_wamp_monkeypatched = False
 
 _logger = logging.getLogger(__name__)
@@ -189,8 +193,8 @@ def ddp_decorated_commit(fn):
                             msg=message.msg
                         )
                         message.collection = message.collection.split(':')[1] # Remove database name from collection
-                        wamp.publish(data_uri, args=[message.__dict__])
                         wamp.publish(events_uri, args=[message.__dict__['msg']])
+                        wamp.publish(data_uri, args=[message.__dict__])
                     # Destroy the transaction queue
                     del ddp_transaction_message_queues[self]
                 except Exception, err:
