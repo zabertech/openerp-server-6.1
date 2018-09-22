@@ -23,7 +23,7 @@ class res_users(osv.osv):
         # Look for a cached connection for this user and reuse it if possible
         # otherwise, configure the new connection for the authenticated user.
         connection_hash = (os.getpid(), uid)
-        wamp = wamp_client_connections.get(connection_hash, WAMP())
+        wamp = wamp_client_connections.get(connection_hash, WAMP(timeout=10))
         # An is_connecting state would be nice here so we can wait for a
         # successful connection tobe established
         if not wamp.wamp.is_connected():

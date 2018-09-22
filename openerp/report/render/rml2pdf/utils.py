@@ -129,21 +129,27 @@ def _process_text(self, txt):
         while sps:
             # This is a simple text to translate
             to_translate = tools.ustr(sps.pop(0))
-            result += tools.ustr(self.localcontext.get('translate', lambda x:x)(to_translate))
+            result += str2xml(tools.ustr(self.localcontext.get('translate', lambda x:x)(to_translate)))
             if sps:
+                no_escape_text = False
                 try:
                     txt = None
                     expr = sps.pop(0)
+                    m = re.search('^\s*noescape\s+(.*)',expr)
+                    if m:
+                        no_escape_text = True
+                        expr = m.group(1)
                     txt = eval(expr, self.localcontext)
                     if txt and isinstance(txt, basestring):
                         txt = tools.ustr(txt)
                 except Exception:
                     pass
                 if isinstance(txt, basestring):
-                    result += txt
+                    result += txt if no_escape_text else str2xml(txt)
                 elif txt and (txt is not None) and (txt is not False):
-                    result += ustr(txt)
-        return str2xml(result)
+                    result += ustr(txt) if no_escape_text else str2xml(ustr(txt))
+
+        return result
 
 def text_get(node):
     return ''.join([ustr(n.text) for n in node])
