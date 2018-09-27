@@ -171,6 +171,8 @@ def ddp_decorated_commit(fn):
                     pass
                 return ret
         except:
+            # Destroy the transaction queue
+            del ddp_transaction_message_queues[self]
             raise
         else:
             if len(ddp_transaction_message_queues.get(self, [])):
@@ -190,8 +192,9 @@ def ddp_decorated_commit(fn):
                             msg=message.msg
                         )
                         message.collection = message.collection.split(':')[1] # Remove database name from collection
-                        wamp.publish(events_uri, args=[message.__dict__['msg']])
                         wamp.publish(data_uri, args=[message.__dict__])
+                        wamp.publish(events_uri, args=[message.__dict__['msg']])
+
                     # Destroy the transaction queue
                     del ddp_transaction_message_queues[self]
                 except Exception, err:
