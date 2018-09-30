@@ -29,7 +29,7 @@ import socket
 import sys
 import os
 
-from zerp_wamp import wamp_start
+from zerp_wamp import wamp_start, DATABASE_MAPPINGS
 
 import json
 import ejson
@@ -41,6 +41,14 @@ _zerp_wamp_monkeypatched = False
 
 _logger = logging.getLogger(__name__)
 ddp_transaction_message_queues = {}
+
+REVERSE_DATABASE_MAPPINGS=None
+
+def resolve_wamp_dbname(dbname):
+    global REVERSE_DATABASE_MAPPINGS
+    if not REVERSE_DATABASE_MAPPINGS:
+        REVERSE_DATABASE_MAPPINGS = {v:k for k,v in DATABASE_MAPPINGS.items()}
+    return REVERSE_DATABASE_MAPPINGS[dbname]
 
 def ddp_decorated_write(fn):
     global ddp_transaction_message_queues
@@ -62,7 +70,7 @@ def ddp_decorated_write(fn):
             global ddp_transaction_message_queues
             if not cr in ddp_transaction_message_queues:
                 ddp_transaction_message_queues[cr] = []
-            model = "{}:{}".format(cr.dbname, self._name)
+            model = "{}:{}".format(resolve_wamp_dbname(cr.dbname), self._name)
             if type(ids) in [int, long]:
                 ids = [ids]
 
@@ -105,7 +113,7 @@ def ddp_decorated_create(fn):
             global ddp_transaction_message_queues
             if not cr in ddp_transaction_message_queues:
                 ddp_transaction_message_queues[cr] = []
-            model = "{}:{}".format(cr.dbname, self._name)
+            model = "{}:{}".format(resolve_wamp_dbname(cr.dbname), self._name)
             # Create a new added message for each id of this
             # model which gets created
             if getattr(self, '_disable_wamp_publish_data', False) or getattr(cr, '_disable_wamp_publish_data', False):
@@ -140,7 +148,7 @@ def ddp_decorated_unlink(fn):
         global ddp_transaction_message_queues
         if not cr in ddp_transaction_message_queues:
             ddp_transaction_message_queues[cr] = []
-        model = "{}:{}".format(cr.dbname, self._name)
+        model = "{}:{}".format(resolve_wamp_dbname(cr.dbname), self._name)
 
         # Create a new removed message for each id of this
         # model which gets unlinked
