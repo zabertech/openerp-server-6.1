@@ -240,7 +240,7 @@ class ZERPSession(swampyer.WAMPClientTicket):
             raise Exception(u'WAMP version unhandled')
 
         except Exception as ex:
-            _logger.warning(u"Request failed because: '{}'".format(unicode(ex))
+            _logger.warning(u"Request failed because: '{}'".format(unicode(ex)))
             raise ApplicationError(details["procedure"],unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
