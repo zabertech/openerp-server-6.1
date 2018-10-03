@@ -133,11 +133,11 @@ class ZERPSession(swampyer.WAMPClientTicket):
         # Store the session information
         # Cache the session for faster lookup and continue on
         user_zerp = [uri.database, user_uid, sess_key]
-        CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
 
         cr.commit()
         cr.close()
 
+        CLIENT_CACHE.setdefault(session,{})[uri.database] = user_zerp
         return user_zerp
 
     def zerp_del(self,session):
