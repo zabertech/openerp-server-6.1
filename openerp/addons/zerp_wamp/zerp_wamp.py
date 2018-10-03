@@ -223,8 +223,6 @@ class ZERPSession(swampyer.WAMPClientTicket):
 
         try:
             details = request.details
-            #details = kwargs.get('details')
-            #del kwargs['details']
             _logger.debug(u"Received model request '{}'".format(details["procedure"]))
 
             # Check to see if request is somewhat sane
@@ -242,7 +240,7 @@ class ZERPSession(swampyer.WAMPClientTicket):
             raise Exception(u'WAMP version unhandled')
 
         except Exception as ex:
-            _logger.warning(u"Request failed because: '{}': {}, {}, {}".format(unicode(ex), args, kwargs, uri))
+            _logger.warning(u"Request failed because: '{}'".format(unicode(ex))
             raise ApplicationError(details["procedure"],unicode(ex))
 
     def dispatch_rpc(self,*args,**kwargs):
