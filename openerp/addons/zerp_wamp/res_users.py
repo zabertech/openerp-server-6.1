@@ -28,6 +28,7 @@ class res_users(osv.osv):
         else:
             username = unicode(config.get("wamp_login"))
             password = unicode(config.get("wamp_password"))
+        wamp = WAMPClientTicket()
         wamp.configure(username=username,
                        password=password,
                        url=url,
