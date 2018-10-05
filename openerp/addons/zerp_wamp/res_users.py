@@ -18,23 +18,25 @@ class res_users(osv.osv):
         return self.read(cr, uid, uid, ["login"])["login"]
 
     def wamp_connect(self, cr, uid, context=None):
-        uri_base = unicode(config.get("wamp_uri_base", "com.izaber.wamp"))
+        global wamp_client_connections
         url = unicode(config.get("wamp_url"))
         realm = unicode(config.get("wamp_realm"))
-        timeout = config.get("wamp_timout", 10)
-        if uid != 0:
-            username = unicode(self.wamp_login(cr, uid))
-            password = unicode(self.wamp_api_key(cr, uid))
-        else:
-            username = unicode(config.get("wamp_login"))
-            password = unicode(config.get("wamp_password"))
-        wamp = WAMPClientTicket()
-        wamp.configure(username=username,
-                       password=password,
-                       url=url,
-                       uri_base=uri_base,
-                       realm=realm,
-                       timeout=timeout)
-        wamp.start()
+        if not (url and realm):
+            raise Exception("Error", "Error creating wamp client connection: No wamp_url or wamp_realm configured.")
+        wamp = wamp_client_connections.setdefault((os.getpid(), uid), WAMPClientTicket())
+        if not wamp.is_connected():
+            if uid != 0:
+                username = unicode(self.wamp_login(cr, uid))
+                password = unicode(self.wamp_api_key(cr, uid))
+            else:
+                username = unicode(config.get("wamp_login"))
+                password = unicode(config.get("wamp_password"))
+            wamp.configure(username=username,
+                           password=password,
+                           url=url,
+                           uri_base=unicode(config.get("wamp_uri_base", "com.izaber.wamp")),
+                           realm=unicode(config.get("wamp_realm", "izaber")),
+                           timeout=config.get("wamp_timout", 10))
+            wamp.start()
         return wamp
 
