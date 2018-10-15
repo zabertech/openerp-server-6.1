@@ -1,6 +1,6 @@
 from osv import fields, osv
 from tools import config
-from izaber_wamp import WAMP
+from swampyer import WAMPClientTicket
 import os
 
 wamp_client_connections = {}
@@ -19,31 +19,24 @@ class res_users(osv.osv):
 
     def wamp_connect(self, cr, uid, context=None):
         global wamp_client_connections
-
-        # Look for a cached connection for this user and reuse it if possible
-        # otherwise, configure the new connection for the authenticated user.
-        connection_hash = (os.getpid(), uid)
-        wamp = wamp_client_connections.get(connection_hash, WAMP(timeout=10))
-        # An is_connecting state would be nice here so we can wait for a
-        # successful connection tobe established
-        if not wamp.wamp.is_connected():
-            wamp_client_connections[connection_hash] = wamp
-            uri_base = unicode(config.get("wamp_uri_base", "com.izaber.wamp"))
-            url = unicode(config.get("wamp_url"))
-            realm = unicode(config.get("wamp_realm"))
+        url = unicode(config.get("wamp_url"))
+        realm = unicode(config.get("wamp_realm"))
+        if not (url and realm):
+            raise Exception("Error", "Error creating wamp client connection: No wamp_url or wamp_realm configured.")
+        wamp = wamp_client_connections.setdefault((os.getpid(), uid), WAMPClientTicket())
+        if not wamp.is_connected():
             if uid != 0:
                 username = unicode(self.wamp_login(cr, uid))
                 password = unicode(self.wamp_api_key(cr, uid))
             else:
                 username = unicode(config.get("wamp_login"))
                 password = unicode(config.get("wamp_password"))
-            authmethods = [u"ticket"]
             wamp.configure(username=username,
                            password=password,
                            url=url,
-                           uri_base=uri_base,
-                           realm=realm,
-                           authmethods=authmethods)
-            wamp.run()
+                           uri_base=unicode(config.get("wamp_uri_base", "com.izaber.wamp")),
+                           realm=unicode(config.get("wamp_realm", "izaber")),
+                           timeout=config.get("wamp_timout", 10))
+            wamp.start()
         return wamp
 
