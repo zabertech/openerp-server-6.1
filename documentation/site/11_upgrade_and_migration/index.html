@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>11 upgrade and migration - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#serialization-migration-and-upgrading">Serialization, Migration and Upgrading</a></li>
+            <li><a href="#data-serialization">Data Serialization</a></li>
+            <li><a href="#function-tag">function tag</a></li>
+            <li><a href="#-tag-record">-   Tag: record</a></li>
+            <li><a href="#-optional-attributes-noupdate-0-1">-   Optional attributes: noupdate : 0 | 1</a></li>
+            <li><a href="#-tag-field">-   Tag: field</a></li>
+            <li><a href="#-tag-workflow">-   Tag: workflow</a></li>
+            <li><a href="#-tag-function">-   Tag: function</a></li>
+            <li><a href="#-tag-act95window">-   Tag: act_window</a></li>
+            <li><a href="#-tag-report">-   Tag: report</a></li>
+            <li><a href="#-tag-python">-   Tag: Python</a></li>
+            <li><a href="#-tag-delete">-   Tag: delete</a></li>
+            <li><a href="#-tag-assert">-   Tag: assert</a></li>
+            <li><a href="#-tag-test">-   Tag: test</a></li>
+            <li><a href="#-optional-attributes-none">-   Optional attributes: None</a></li>
+            <li><a href="#data-migration-import-export">Data Migration - Import / Export</a></li>
+            <li><a href="#upgrading">Upgrading</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="serialization-migration-and-upgrading">Serialization, Migration and Upgrading</h1>
+<h2 id="data-serialization">Data Serialization</h2>
+<p>During OpenERP installation, two steps are necessary to create and feed the database:</p>
+<ol>
+<li>Create the SQL tables</li>
+<li>Insert the different data into the tables</li>
+</ol>
+<p>The creation (or modification in the case of an upgrade) of SQL tables is automated thanks to the description of objects in the server.</p>
+<p>With OpenERP, everything except the business logic of objects is stored in the database. We find for example:</p>
+<ul>
+<li>the definitions of the reports,</li>
+<li>the default values for fields,</li>
+<li>the definition of client interfaces for each document (views),</li>
+<li>the relationships between menus, buttons and actions</li>
+<li>etc.</li>
+</ul>
+<p>There must be a mechanism to describe, modify and reload these different kinds of data. OpenERP data may be specified in CSV, XML or YAML serialization files provided by modules, and loaded during module installation/upgrade in order to fill or update the database tables.</p>
+<h3 id="xml-data-serialization">XML Data Serialization</h3>
+<p>Since version 4.2, OpenERP provides an XML-based data serialization format.</p>
+<p>The basic format of an OpenERP XML file is as follows:</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+    &lt;record model=&quot;model.name_1&quot; id=&quot;id_name_1&quot;&gt;
+        &lt;field name=&quot;field1&quot;&gt;
+            field1 content
+        &lt;/field&gt;
+        &lt;field name=&quot;field2&quot;&gt;
+            field2 content
+        &lt;/field&gt;
+        (...)
+    &lt;/record&gt;
+    &lt;record model=&quot;model.name_2&quot; id=&quot;id_name_2&quot;&gt;
+        (...)
+    &lt;/record&gt;
+    (...)
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>Fields contents are strings that must be encoded as UTF-8 in XML files.</p>
+<p>Let's review an example taken from the OpenERP source (base_demo.xml in the base module):</p>
+<pre><code class="xml">&lt;record model=&quot;res.company&quot; id=&quot;main_company&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;OpenERP SA&lt;/field&gt;
+    &lt;field name=&quot;partner_id&quot; ref=&quot;main_partner&quot;/&gt;
+    &lt;field name=&quot;currency_id&quot; ref=&quot;EUR&quot;/&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;res.users&quot; id=&quot;user_admin&quot;&gt;
+    &lt;field name=&quot;login&quot;&gt;admin&lt;/field&gt;
+    &lt;field name=&quot;password&quot;&gt;admin&lt;/field&gt;
+    &lt;field name=&quot;name&quot;&gt;Administrator&lt;/field&gt;
+    &lt;field name=&quot;signature&quot;&gt;Administrator&lt;/field&gt;
+    &lt;field name=&quot;action_id&quot; ref=&quot;action_menu_admin&quot;/&gt;
+    &lt;field name=&quot;menu_id&quot; ref=&quot;action_menu_admin&quot;/&gt;
+    &lt;field name=&quot;address_id&quot; ref=&quot;main_address&quot;/&gt;
+    &lt;field name=&quot;groups_id&quot; eval=&quot;[(6,0,[group_admin])]&quot;/&gt;
+    &lt;field name=&quot;company_id&quot; ref=&quot;main_company&quot;/&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>This last record defines the admin user :</p>
+<ul>
+<li>The fields login, password, etc are straightforward.</li>
+<li>The <strong>ref</strong> attribute allows to fill relations between the records :</li>
+</ul>
+<pre><code class="xml">&lt;field name=&quot;company_id&quot; ref=&quot;main_company&quot;/&gt;
+</code></pre>
+
+<p>The<code>company_id</code> field is a many-to-one relation from the user object to the company object, and <strong>main_company</strong> is the id of to associate.</p>
+<ul>
+<li>The <strong>eval</strong> attribute allows to put some python code in the xml: here the groups_id field is a many2many. For such a field, "[(6,0,[group_admin])]" means : Remove all the groups associated with the current user and use the list [group_admin] as the new associated groups (and group_admin is the id of another record).</li>
+<li>The <strong>search</strong> attribute allows to find the record to associate when you do not know its xml id. You can thus specify a search criteria to find the wanted record. The criteria is a list of tuples of the same form than for the predefined search method. If there are several results, an arbitrary one will be chosen (the first one):</li>
+</ul>
+<p>&lt;field name="partner_id" search="[]" model="res.partner"/&gt;</p>
+<p>This is a classical example of the use of <code>search</code> in demo data: here we do not really care about which partner we want to use for the test, so we give an empty list. Notice the <strong>model</strong> attribute is currently mandatory.</p>
+<p>Some typical XML elements are described below.</p>
+<h4 id="record-tag">Record Tag</h4>
+<p>The addition of new data is made with the <strong>record</strong> tag. This one takes a mandatory attribute : <strong>model</strong>. Model is the object name where the insertion has to be done. The tag record can also take an optional attribute: <strong>id</strong>. If this attribute is given, a variable of this name can be used later on, in the same file, to make reference to the newly created resource ID.</p>
+<p>A <strong>record</strong> tag may contain field tags. They indicate the record's <strong>fields</strong> value. If a field is not specified the default value will be used.</p>
+<h5 id="example">Example</h5>
+<pre><code class="xml">&lt;record model=&quot;ir.actions.report.xml&quot; id=&quot;l0&quot;&gt;
+     &lt;field name=&quot;model&quot;&gt;account.invoice&lt;/field&gt;
+     &lt;field name=&quot;name&quot;&gt;Invoices List&lt;/field&gt;
+     &lt;field name=&quot;report_name&quot;&gt;account.invoice.list&lt;/field&gt;
+     &lt;field name=&quot;report_xsl&quot;&gt;account/report/invoice.xsl&lt;/field&gt;
+     &lt;field name=&quot;report_xml&quot;&gt;account/report/invoice.xml&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h4 id="field-tag">field tag</h4>
+<p>The attributes for the field tag are the following:</p>
+<ul>
+<li>
+<p><strong>name</strong></p>
+<p>:   o mandatory attribute indicating the field name</p>
+</li>
+<li>
+<p><strong>eval</strong></p>
+<p>:   o python expression that indicating the value to add</p>
+</li>
+<li>
+<p><strong>ref</strong></p>
+<p>:   o reference to an id defined in this file</p>
+</li>
+</ul>
+<h2 id="function-tag">function tag</h2>
+<ul>
+<li>model:</li>
+<li>name:</li>
+<li>eval:   o should evaluate to the list of parameters of the method to be called, excluding cr and uid</li>
+</ul>
+<h5 id="example_1">Example</h5>
+<pre><code class="xml">&lt;function 
+    model=&quot;ir.ui.menu&quot; 
+    name=&quot;search&quot; 
+    eval=&quot;[[('name','=','Operations')]]&quot;/&gt;
+</code></pre>
+
+<h4 id="getitem-tag">getitem tag</h4>
+<p>Takes a subset of the evaluation of the last child node of the tag.</p>
+<ul>
+<li>type:   -   int or list</li>
+<li>index</li>
+<li>int or string (a key of a dictionary)</li>
+</ul>
+<h5 id="example_2">Example</h5>
+<p>Evaluates to the first element of the list of ids returned by the function node:</p>
+<pre><code class="xml">&lt;getitem index=&quot;0&quot; type=&quot;list&quot;&gt;
+    &lt;function 
+        model=&quot;ir.ui.menu&quot; 
+        name=&quot;search&quot; 
+        eval=&quot;[[('name','=','Operations')]]&quot;/&gt;
+&lt;/getitem&gt;
+</code></pre>
+
+<h3 id="yaml-data-serialization">YAML Data Serialization</h3>
+<p>YAML is a <strong>human-readable</strong> data serialization format that takes concepts from programming languages such as C, Perl, and <strong>Python</strong>, and ideas from <strong>XML</strong> and the data format of electronic mail. YAML stands for <em>YAML Ain't Markup Language</em> (yes, that's a recursive acronym). YAML is available as a format for OpenERP data <strong>as of OpenERP 6.0</strong>, featuring the following advantages:</p>
+<ul>
+<li>User friendly format as an alternative to our current XML data format.</li>
+<li>Same system to load data or tests, integrated in modules.</li>
+<li>Built in OpenERP so that you can develop complex Python tests.</li>
+<li>Simpler for non developers to write functional tests.</li>
+</ul>
+<p>The following section compares an XML record with an equivalent YAML record.</p>
+<p>First the XML Record using the current XML serialization format (see previous section &lt;xml-serialization&gt;)</p>
+<pre><code class="xml">&lt;!--
+    Resource: sale.order
+--&gt;
+
+&lt;record id=&quot;order&quot; model=&quot;sale.order&quot;&gt;
+  &lt;field name=&quot;shop_id&quot; ref=&quot;shop&quot;/&gt;
+  &lt;field model=&quot;product.pricelist&quot; name=&quot;pricelist_id&quot; search=&quot;[]&quot;/&gt;
+  &lt;field name=&quot;user_id&quot; ref=&quot;base.user_root&quot;/&gt;
+  &lt;field model=&quot;res.partner&quot; name=&quot;partner_id&quot; search=&quot;[]&quot;/&gt;
+  &lt;field model=&quot;res.partner.address&quot; name=&quot;partner_invoice_id search=&quot;[]&quot;/&gt;
+  &lt;field model=&quot;res.partner.address&quot; name=&quot;partner_shipping_id&quot; search=&quot;[]&quot;/&gt;
+  &lt;field model=&quot;res.partner.address&quot; name=&quot;partner_order_id&quot; search=&quot;[]&quot;/&gt;
+&lt;/record&gt;
+
+&lt;!--
+      Resource: sale.order.line
+--&gt;
+
+&lt;record id=&quot;line&quot; model=&quot;sale.order.line&quot;&gt;
+  &lt;field name=&quot;order_id&quot; ref=&quot;order&quot;/&gt;
+  &lt;field name=&quot;name&quot;&gt;New server config + material&lt;/field&gt;
+  &lt;field name=&quot;price_unit&quot;&gt;123&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record id=&quot;line1&quot; model=&quot;sale.order.line&quot;&gt;
+  &lt;field name=&quot;order_id&quot; ref=&quot;order&quot;/&gt;
+  &lt;field name=&quot;name&quot;&gt;[PC1] Basic PC&lt;/field&gt;
+  &lt;field name=&quot;price_unit&quot;&gt;450&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h4 id="yaml-record">YAML Record</h4>
+<pre><code>#&lt;!--
+#       Resource: sale.order
+#   --&gt;
+
+
+-
+ !record {model: sale.order, id: sale_order_so4}:
+   amount_total: 3263.0
+   amount_untaxed: 3263.0
+   create_date: '2010-04-06 10:45:14'
+   date_order: '2010-04-06'
+   invoice_quantity: order
+   name: SO001
+   order_line:
+     - company_id: base.main_company
+       name: New server config + material
+       order_id: sale_order_so4
+       price_unit: 123.0
+     - company_id: base.main_company
+       name: '[PC1] Basic PC'
+       order_id: sale_order_so4
+       price_unit: 450.0
+   order_policy: manual
+   partner_id: base.res_partner_agrolait
+   partner_invoice_id: base.main_address
+   partner_order_id: base.main_address
+   partner_shipping_id: base.main_address
+   picking_policy: direct
+   pricelist_id: product.list0
+   shop_id: sale.shop
+</code></pre>
+<h4 id="yaml-tags">YAML Tags</h4>
+<h5 id="data">data</h5>
+<ul>
+<li><strong>Tag</strong>: data</li>
+<li><strong>Compulsory attributes</strong>: None</li>
+<li><strong>Optional attributes</strong>: noupdate : 0 | 1</li>
+<li><strong>Child_tags</strong>:<ul>
+<li>menuitem</li>
+<li>record</li>
+<li>workflow</li>
+<li>delete</li>
+<li>act_window</li>
+<li>assert</li>
+<li>report</li>
+<li>function</li>
+<li>ir_set</li>
+</ul>
+</li>
+<li><strong>Example</strong>: :<pre><code>-
+  !context
+   noupdate: 0
+</code></pre>
+</li>
+</ul>
+<h5 id="record">record</h5>
+<h2 id="-tag-record">-   <strong>Tag</strong>: record</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+</code></pre>
+<h2 id="-optional-attributes-noupdate-0-1">-   <strong>Optional attributes</strong>: noupdate : 0 | 1</h2>
+<pre><code>**Child\_tags**:
+
+:   -   field
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   id
+    -   forcreate
+    -   context</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-
+  !record {model: sale.order, id: order}:
+     name: "[PC1] Basic PC"
+     amount_total: 3263.0
+     type_ids:
+       - project_tt_specification
+       - project_tt_development
+       - project_tt_testing
+     order_line:
+         - name: New server config
+            order_id: sale_order_so4
+         - name: '[PC1] Basic PC'
+            order_id: sale_order_so4
+</code></pre>
+</li>
+</ul>
+<h5 id="field">field</h5>
+<h2 id="-tag-field">-   <strong>Tag</strong>: field</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   name
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   type
+    -   ref
+    -   eval
+    -   domain
+    -   search
+    -   model
+    -   use</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>:</p>
+<p>:   -   text node</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-price_unit: 450
+-product_id: product.product_product_pc1
+</code></pre>
+</li>
+</ul>
+<h5 id="workflow">workflow</h5>
+<h2 id="-tag-workflow">-   <strong>Tag</strong>: workflow</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+    -   action
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   uid
+    -   ref</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>:</p>
+<p>:   -   value</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-
+ !workflow {action: invoice_open, model: account.invoice}:
+  - eval: "obj(ref('test_order_1')).invoice_ids[0].id"
+    model: sale.order
+  - model: account.account
+    search: [('type', '=', 'cash')]
+</code></pre>
+</li>
+</ul>
+<h5 id="function">function</h5>
+<h2 id="-tag-function">-   <strong>Tag</strong>: function</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+    -   name
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   id
+    -   eval</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>:</p>
+<p>:   -   value
+    -   function</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-
+ !function {model: account.invoice, name: pay_and_reconcile}:
+  -eval: "[obj(ref('test_order_1')).id]"
+   model: sale.order
+</code></pre>
+</li>
+</ul>
+<h5 id="value">value</h5>
+<ul>
+<li><strong>Tag</strong>: value</li>
+<li><strong>Compulsory attributes</strong>: None</li>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   model
+    -   search
+    -   eval</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>: None</p>
+</li>
+<li><strong>Example</strong>: :<pre><code>-eval: "[obj(ref('test_order_1')).id]"
+ model: sale.order
+</code></pre>
+</li>
+</ul>
+<h5 id="menuitem">menuitem</h5>
+<ul>
+<li><strong>Tag</strong>: menuitem</li>
+<li><strong>Compulsory attributes</strong>: None</li>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   id
+    -   name
+    -   parent
+    -   icon
+    -   action
+    -   string
+    -   sequence
+    -   groups
+    -   type
+    -   menu</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>: None</p>
+</li>
+<li><strong>Example</strong>: :<pre><code>-
+ !menuitem {sequence: 20, id: menu_administration,
+  name: Administration,
+  icon: terp-administration}
+</code></pre>
+</li>
+</ul>
+<h5 id="act95window">act_window</h5>
+<h2 id="-tag-act95window">-   <strong>Tag</strong>: act_window</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   id
+    -   name
+    -   res\_model
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<blockquote>
+<ul>
+<li>domain</li>
+<li>src_model</li>
+<li>context</li>
+<li>view</li>
+<li>view_id</li>
+<li>view_type</li>
+<li>view_mode</li>
+<li>multi</li>
+<li>target</li>
+<li>key2</li>
+<li>groups</li>
+</ul>
+</blockquote>
+</li>
+<li>
+<p><strong>Child_tags</strong>: None</p>
+</li>
+<li><strong>Example</strong>: :<pre><code>-
+  !act_window {target: new,
+  res_model: wizard.ir.model.menu.create,
+  id:act_menu_create, name: Create Menu}
+</code></pre>
+</li>
+</ul>
+<h5 id="report">report</h5>
+<h2 id="-tag-report">-   <strong>Tag</strong>: report</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   string
+    -   model
+    -   name
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<blockquote>
+<ul>
+<li>id</li>
+<li>report</li>
+<li>multi</li>
+<li>menu</li>
+<li>keyword</li>
+<li>rml</li>
+<li>sxw</li>
+<li>xml</li>
+<li>xsl</li>
+<li>auto</li>
+<li>header</li>
+<li>attachment</li>
+<li>attachment_use</li>
+<li>groups</li>
+</ul>
+</blockquote>
+</li>
+<li>
+<p><strong>Child_tags</strong>: None</p>
+</li>
+<li><strong>Example</strong>: :<pre><code>-
+  !report {string: Technical guide,
+   auto: False, model: ir.module.module,
+   id: ir_module_reference_print,
+   rml: base/module/report/ir_module_reference.rml,
+   name: ir.module.reference}
+</code></pre>
+</li>
+</ul>
+<h5 id="ir95set">ir_set</h5>
+<ul>
+<li><strong>Tag</strong>: ir_set</li>
+<li><strong>Compulsory attributes</strong>: None</li>
+<li><strong>Optional attributes</strong>: None</li>
+<li>
+<p><strong>Child_tags</strong>:</p>
+<p>:   -   field</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-
+ !ir_set:
+ args: "[]"
+ name: account.seller.costs
+ value: tax_seller
+</code></pre>
+</li>
+</ul>
+<h5 id="python">python</h5>
+<h2 id="-tag-python">-   <strong>Tag</strong>: Python</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+</code></pre>
+<ul>
+<li><strong>Optional attributes</strong>: None</li>
+<li><strong>Child_tags</strong>: None</li>
+<li><strong>Example</strong>: :<pre><code>Python code
+</code></pre>
+</li>
+</ul>
+<h5 id="delete">delete</h5>
+<h2 id="-tag-delete">-   <strong>Tag</strong>: delete</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   id
+    -   search</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>: None</p>
+</li>
+<li><strong>Example</strong>: :<pre><code>-
+  !delete {model: ir.actions, search: "[(model,like,auction.)]"}
+</code></pre>
+</li>
+</ul>
+<h5 id="assert">assert</h5>
+<h2 id="-tag-assert">-   <strong>Tag</strong>: assert</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   model
+</code></pre>
+<ul>
+<li>
+<p><strong>Optional attributes</strong>:</p>
+<p>:   -   id
+    -   search
+    -   string</p>
+</li>
+<li>
+<p><strong>Child_tags</strong>:</p>
+<p>:   -   test</p>
+</li>
+<li>
+<p><strong>Example</strong>: :</p>
+<pre><code>-
+  !assert {model: sale.order,
+   id: test_order, string: order in progress}:
+     - state == "progress"
+</code></pre>
+</li>
+</ul>
+<h5 id="test">test</h5>
+<h2 id="-tag-test">-   <strong>Tag</strong>: test</h2>
+<pre><code>**Compulsory attributes**:
+
+:   -   expr
+</code></pre>
+<h2 id="-optional-attributes-none">-   <strong>Optional attributes</strong>: None</h2>
+<pre><code>**Child\_tags**:
+
+:   -   text node
+</code></pre>
+<ul>
+<li><strong>Example</strong>:<pre><code>- picking_ids[0].state == "done"
+</code></pre>
+</li>
+</ul>
+<h5 id="url">url</h5>
+<ul>
+<li><strong>Tag</strong>: url</li>
+<li><strong>Compulsory attributes</strong>: -</li>
+<li><strong>Optional attributes</strong>: -</li>
+<li><strong>Child_tags</strong>: -</li>
+<li><strong>Example</strong>: -</li>
+</ul>
+<h3 id="writing-yaml-tests">Writing YAML Tests</h3>
+<div class="admonition note">
+
+Please see also section yaml-testing-guidelines
+
+</div>
+
+<p><strong>Write manually</strong></p>
+<p>:   -   Record CRUD
+    -   Workflow transition
+    -   Assertions (one expression like in XML)
+    -   Pure Python code</p>
+<p><strong>Use base_module_record(er)</strong></p>
+<ul>
+<li>Generate YAML file with record and workflow</li>
+</ul>
+<p><img alt="" src="../images/record_object.png" /></p>
+<ul>
+<li>Update this YAML with assertions / Python code</li>
+</ul>
+<div class="admonition warning">
+
+Important
+
+As yaml is structured with indentation(like Python), each child tag(sub-tag) must be indented as compared to its parent tag.
+
+</div>
+
+<h4 id="field-tag_1">Field Tag</h4>
+<ul>
+<li>
+<p>text</p>
+<p>:   -   </p>
+<pre><code>    text with special characters at beginning or at end must be enclosed with double quotes.
+
+    :   **Ex: name: "\[PC1\] Basic PC"**
+</code></pre>
+</li>
+<li>
+<p>integer and float</p>
+<p>:   <strong>Ex: price_unit: 450</strong> <strong>Ex: amount_total: 3263.0</strong></p>
+</li>
+<li>
+<p>boolean</p>
+<p>:   <strong>active: 1</strong></p>
+</li>
+<li>
+<p>datetime</p>
+<p>:   <strong>date_start: str(time.localtime()[0] - 1) + -08-07</strong></p>
+</li>
+<li>
+<p>selection</p>
+<p>:   -   </p>
+<pre><code>    give the shortcut
+
+    :   **Ex: title: M.**
+</code></pre>
+</li>
+<li>
+<p>many2one</p>
+<p>:   -   </p>
+<pre><code>    if its a reference to res\_id, specify the res\_id
+
+    :   **Ex: user\_id: base.user\_root**
+
+-
+
+    if its value is based on search criteria specify the model to search on and the criteria
+
+    :   **Ex: object\_id: !ref {model: ir.model, search: "\[('model','=','crm.claim')\]”}**
+</code></pre>
+</li>
+<li>
+<p>one2many</p>
+<p>:   -   </p>
+<pre><code>    start each record in one2many field on a new line with a space and a hyphen
+
+    :   **Ex: order\_line:** **name: New server config** **order\_id: sale\_order\_so4** **......**
+
+        **name: '\[PC1\] Basic PC'** **order\_id: sale\_order\_so4** **......**
+</code></pre>
+</li>
+<li>
+<p>many2many</p>
+<p>:   -   </p>
+<pre><code>    start each record in many2many field with a space and a hyphen
+
+    :   **Ex: type\_ids:** **- project\_tt\_specification** **- project\_tt\_development** **- project\_tt\_testing**
+</code></pre>
+</li>
+</ul>
+<h4 id="value-tag">Value tag</h4>
+<ul>
+<li>
+<p>if the value can be evaluated(like res_id is available), we write value tag as follows:</p>
+<p>:   <strong>-</strong> <strong>!function {model: account.invoice, name: pay_and_reconcile}:</strong> <strong>- eval: "obj(ref('test_order_1')).amount_total"</strong> <strong>model: sale.order</strong></p>
+<pre><code>This will fetch the 'amount\_total' value of a 'sale.order' record with res\_id 'test\_order\_1'
+</code></pre>
+</li>
+<li>
+<p>If the value is to be searched on some model based on a criteria, we write value tag as follows:</p>
+<p>:   <strong>-</strong> <strong>!function {model: account.invoice, name: pay_and_reconcile}:</strong> <strong>- model: account.account</strong> <strong>search: "[('type', '=', 'cash')]"</strong> This will fetch all those account.account records whose type is equal to 'cash'</p>
+</li>
+</ul>
+<h4 id="test-tag">Test Tag</h4>
+<ul>
+<li>
+<p>specify the test directly</p>
+<p>:   <strong>Ex: - picking_ids[0].state == "done"</strong> <strong>- state == "manual"</strong></p>
+</li>
+</ul>
+<h4 id="comment">comment</h4>
+<p><strong>#&lt;!-- Resource: sale.order --&gt;</strong></p>
+<h4 id="asserts-and-python-code">Asserts and Python code</h4>
+<p>To create an invoice, python code could be written as:</p>
+<p><strong>-</strong></p>
+<p>:   </p>
+<pre><code>**!python {model: account.invoice}: |**
+
+:   **self.action\_move\_create(cr, uid, \[ref("invoice1")\])**
+</code></pre>
+<p>The invoice must be in draft state:</p>
+<p><strong>-</strong></p>
+<p>:   </p>
+<pre><code>**!assert {model: account.invoice , id: invoice1, string: "the invoice is now in Draft state"}:**
+
+:   **- state == "draft"**
+</code></pre>
+<p>To test that all account are in a tree data structure, we write the below python code:</p>
+<p><strong>-</strong></p>
+<p>:   </p>
+<pre><code>**!python {model: account.account}:**
+
+:   **ids = self.search(cr, uid, \[\])**
+
+    **accounts\_list = self.read(cr, uid, ids\['parent\_id','parent\_left','parent\_right'\])**
+
+    **accounts = dict((x\['id'\], x) for x in accounts\_list)**
+
+    **log("Testing parent structure for %d accounts", len(accounts\_list))**
+
+    **for a in accounts\_list:**
+
+    :
+
+        **if a\['parent\_id'\]:**
+
+        :   **assert a\['parent\_left'\]&amp;gt;accounts\[a\['parent\_id'\]\[0\]\]\['parent\_left'\]**
+
+            **assert a\['parent\_right'\]&amp;lt;accounts\[a\['parent\_id'\]\[0\]\]\['parent\_right'\]**
+
+        **assert a\['parent\_left'\]&amp;lt;a\['parent\_right'\]**
+
+    **for a2 in accounts\_list:**
+
+    &gt; **assert not ((a2\['parent\_right'\]&amp;gt;a\['parent\_left'\])and**
+    &gt;
+    &gt; :   **(a2\['parent\_left'\]&amp;lt;a\['parent\_left'\])and**
+    &gt;
+    &gt;     **(a2\['parent\_right'\]&amp;lt;a\['parent\_right'\]))**
+    &gt;
+    &gt;     **if a2\['parent\_id'\]==a\['id'\]:**
+    &gt;
+    &gt;     :   **assert(a2\['parent\_left'\]&amp;gt;a\['parent\_left'\])and(a2\['parent\_right'\]&amp;lt;a\['parent\_right'\])**
+    &gt;
+</code></pre>
+<h4 id="running-tests">Running tests</h4>
+<ul>
+<li>Save the file with '.yml' extension</li>
+<li>Add the yaml file under 'demo_xml' in terp file</li>
+<li>Run the server with '--log-level=test' option</li>
+</ul>
+<h3 id="csv-data-serialization">CSV Data Serialization</h3>
+<p>Since version 4.2, OpenERP provides a Comma-Separated-Values (CSV), spreadsheet-compatible data serialization format.</p>
+<p>The basic format of an OpenERP CSV file is as follows:</p>
+<pre><code>"id","name","model_id:id","group_id:id","perm_read","perm_write","perm_create","perm_unlink"
+"access_product_uom_categ_manager","product.uom.categ manager","model_product_uom_categ","product.group_product_manager",1,1,1,1
+"access_product_uom_manager","product.uom manager","model_product_uom","product.group_product_manager",1,1,1,1
+"access_product_ul_manager","product.ul manager","model_product_ul","product.group_product_manager",1,1,1,1
+"access_product_category_manager","product.category manager","model_product_category","product.group_product_manager",1,1,1,1
+"access_product_template_manager","product.template manager","model_product_template","product.group_product_manager",1,1,1,1
+"access_product_product_manager","product.product manager","model_product_product","product.group_product_manager",1,1,1,1
+"access_product_packaging_manager","product.packaging manager","model_product_packaging","product.group_product_manager",1,1,1,1
+"access_product_uom_categ_user","product.uom.categ.user","model_product_uom_categ","base.group_user",1,0,0,0
+"access_product_uom_user","product.uom.user","model_product_uom","base.group_user",1,0,0,0
+"access_product_ul_user","product.ul.user","model_product_ul","base.group_user",1,0,0,0
+"access_product_category_user","product.category.user","model_product_category","base.group_user",1,0,0,0
+"access_product_template_user","product.template.user","model_product_template","base.group_user",1,0,0,0
+"access_product_product_user","product.product.user","model_product_product","base.group_user",1,0,0,0
+"access_product_packaging_user","product.packaging.user","model_product_packaging","base.group_user",1,0,0,0
+</code></pre>
+<h4 id="importing-from-a-csv">Importing from a CSV</h4>
+<p>Instead of using .XML file, you can import .CSV files. It is simpler but the migration system does not migrate the data imported from the .CSV files. It's like the noupdate attribute in .XML files. It's also more difficult to keep track of relations between resources and it is slower at the installation of the server.</p>
+<p>Use this only for [demo] data that will never been upgraded from one version of OpenERP to another.</p>
+<p>The name of the object is the name of the CSV file before the first '-'. You must use one file per object to import. For example, to import a file with partners (including their multiple contacts and events), the file must be named like one of the following example:</p>
+<ul>
+<li>res.partner.csv</li>
+<li>res.partner-tiny_demo.csv</li>
+<li>res.partner-tiny.demo.csv</li>
+</ul>
+<h4 id="structure-of-the-csv-file">Structure of the CSV file</h4>
+<ul>
+<li>Separator to use: <code>,</code></li>
+<li>Quote character for strings: <code>"</code> (optional if no separator is found in field values)</li>
+<li>Encoding to use: <code>UTF-8</code></li>
+<li>No whitespace allowed around separators if not using quote characters</li>
+<li>Be sure to configure your CSV export software (e.g. spreadsheet editor) with the above parameters</li>
+</ul>
+<h4 id="exporting-demo-data-and-import-it-from-a-module">Exporting demo data and import it from a module</h4>
+<p>You can import .CSV file that have been exported from the OpenERP client. This is interesting to create your own demo module. But both formats are not exactly the same, mainly due to the conversion: Structured Data -&gt; Flat Data -&gt; Structured Data.</p>
+<ul>
+<li>
+<p>The name of the column (first line of the .CSV file) use the end user term in his own language when you export from the client. If you want to import from a module, you must convert the first column using the fields names. Example, from the partner form:</p>
+<pre><code>Name,Code,Contacts/Contact Name,Contacts/Street,Contacts/Zip
+</code></pre>
+<p>becomes:</p>
+<pre><code>name,ref,address/name,address/street,address/zip
+</code></pre>
+</li>
+<li>
+<p>When you export from the OpenERP client, you can select any many2one fields and their child's relation. When you import from a module, OpenERP tries to recreate the relations between the two resources. For example, do not export something like this from a sale order form - otherwise OpenERP will not be able to import your file:</p>
+<pre><code>Order Description,Partner/Name,Partner/Payable,Partner/Address/Name
+</code></pre>
+</li>
+<li>
+<p>To find the link for a many2one or many2many field, the server uses the name_search function when importing. So, for a many2one field, it is better to export the field 'name' or 'code' of the related resource only. Use the more unique one. Be sure that the field you export is searchable by the name_search function. (the 'name' column is always searchable):</p>
+<pre><code>Order Description,Partner/Code
+</code></pre>
+</li>
+<li>
+<p>Change the title of the column for all many2many or many2one fields. It's because you export the related resource and you import a link on the resource. Example from a sale order: Partner/Code should become partner_id and not partner_id/code. If you kept the <code>/code</code>, OpenERP will try to create those entries in the database instead of finding references to existing ones.</p>
+</li>
+<li>
+<p>Many2many fields. If all the exported data contains 0 or 1 relation on each many2many fields, there will be no problem. Otherwise, the export will result in one line per many2many. The import function expects to get all many2many relations in one column, separated by a comma.</p>
+<p>So, you have to make the transformation. For example, if the categories "Customer" and "Supplier" already exists:</p>
+<pre><code>name,category_id
+Smith, "Customer, Supplier"
+</code></pre>
+<p>If you want to create these two categories you can try :</p>
+<pre><code>name,category_id/name
+Smith, "Customer, Supplier"
+</code></pre>
+<p>But this does not work as expected: a category "Customer, Supplier" is created. The solution is to create an empty line with only the second category:</p>
+<pre><code>name,category_id/name
+Smith, Customer
+,Supplier
+</code></pre>
+<p>Note the comma before "Supplier"!</p>
+</li>
+<li>
+<p>Read only fields. Do not try to import read only fields like the amount receivable or payable for a partner. Otherwise, OpenERP will not accept to import your file.</p>
+</li>
+<li>Exporting trees. You can export and import tree structures using the parent field. You just have to take care of the import order. The parent have to be created before his child's.</li>
+</ul>
+<h4 id="use-record-id-like-in-xml-file">Use record id like in xml file</h4>
+<p>It's possible to define an id for each line of the csv file. This allow to define references between records:</p>
+<p>id, name, parent_id:id record_one, Father, record_two, Child, record_one</p>
+<p>If you do this, the line with the parent data must be before the child lines in the file.</p>
+<h3 id="multiple-csv-files">Multiple CSV Files</h3>
+<h4 id="importing-from-multiple-csv-a-full-group-of-linked-data">Importing from multiple CSV a full group of linked data</h4>
+<p>It's possible to import a lot of data, with multiple CSV files imported as a single operation. Assume we have a database with books and authors with a relation many2many between book and author.</p>
+<p>And that you already have a file with a lot of books (like a library) and an other file with a lot of authors and a third file with the links between them.</p>
+<p>How to import that easily in openERP ?</p>
+<h4 id="definition-of-an-import-module">Definition of an import module</h4>
+<p>You can do this in the module you have defined to manage yours books and authors. but Sometimes, the tables to import can also be in several modules.</p>
+<p>For this example, let's say that 'book' object is defined in a module called 'library_management' and that 'Author' object in a module called 'contact_name'.</p>
+<p>In this case, you can create a 'fake' module, just to import the data for all these multiples modules. Call this importation module : 'import_my_books'.</p>
+<p>You create this module as others modules of OpenObject :</p>
+<ol>
+<li>create a folder 'import_my_books'</li>
+<li>inside, create a '__init__.py' file with only one line : import import_my_books</li>
+<li>again, in the same folder, create a '__openerp__.py' file and in this file, write the following code :</li>
+</ol>
+<pre><code class="python"># -*- encoding: utf-8 -*-
+{
+  'name': 'My Book Import',
+  'category': 'Data Module 1',
+  'init_xml':[],
+  'author': 'mySelf &amp; I',
+  'depends': ['base','library_management','contact_name'],
+  'version': '1.0',
+  'active': False,
+  'demo_xml': [],
+  'update_xml':['contact_name.author.csv','library.book.csv'],
+  'installable': True
+}
+</code></pre>
+
+<h4 id="creation-of-csv-files">Creation of CSV files</h4>
+<p>For the CSV files, you'll import one after the other.</p>
+<p>So you have to choose in which way you'll treat the many2many relation. For our example, we've choose to import all the authors, then all the books with the links to the authors.</p>
+<ol>
+<li>authors CSV file</li>
+</ol>
+<p>You have to put your data in a CSV file without any link to books (because the book ids will be known only AFTERWARDS...) For example : ("contact_name.author.csv")</p>
+<pre><code>id,last_name,first_name,type
+author_1,Bradley,Marion Zimmer,Book writer
+author_2,"Szu T'su",,Chinese philosopher
+author_3,Zelazny,Roger,Book writer
+author_4,Arleston,Scotch,Screen Writer
+author_5,Magnin,Florence,Comics Drawer
+...
+</code></pre>
+<ol>
+<li>Books CSV file</li>
+</ol>
+<p>Here, you can put the data about your books, but also, the links to the authors, using the same id as the column 'id' of the author CSV file. For example : ("library.book.csv" )</p>
+<pre><code>id,title,isbn,pages,date,author_ids:id
+book_a,Les Cours du Chaos,1234567890123,268,1975-12-25,"author_3"
+book_b,"L'art de la Guerre, en 219 volumes",1234567890124,1978-01-01,"author_2"
+book_c,"new marvellous comics",1587459248579,2009-01-01,"author_5,author_4"
+...
+</code></pre>
+<p>Five remarks :</p>
+<ol>
+<li>the field content must be enclosed in double quotes (") if there is a double quote or a comma in the field.</li>
+<li>the dates are in the format YYYY-MM-DD</li>
+<li>if you have many ids in the same column, you must separate them with a comma, and, by the way, you must enclosed the content of the column between double quotes...</li>
+<li>the name of the field is the same as the name of the field in the class definition AND must be followed by ':id' if the content is an ID that must be interpreted by the import module. In fact, "author_4" will be transformed by the import module in an integer id for the database module and this numerical id will be put also in the table between author and book, not the literal ID (author_4).</li>
+<li>the encoding to be used by the CSV file is the 'UTF-8' encoding</li>
+</ol>
+<h2 id="data-migration-import-export">Data Migration - Import / Export</h2>
+<h3 id="data-importation">Data Importation</h3>
+<h4 id="introduction">Introduction</h4>
+<p>There are different methods to import your data into OpenERP:</p>
+<ul>
+<li>Through the web-service interface</li>
+<li>Using CSV files through the client interface</li>
+<li>Building a module with .XML or .CSV files with the content</li>
+<li>Directly into the SQL database, using an ETL</li>
+</ul>
+<h4 id="importing-data-through-a-module">Importing data through a module</h4>
+<p>The best way to import data in OpenERP is to build a module that integrates all the data you want to import. So, when you want to import all the data, you just have to install the module and OpenERP manages the different creation operations. When you have lots of different data to import, we sometimes create different modules.</p>
+<p>So, let's create a new module where we will store all our data. To do this, from the addons directory, create a new module called data_yourcompany.</p>
+<ul>
+<li>mkdir data_yourcompany</li>
+<li>cd data_yourcompany</li>
+<li>touch __init__.py</li>
+</ul>
+<p>You must also create a file called __openerp__.py in this new module. Write the following content in this module file description.</p>
+<pre><code class="python">{
+  'name': 'Module for Data Importation',
+  'version': '1.0',
+  'category': 'Generic Modules/Others',
+  'description': &quot;Sample module for data importation.&quot;,
+  'author': 'Tiny',
+  'website': 'http://www.openerp.com',
+  'depends': ['base'],
+  'init_xml': [
+      'res.partner.csv',
+      'res.partner.address.csv'
+  ],
+  'update_xml': [],
+  'installable': True,
+  'active': False,
+}
+</code></pre>
+
+<p>The following module will import two different files:</p>
+<ul>
+<li>res.partner.csv : a CSV file containing records of the res.partner object</li>
+<li>res.partner.address.csv : a CSV file containing records of the res.partner.address object</li>
+</ul>
+<p>Once this module is created, you must load data from your old application to .CSV file that will be loaded in OpenERP. OpenERP has a builtin system to manage identifications columns of the original software.</p>
+<p>For this exercise, we will load data from another OpenERP database called old. As this database is in SQL, it's quite easy to export the data using the command line postgresql client: psql. As to get a result that looks like a .CSV file, we will use the following arguments of psql:</p>
+<ul>
+<li>-A : display records without space for the row separators</li>
+<li>-F , : set the separator character as ','</li>
+<li>--pset footer : don't write the latest line that looks like "(21 rows)"</li>
+</ul>
+<p>When you import a .CSV file in OpenERP, you can provide a 'id' column that contains a uniq identification number or string for the record. We will use this 'id' column to refer to the ID of the record in the original application. As to refer to this record from a many2one field, you can use 'FIELD_NAME:id'. OpenERP will re-create the relationship between the record using this uniq ID.</p>
+<p>So let's start to export the partners from our database using psql: :: :</p>
+<pre><code>psql trunk -c "select 'partner_'||id as id,name from res_partner" 
+           -A -F , --pset footer &gt; res.partner.csv
+</code></pre>
+<p>This creates a res.partner.csv file containing a structure that looks like this:</p>
+<pre><code>id,name
+partner_2,ASUStek
+partner_3,Agrolait
+partner_4,Camptocamp
+partner_5,Syleam
+</code></pre>
+<p>By doing this, we generated data from the res.partner object, by creating a uniq identification string for each record, which is related to the old application's ID.</p>
+<p>Now, we will export the table with addresses (or contacts) that are linked to partners through the relation field: partner_id. We will proceed in the same way to export the data and put them into our module:</p>
+<pre><code>psql trunk -c "select 'partner_address'||id as id,name,'partner_'||
+              partner_id as \"partner_id:id\" from res_partner_address" 
+              -A -F , --pset footer &gt; res.partner.address.csv
+</code></pre>
+<p>This should create a file called res.partner.address with the following data:</p>
+<pre><code>id,name,partner_id:id
+partner_address2,Benoit Mortier,partner_2
+partner_address3,Laurent Jacot,partner_3
+partner_address4,Laith Jubair,partner_4
+partner_address5,Fabien Pinckaers,partner_4
+</code></pre>
+<p>When you will install this module, OpenERP will automatically import the partners and then the address and recreate efficiently the link between the two records. When installing a module, OpenERP will test and apply the constraints for consistency of the data. So, when you install this module, it may crash, for example, because you may have different partners with the same name in the system. (due to the uniq constraint on the name of a partner). So, you have to clean your data before importing them.</p>
+<p>If you plan to upload thousands of records through this technique, you should consider using the argument '-P' when running the server.</p>
+<pre><code>openerp_server.py -P status.pickle --init=data_yourcompany
+</code></pre>
+<p>This method provides a faster importation of the data and, if it crashes in the middle of the import, it will continue at the same line after rerunning the server. This may preserves hours of testing when importing big files.</p>
+<h4 id="using-openerps-etl">Using OpenERP's ETL</h4>
+<p>The next version of OpenERP will include an ETL module to allow you to easily manages complex import jobs. If you are interested in this system, you can check the complete specifications and the available prototype at this location:</p>
+<p>bzr branch lp:\~openerp-commiter/openobject-addons/trunk-extra-addons/etl</p>
+<p>... to be continued ...</p>
+<h3 id="data-loading">Data Loading</h3>
+<p>During OpenERP installation, two steps are necessary to create and feed the database:</p>
+<ol>
+<li>Create the SQL tables</li>
+<li>Insert the different data into the tables</li>
+</ol>
+<p>The creation (or modification in the case of an upgrade) of SQL tables is automated thanks to the description of objects in the server.</p>
+<p>Into OpenERP, all the logic of the application is stored in the database. We find for example:</p>
+<ul>
+<li>the definitions of the reports,</li>
+<li>the object default values,</li>
+<li>the form description of the interface client,</li>
+<li>the relations between the menu and the client buttons, ...</li>
+</ul>
+<p>There must be a mechanism to describe, modify and reload the different data. These data are represented into a set of XML files that can possibly be loaded during start of the program in order to fill in the tables.</p>
+<h2 id="upgrading">Upgrading</h2>
+<div class="admonition warning">
+
+This section needs to be rewritten or improved. If you think you can contribute to this effort, and are already familiar with Launchpad and OpenERP's source control system, Bazaar, please have a look at
+
+* the section explaining how you can download and build the current documentation on your system: building\_documentation
+* an RST primer such as [this one](http://sphinx.pocoo.org/rest.html) to learn how you can start modifying the documentation content
+
+</div>
+
+<h3 id="upgrading-server-modules">Upgrading Server, Modules</h3>
+<p>The upgrade from version to version is automatic and doesn't need any special scripting on the user's part. In fact, the server is able to automatically rebuild the database and the data from a previously installed version.</p>
+<p>The tables are rebuilt from the current module definitions. To rebuild the tables, the server uses the definition of the objects and adds / modifies database fields as necessary.</p>
+<p>To invoke a database upgrade after installing a new version, you need to start the server with the <strong>--update=all</strong> argument :</p>
+<pre><code>openerp-server.py --update=all
+</code></pre>
+<p>You can also only upgrade specific modules, for example:</p>
+<pre><code>openerp-server.py --update=account,base
+</code></pre>
+<p>The database is rebuilt according to information provided in XML files and Python Classes. You can also execute the server with <strong>--init=all</strong>. The server will then rebuild the database according to the existing XML files on the system, delete all existing data and return OpenERP to its basic configuration.</p>
+<h4 id="detailed-update-operations">Detailed update operations</h4>
+<p>OpenERP has a built-in migration and upgrade system which allows updates to be nearly (or often) automatic. This system also allows to easily include custom modules.</p>
+<h5 id="tableobject-structure">Table/Object structure</h5>
+<p>When you run openerp-server with option <code>--init</code> or <code>--update</code>, the table structure is updated to match the new description that is in Python code. Fields that are removed from Python code are not removed from the postgresql database to avoid losing data.</p>
+<p>So, simply running with <code>--update</code> or <code>--init</code>, will upgrade your table structure.</p>
+<p>It's important to run <code>--init=module</code> the first time you install the module. Next time, you must use the <code>--update=module</code> argument instead of the init one. This is because <code>--init</code> loads resources that are loaded only once and never upgraded (i.e., resources with no <code>id=""</code> attribute or within a <code>&lt;data noupdate="1"&gt;</code> tag). Resources with the <code>noupdate</code> attribute will still be created if they do not exist at upgrade time. This can be overridden by marking a record with <code>forcecreate="False"</code>.</p>
+<h5 id="data_1">Data</h5>
+<p>Some data is automatically loaded at the installation of OpenERP:</p>
+<ul>
+<li>views, actions, menus,</li>
+<li>workflows,</li>
+<li>demo data</li>
+</ul>
+<p>This data is also migrated to a new version if you run --update or --init.</p>
+<h5 id="workflows">Workflows</h5>
+<p>Workflows are also upgraded automatically. If some activities are removed, the documents states evolves automatically to the preceding activities. That ensure that all documents are always in valid states.</p>
+<p>You can freely remove activities in your XML files. If workitems are in this activity, they will evolve to the preceding unlinked activity. And after the activity will be removed.</p>
+<h5 id="things-to-care-about-during-development">Things to care about during development</h5>
+<p>Since version 3.0.2 of OpenERP, you can not use twice the same 'id="..."' during resource creation in your XML files, unless they are in two different modules.</p>
+<p>Resources which don't contain an id are created (and updated) only once; at the installation of the module or when you use the --init argument.</p>
+<p>If a resource has an id and this resource is not present anymore in the next version of the XML file, OpenERP will automatically remove it from the database. If this resource is still present, OpenERP will update the modifications to this resource.</p>
+<p>If you use a new id, the resource will be automatically created at the next update of this module.</p>
+<p><strong>Use explicit id declaration !</strong>, Example:</p>
+<ul>
+<li>view_invoice_form,</li>
+<li>view_move_line_tree,</li>
+<li>action_invoice_form_open, ...</li>
+</ul>
+<p>It is important to put id="...." to all record that are important for the next version migrations. For example, do not forget to put some id="..." on all workflows transitions. This will allows OpenERP to know which transition has been removed and which transition is new or updated.</p>
+<h5 id="custom-modules">Custom modules</h5>
+<p>For example, if you want to override the view of an object named 'invoice_form' in your xml file (id="invoice_form"). All you have to do is redefine this view in your custom module with the same id. You can prefix ids with the name of the module to reference an id defined in another module.</p>
+<p>Example:</p>
+<p>&lt;record model="ir.ui.view" id="account.invoice_form"&gt; ... &lt;record&gt;</p>
+<p>This will override the invoice form view. You do not have to delete the old view, like in 3.0 versions of OpenERP.</p>
+<p>Note that it is often better to use view inheritance instead of overwriting views.</p>
+<p>In this migration system, you do not have to delete any resource. The migration system will detect if it is an update or a delete using id="..." attributes. This is important to preserve references during migrations.</p>
+<h5 id="demo-data">Demo data</h5>
+<p>Demo data does not have to be upgraded; because it was probably modified or deleted by users. To avoid demo data being upgraded you can put a <code>noupdate="1"</code> attribute in the <code>&lt;data&gt;</code> tag of your .xml data files.</p>
+<h4 id="summary-of-update-and-init-process">Summary of update and init process</h4>
+<p>init:  modify/add/delete demo data and built-in data</p>
+<p>update:  modify/add/delete non demo data</p>
+<p>Examples of built-in (non demo) data:</p>
+<ul>
+<li>Menu structure,</li>
+<li>View definition,</li>
+<li>Workflow description, ...</li>
+<li>Everything that has an id attribute in the XML data declaration (if no attr noupdate="1" in the header)</li>
+</ul>
+<p>What's going on during the update process:</p>
+<ol>
+<li>
+<p>If you manually added data within the client</p>
+<ul>
+<li>the update process will not change them</li>
+</ul>
+</li>
+<li>
+<p>If you dropped data</p>
+<ul>
+<li>if it was demo data, the update process will do nothing</li>
+<li>if it was built-in data (like a view), the update process will recreate it</li>
+</ul>
+</li>
+<li>
+<p>If you modified data (either in the .XML or the client)</p>
+<ul>
+<li>if it's demo data: nothing</li>
+<li>if it's built-in data, data are updated</li>
+</ul>
+</li>
+<li>
+<p>If built-in data have been deleted in the .XML file</p>
+<ul>
+<li>this data will be deleted in the database.</li>
+</ul>
+</li>
+</ol></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

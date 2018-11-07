@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>05 reports - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#reports">Reports</a></li>
+            <li><a href="#openofficeorg-reports">OpenOffice.org reports</a></li>
+            <li><a href="#xslrml-reports">XSL:RML reports</a></li>
+            <li><a href="#reports-without-corporate-header">Reports without corporate header</a></li>
+            <li><a href="#each-report-with-its-own-corporate-header">Each report with its own corporate header</a></li>
+            <li><a href="#bar-codes">Bar Codes</a></li>
+            <li><a href="#how-to-add-a-new-report">How to add a new report</a></li>
+            <li><a href="#usual-tags">Usual TAGS</a></li>
+            <li><a href="#unicode-reports">Unicode reports</a></li>
+            <li><a href="#html-reports-using-mako-templates">Html Reports Using Mako Templates</a></li>
+            <li><a href="#expression-substitution">Expression Substitution</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="reports">Reports</h1>
+<p>There are mainly three types of reports in OpenERP:</p>
+<ul>
+<li>OpenOffice.org reports</li>
+<li>RML reports</li>
+<li>custom reports (based on PostgreSQL views and displayed within the interface)</li>
+</ul>
+<p>This chapter mainly describes OpenOffice.org reports, and then XSL:RML reports. Custom reports are described in section Advanced Modeling - Reporting With PostgreSQL Views.</p>
+<h2 id="openofficeorg-reports">OpenOffice.org reports</h2>
+<p><strong>The document flow</strong></p>
+<p>OpenOffice.org reports are the most commonly used report formats. OpenOffice.org Writer is used (in combination with [[1]]) to generate a RML template, which in turn is used to generate a pdf printable report.</p>
+<p><img alt="" src="../images/ooo_report_overview.png" /></p>
+<p><strong>The internal process</strong></p>
+<p><img alt="" src="../images/process_ooo.png" /></p>
+<p><strong>The .SXW template file</strong></p>
+<ul>
+<li>We use a .SXW file for the template, which is the OpenOffice 1.0 format. The template includes expressions in brackets or OpenOffice fields to point where the data from the OpenERP server will be filled in. This document is only used for developers, as a help-tool to easily generate the .RML file. OpenERP does not need this .SXW file to print reports.</li>
+</ul>
+<p><strong>The .RML template</strong></p>
+<ul>
+<li>We generate a .RML file from the .SXW file using Open SXW2RML. A .RML file is a XML format that represent a .PDF document. It can be converted to a .PDF after. We use RML for more easy processing: XML syntax seems to be more common than PDF syntax.</li>
+</ul>
+<p><strong>The report engine</strong></p>
+<ul>
+<li>The Open Report Engine process the .RML file inserting data from the database at each expression.</li>
+</ul>
+<p>in the .RML file will be replaced by the name of the country of the partner of the printed invoice. This report engine produce the same .RML file where all expressions have been replaced by real data.</p>
+<p><strong>The final document</strong></p>
+<ul>
+<li>Finally the .RML file is converted to PDF or HTML as needed, using OpenReport's scripts.</li>
+</ul>
+<h3 id="creating-a-sxw">Creating a SXW</h3>
+<p>You can design reports using <em>OpenOffice</em>. Here, as an example, is the file <strong>server/bin/addons/sale/report/order.sxw</strong>.</p>
+<p><img alt="" src="../images/writer_report.png" /></p>
+<h3 id="dynamic-content-in-openoffice-reports">Dynamic content in OpenOffice reports</h3>
+<p><strong>Dynamic content</strong></p>
+<p>In the .SXW/.RML reports, you can put some Python code that accesses the OpenERP objects in brackets. The context of the code (the variable's values you can use) is the following:</p>
+<p><strong>Available variables</strong></p>
+<p>Here are Python objects/variables available:</p>
+<ul>
+<li><strong>objects</strong> : the list of objects to be printed (invoices for example).</li>
+<li><strong>data</strong> : comes from the wizard</li>
+<li><strong>time</strong> : the Python time module (see Python documentation for more information).</li>
+<li><strong>user</strong> : the user object launching the report.</li>
+</ul>
+<p><strong>Available functions</strong></p>
+<p>Here are Python functions you can use:</p>
+<ul>
+<li><strong>setLang('fr')</strong> : change the language used in automated translation (fields...).</li>
+<li><strong>repeatIn(list, varname[, tagname])</strong> : repeat the current part of the template (whole document, current section, current row in the table) for each object in the list. Use varname in the template's tags. Since versions 4.1.X, you can use an optional third argument that is the name of the .RML tag you want to loop on.</li>
+<li><strong>setTag('para','xpre')</strong> : replace the enclosing RML tag (usually 'para') with an other (xpre is a preformatted paragraph), in the (converted from sxw)rml document (?)</li>
+<li><strong>removeParentNode('tr')</strong> : removes the parent node of type 'tr', this parameter is usually used together with a conditional (see examples below)</li>
+</ul>
+<p>Example of useful tags:</p>
+<ul>
+<li><strong>[[ repeatIn(objects,'o') ]]</strong> : Loop on each objects selected for the print</li>
+<li><strong>[[ repeatIn(o.invoice_line,'l') ]]</strong> : Loop on every line</li>
+<li><strong>[[ repeatIn(o.invoice_line,'l', 'td') ]]</strong> : Loop on every line and make a new table cell for each line.</li>
+<li><strong>[[ (o.prop=='draft')and 'YES' or 'NO' ]]</strong> : Print YES or NO according the field 'prop'</li>
+<li><strong>[[ round(o.quantity * o.price * 0.9, 2) ]]</strong> : Operations are OK.</li>
+<li><strong>[[ '%07d' % int(o.number) ]]</strong> : Number formatting</li>
+<li><strong>[[ reduce(lambda x, obj: x+obj.qty , list , 0 ) ]]</strong> : Total qty of list (try "objects" as list)</li>
+<li><strong>[[ user.name ]]</strong> : user name</li>
+<li><strong>[[ setLang(o.partner_id.lang) ]]</strong> : Localized printings</li>
+<li><strong>[[ time.strftime('%d/%m/%Y') ]]</strong> : Show the time in format=dd/MM/YYYY, check python doc for more about "%d", ...</li>
+<li><strong>[[ time.strftime(time.ctime()[0:10]) ]]</strong> or <strong>[[ time.strftime(time.ctime()[-4:]) ]]</strong> : Prints only date.</li>
+<li><strong>[[ time.ctime() ]]</strong> : Prints the actual date &amp; time</li>
+<li><strong>[[ time.ctime().split()[3] ]]</strong> : Prints only time</li>
+<li><strong>[[ o.type in ['in_invoice', 'out_invoice'] and 'Invoice' or removeParentNode('tr') ]]</strong> : If the type is 'in_invoice' or 'out_invoice' then the word 'Invoice' is printed, if it's neither the first node above it of type 'tr' will be removed.</li>
+</ul>
+<p>One more interesting tag: if you want to print out the creator of an entry (create_uid) or the last one who wrote on an entry (write_uid) you have to add something like this to the class your report refers to:</p>
+<pre><code class="python">'create_uid': fields.many2one('res.users', 'User', readonly=1) 
+</code></pre>
+
+<p>and then in your report it's like this to print out the corresponding name:</p>
+<pre><code class="python">o.create_uid.name 
+</code></pre>
+
+<p>Sometimes you might want to print out something only if a certain condition is met. You can construct it with the python logical operators "not", "and" and "or". Because every object in python has a logical value (TRUE or FALSE) you can construct something like this:</p>
+<pre><code class="python">(o.prop=='draft') and 'YES' or 'NO' #prints YES or NO 
+</code></pre>
+
+<p>It works like this: and is higher priority than or, so that expression is equivalent to this one:</p>
+<pre><code class="python">((o.prop=='draft') and 'YES') or 'NO' 
+</code></pre>
+
+<p>If o.prop is 'draft', then it evaluates like this:</p>
+<pre><code>1.  o.prop == 'draft' is True.
+2.  True and 'YES' is 'YES'. Because the left side is a "true" value, the and expression evaluates to the right side.
+3.  'YES' or 'NO' is 'YES'. Because the left side is a "true" value, the or expression short cuts and ignores the right side. It evaluates to the left side.
+</code></pre>
+<p>If o.prop is something else like 'confirm', then it evaluates like this:</p>
+<p>:   1.  o.prop == 'draft' is False.
+    2.  False and 'YES' is False. Because the left side is a "false" value, the and expression short cuts and ignores the right side. It evaluates to the left side.
+    3.  False or 'NO' is 'NO'. Because the left side is a "false" value, the or expression evaluates to the right side.</p>
+<p>One can use very complex structures. To learn more, see the python manuals section on <a href="http://docs.python.org/library/stdtypes.html#boolean-operations-and-or-not">Python's boolean operators</a>.</p>
+<p>python function "filter" can... filter: try something like:</p>
+<pre><code class="python">repeatIn(filter( lambda l: l.product_id.type=='service' ,o.invoice_line), 'line') 
+</code></pre>
+
+<p>for printing only product with type='service' in a line's section.</p>
+<p>To display binary field image on report (to be checked)</p>
+<pre><code class="python">[[ setTag('para','image',{'width':'100.0','height':'80.0'}) ]] o.image or setTag('image','para') 
+</code></pre>
+
+<h3 id="sxw2rml">SXW2RML</h3>
+<h4 id="open-report-manual">Open Report Manual</h4>
+<h5 id="about">About</h5>
+<p>The OpenERP's report engine.</p>
+<p>Open Report is a module that allows you to render high quality PDF document from an OpenOffice template (.sxw) and any relational database. It can be used as an OpenERP module or as a standalone program.</p>
+<h5 id="sxw-to-rml-script-setup-windows-users">SXW to RML script setup - Windows users</h5>
+<p>In order to use the 'tiny_sxw2rml.py' Python script you need the following packages installed:</p>
+<ul>
+<li>Python (<a href="http://www.python.org">http://www.python.org</a>)</li>
+<li>ReportLab (<a href="http://www.reportlab.org)/(Installation)">http://www.reportlab.org)/(Installation)</a></li>
+<li>Libxml for Python (<a href="http://users.skynet.be/sbi/libxml-python">http://users.skynet.be/sbi/libxml-python</a>)</li>
+</ul>
+<h5 id="sxw-to-rml-script-setup-linux-open-source-users">SXW to RML script setup - Linux (Open source) users</h5>
+<p>The <strong>tiny_sxw2rml.py</strong> can be found in the <strong>base_report_designer</strong> OpenERP module at this location:</p>
+<pre><code>server/bin/addons/base_report_designer/wizard/tiny_sxw2rml/tiny_sxw2rml.py
+</code></pre>
+<p>Ensure normalized_oo2rml.xsl is available to tiny_sxw2rml otherwise you will get an error like:</p>
+<ul>
+<li>failed to load external entity normalized_oo2rml.xsl</li>
+</ul>
+<h5 id="running-tiny95sxw2rml">Running tiny_sxw2rml</h5>
+<p>When you have all that installed just edit your report template and run the script with the following command: :</p>
+<pre><code>tiny_sxw2rml.py template.sxw &gt; template.rml
+</code></pre>
+<p>Note: <strong>tiny_sxw2rml.py</strong> help suggests that you specify the output file with: "-o OUTPUT" but this does not seem to work as of V0.9.3</p>
+<h3 id="openerp-server-pdf-output">OpenERP Server PDF Output</h3>
+<h4 id="server-pdf-output">Server PDF Output</h4>
+<h5 id="about_1">About</h5>
+<p>To generate the pdf from the rml file, OpenERP needs a rml parser.</p>
+<h5 id="parser">Parser</h5>
+<p>The parsers are generally put into the report folder of the module. Here is the code for the sale order report:</p>
+<pre><code class="python">import time
+from report import report_sxw
+
+
+class order(report_sxw.rml_parse):
+    def __init__(self, cr, uid, name, context):
+        super(order, self).__init__(cr, uid, name, context)
+        self.localcontext.update({
+            'time': time,
+        })
+
+report_sxw.report_sxw('report.sale.order', 'sale.order',
+      'addons/sale/report/order.rml', parser=order, header=True)
+</code></pre>
+
+<p>The parser inherit from the <strong>report_sxw.rml_parse</strong> object and it add to the localcontext, the function time so it will be possible to call it in the report.</p>
+<p>After an instance of <strong>report_sxw.report_sxw</strong> is created with the parameters:</p>
+<ul>
+<li>the name of the report</li>
+<li>the object name on which the report is defined</li>
+<li>the path to the rml file</li>
+<li>the parser to use for the report (by default rml_parse)</li>
+<li>
+<p>the header to use from the company configuration</p>
+<ul>
+<li><code>'external'</code> (default)</li>
+<li><code>'internal'</code></li>
+<li><code>'internal landscape'</code></li>
+<li><code>False</code> - use the report's own header</li>
+</ul>
+</li>
+</ul>
+<h5 id="the-xml-definition">The xml definition</h5>
+<p>To be visible from the client, the report must be declared in an xml file (generally: "module_name"_report.xml) that must be put in the <strong>__openerp__.py</strong> file</p>
+<p>Here is an example for the sale order report: :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+        &lt;report
+            id=&quot;report_sale_order&quot;
+            string=&quot;Print Order&quot;
+            model=&quot;sale.order&quot;
+            name=&quot;sale.order&quot;
+            rml=&quot;sale/report/order.rml&quot;
+            auto=&quot;False&quot;/&gt;
+            header=&quot;False&quot;/&gt;
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>The arguments are:</p>
+<ul>
+<li><strong>id</strong>: the id of the report like any xml tag in OpenERP</li>
+<li><strong>string</strong>: the string that will be display on the Client button</li>
+<li><strong>model</strong>: the object on which the report will run</li>
+<li><strong>name</strong>: the name of the report without the first "report."</li>
+<li><strong>rml</strong>: the path to the rml file</li>
+<li><strong>auto</strong>: boolean to specify if the server must generate a default parser or not</li>
+<li><strong>header</strong>: allows to enable or disable the report header. To edit them for a specific company, go to: Administration -&gt; Users -&gt; Company's structure -&gt; Companies. There, select and edit your company: the "Header/Footer" tab allows you to edit corporate header/footer.</li>
+</ul>
+<h2 id="xslrml-reports">XSL:RML reports</h2>
+<p>RML reports don't require programming but require two simple XML files to be written:</p>
+<ul>
+<li>a file describing the data to export (*.xml)</li>
+<li>a file containing the presentation rules to apply to that data (*.xsl)</li>
+</ul>
+<p><img alt="" src="../images/automatic-reports.png" /></p>
+<p>The role of the XML template is to describe which fields of the resource have to be exported (by the server). The XSL:RML style sheet deals with the layout of the exported data as well as the "static text" of reports. Static text is referring to the text which is common to all reports of the same type (for example, the title of table columns).</p>
+<p><strong>Example</strong></p>
+<p>Here is, as an example, the different files for the simplest report in the ERP.</p>
+<p><img alt="" src="../images/ids-report.png" /></p>
+<p><strong>XML Template</strong> :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+
+&lt;ids&gt; 
+&lt;id type=&quot;fields&quot; name=&quot;id&quot;&gt;
+
+&lt;name type=&quot;field&quot; name=&quot;name&quot;/&gt; 
+&lt;ref type=&quot;field&quot; name=&quot;ref&quot;/&gt; 
+
+&lt;/id&gt; 
+&lt;/ids&gt; 
+</code></pre>
+
+<p><strong>XML data file (generated)</strong> :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+
+&lt;ids&gt; 
+&lt;id&gt;
+
+&lt;name&gt;Tiny sprl&lt;/name&gt; 
+&lt;ref&gt;pnk00&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;ASUS&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Agrolait&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Banque Plein-Aux-As&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;China Export&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Ditrib PC&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Ecole de Commerce de Liege&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Elec Import&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Maxtor&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Mediapole SPRL&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Opensides sprl&lt;/name&gt; 
+&lt;ref&gt;os&lt;/ref&gt; 
+
+&lt;/id&gt;&lt;id&gt;
+
+&lt;name&gt;Tecsas sarl&lt;/name&gt; 
+&lt;ref&gt;&lt;/ref&gt; 
+
+&lt;/id&gt; 
+&lt;/ids&gt; 
+&lt;/xml&gt;
+</code></pre>
+
+<p><strong>XSL stylesheet</strong> :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt; &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot; xmlns:fo=&quot;http://www.w3.org/1999/XSL/Format&quot;&gt;
+
+&lt;xsl:template match=&quot;/&quot;&gt;
+
+&lt;xsl:apply-templates select=&quot;ids&quot;/&gt; 
+
+&lt;/xsl:template&gt; 
+
+&lt;xsl:template match=&quot;ids&quot;&gt;
+
+&lt;document&gt;
+
+    &lt;template pageSize=&quot;21cm,29.7cm&quot;&gt;
+
+        &lt;pageTemplate&gt;
+
+            &lt;frame id=&quot;col1&quot; x1=&quot;2cm&quot; y1=&quot;2.4cm&quot; width=&quot;8cm&quot; height=&quot;26cm&quot;/&gt; 
+            &lt;frame id=&quot;col2&quot; x1=&quot;11cm&quot; y1=&quot;2.4cm&quot; width=&quot;8cm&quot; height=&quot;26cm&quot;/&gt; 
+
+        &lt;/pageTemplate&gt; 
+
+    &lt;/template&gt; 
+
+&lt;stylesheet&gt;
+
+    &lt;blockTableStyle id=&quot;ids&quot;&gt; 
+
+        &lt;blockFont name=&quot;Helvetica-BoldOblique&quot; size=&quot;12&quot; start=&quot;0,0&quot; stop=&quot;-1,0&quot;/&gt; 
+        &lt;lineStyle kind=&quot;BOX&quot; colorName=&quot;black&quot; start=&quot;0,0&quot; stop=&quot;-1,0&quot;/&gt; 
+
+        &lt;lineStyle kind=&quot;BOX&quot; colorName=&quot;black&quot; start=&quot;0,0&quot; stop=&quot;-1,-1&quot;/&gt; 
+
+    &lt;/blockTableStyle&gt; 
+
+&lt;/stylesheet&gt; 
+
+&lt;story&gt;
+
+    &lt;blockTable colWidths=&quot;2cm, 6cm&quot; repeatRows=&quot;1&quot; style=&quot;ids&quot;&gt;
+
+        &lt;tr&gt;
+
+            &lt;td t=&quot;1&quot;&gt;Ref.&lt;/td&gt; 
+            &lt;td t=&quot;1&quot;&gt;Name&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;xsl:apply-templates select=&quot;id&quot;/&gt; 
+
+    &lt;/blockTable&gt; 
+
+&lt;/story&gt; 
+&lt;/document&gt; 
+
+&lt;/xsl:template&gt; 
+
+&lt;xsl:template match=&quot;id&quot;&gt;
+
+&lt;tr&gt;
+
+    &lt;td&gt;&lt;xsl:value-of select=&quot;ref&quot;/&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;para&gt;&lt;xsl:value-of select=&quot;name&quot;/&gt;&lt;/para&gt;&lt;/td&gt; 
+
+&lt;/tr&gt; 
+
+&lt;/xsl:template&gt; 
+&lt;/xsl:stylesheet&gt; 
+</code></pre>
+
+<p><strong>Resulting RML file (generated)</strong> :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+
+&lt;document&gt; 
+...
+
+&lt;story&gt;
+
+    &lt;blockTable colWidths=&quot;2cm, 6cm&quot; repeatRows=&quot;1&quot; style=&quot;ids&quot;&gt;
+
+        &lt;tr&gt;
+
+            &lt;td t=&quot;1&quot;&gt;Ref.&lt;/td&gt; 
+            &lt;td t=&quot;1&quot;&gt;Name&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;pnk00&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Tiny sprl&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;ASUS&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Agrolait&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Banque Plein-Aux-As&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;China Export&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Ditrib PC&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Ecole de Commerce de Liege&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Elec Import&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Maxtor&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Mediapole SPRL&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt;
+
+            &lt;td&gt;os&lt;/td&gt; 
+            &lt;td&gt;&lt;para&gt;Opensides sprl&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+        &lt;td&gt;&lt;/td&gt;
+
+            &lt;td&gt;&lt;para&gt;Tecsas sarl&lt;/para&gt;&lt;/td&gt; 
+
+        &lt;/tr&gt; 
+
+    &lt;/blockTable&gt; 
+
+&lt;/story&gt; 
+
+&lt;/document&gt; 
+</code></pre>
+
+<p>For more information on the formats used:</p>
+<ul>
+<li><a href="http://www.reportlab.com/docs/rml2pdf-userguide.pdf">RML user guide</a></li>
+<li><a href="http://www.w3.org/TR/xslt">XSL specification</a></li>
+<li><a href="http://www.zvon.org/xxl/XSLTutorial/Books/Output/contents.html">XSL tutorial</a></li>
+</ul>
+<p>All these formats are extensions of the <a href="http://www.w3.org/XML/">XML specification</a>.</p>
+<h3 id="xml-template">XML Template</h3>
+<p>XML templates are simple XML files describing which fields among all available object fields are necessary for the report.</p>
+<h4 id="file-format">File format</h4>
+<p>Tag names can be chosen arbitrarily (it must be valid XML though). In the XSL file, you will have to use those names. Most of the time, the name of a tag will be the same as the name of the object field it refers to.</p>
+<p>Nodes without <strong>type</strong> attribute are transferred identically into the XML destination file (the data file). Nodes with a type attribute will be parsed by the server and their content will be replaced by data coming from objects. In addition to the type attribute, nodes have other possible attributes. These attributes depend on the type of the node (each node type supports or needs different attributes). Most node types have a name attribute, which refers to the <strong>name</strong> of a field of the object on which we work.</p>
+<p>As for the "browse" method on objects, field names in reports can use a notation similar to the notation found in object oriented programming languages. It means that "relation fields" can be used as "bridges" to fetch data from other (related) objects.</p>
+<p>Let's use the "account.transfer" object as an example. It contains a partner_id field. This field is a relation field ("many to one") pointing to the "res.partner" object. Let's suppose that we want to create a report for transfers and in this report, we want to use the name of the recipient partner. This name could be accessed using the following expression as the name of the field:</p>
+<p>partner_id.name</p>
+<h4 id="possible-types">Possible types</h4>
+<p>Here is the list of available field types:</p>
+<ul>
+<li><strong>field</strong>: It is the simplest type. For nodes of this type, the server replaces the node content by the value of the field whose name is given in the name attribute.</li>
+<li><strong>fields</strong>: when this type of node is used, the server will generate a node in the XML data file for each unique value of the field whose name is given in the name attribute.</li>
+</ul>
+<p>Notes:</p>
+<p><em>* This node type is often used with "id" as its name attribute. This has the effect of creating one node for each resource selected in the interface by the user.</em>* The semantics of a node &lt;node type="fields" name="field_name"&gt; is similar to an SQL statement of the form "SELECT FROM object_table WHERE id in identifier_list <strong>GROUP BY</strong> field_name" where identifier_list is the list of ids of the resources selected by the ::user (in the interface).</p>
+<ul>
+<li><strong>eval</strong>: This node type evaluate the expression given in the <em>expr</em> attribute. This expression may be any Python expression and may contain objects fields names.</li>
+<li>
+<p><strong>zoom</strong>: This node type allows to "enter" into the resource referenced by the relation field whose name is given in the name attribute. It means that its child nodes will be able to access the fields of that resource without having to prefix them with the field name that makes the link with the other object. In our example above, we could also have accessed the field name of the partner with the following:</p>
+<p><partner type="zoom" name="partner_id"></p>
+<pre><code>&lt;name type="field" name="name"/&gt;
+</code></pre>
+<p></partner> </p>
+<p>In this precise case, there is of course no point in using this notation instead of the standard notation below: </p>
+<p><name type="field" name="partner_id.name"/> </p>
+</li>
+</ul>
+<p>The <strong>zoom</strong> type is only useful when we want to recover several fields in the same object.</p>
+<ul>
+<li><strong>function</strong>: returns the result of the call to the function whose name is given in the name attribute. This function must be part of the list of predefined functions. For the moment, the only available function is today, which returns the current date.</li>
+<li><strong>call</strong>: calls the object method whose name is given in the name attribute with the arguments given in the args attribute. The result is stored into a dictionary of the form {'name_of_variable': value, ... } and can be accessed through child nodes. These nodes must have a value attribute which correspond to one of the keys of the dictionary returned by the method.</li>
+</ul>
+<p><strong>Example</strong>: :</p>
+<pre><code class="xml">&lt;cost type=&quot;call&quot; name=&quot;compute_seller_costs&quot; args=&quot;&quot;&gt;
+    &lt;name value=&quot;name&quot;/&gt; 
+    &lt;amount value=&quot;amount&quot;/&gt; 
+&lt;/cost&gt; 
+</code></pre>
+
+<p><strong>TODO</strong>: documenter format methode appellée def compute_buyer_costs(self, cr, uid, ids, *args):</p>
+<ul>
+<li><strong>attachment</strong>: extract the first attachment of the resource whose id is taken from the field whose name is given in the name attribute, and put it as an image in the report.</li>
+</ul>
+<p>Example:</p>
+<p>&lt;image type="attachment" name="id"/&gt;</p>
+<p><strong>Example</strong></p>
+<p>Here is an example of XML file: :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt; 
+&lt;transfer-list&gt;
+
+&lt;transfer type=&quot;fields&quot; name=&quot;id&quot;&gt;
+
+    &lt;name type=&quot;field&quot; name=&quot;name&quot;/&gt; 
+    &lt;partner_id type=&quot;field&quot; name=&quot;partner_id.name&quot;/&gt; 
+    &lt;date type=&quot;field&quot; name=&quot;date&quot;/&gt; 
+    &lt;type type=&quot;field&quot; name=&quot;type&quot;/&gt; 
+    &lt;reference type=&quot;field&quot; name=&quot;reference&quot;/&gt; 
+    &lt;amount type=&quot;field&quot; name=&quot;amount&quot;/&gt; 
+    &lt;change type=&quot;field&quot; name=&quot;change&quot;/&gt; 
+
+&lt;/transfer&gt; 
+
+&lt;/transfer-list&gt; 
+</code></pre>
+
+<h3 id="introduction-to-rml">Introduction to RML</h3>
+<p>For more information on the RML format, please refer to the official Reportlab documentation.</p>
+<ul>
+<li><a href="http://www.reportlab.com/docs/rml2pdf-userguide.pdf">http://www.reportlab.com/docs/rml2pdf-userguide.pdf</a></li>
+</ul>
+<h3 id="xslrml-stylesheet">XSL:RML Stylesheet</h3>
+<p>There are two possibilities to do a XSL style sheet for a report. Either making everything by yourself, or use our predefined templates</p>
+<p>Either freestyle or use corporate_defaults + rml_template</p>
+<p>import rml_template.xsl</p>
+<p>required templates:</p>
+<ul>
+<li>frames?</li>
+<li>stylesheet</li>
+<li>story</li>
+</ul>
+<p>optional templates:</p>
+<h4 id="translations">Translations</h4>
+<p>As OpenERP can be used in several languages, reports must be translatable. But in a report, everything doesn't have to be translated : only the actual text has to be translated, not the formatting codes. A field will be processed by the translation system if the XML tag which surrounds it (whatever it is) has a t="1" attribute. The server will translate all the fields with such attributes in the report generation process.</p>
+<h4 id="useful-links">Useful links</h4>
+<ul>
+<li>url=http://www.reportlab.com/docs/rml2pdf-userguide.pdf RML UserGuide (pdf) (reportlab.com)</li>
+<li><a href="http://www.zvon.org/xxl/XSLTutorial/Output/index.html">http://www.zvon.org/xxl/XSLTutorial/Output/index.html</a> XSL Tutorial (zvon.org)</li>
+<li><a href="http://www.zvon.org/xxl/XSLTreference/Output/index.html">http://www.zvon.org/xxl/XSLTreference/Output/index.html</a> XSL Reference (zvon.org)</li>
+<li><a href="http://www.w3schools.com/xsl/">http://www.w3schools.com/xsl/</a> XSL tutorial and references (W3Schools)</li>
+<li><a href="http://www.w3.org/TR/xslt/">http://www.w3.org/TR/xslt/</a> XSL Specification (W3C)</li>
+</ul>
+<h4 id="example-with-corporate-defaults">Example (with corporate defaults)</h4>
+<pre><code class="xml">&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot; :xmlns:fo=&quot;http://www.w3.org/1999/XSL/Format&quot;&gt;
+
+&lt;xsl:import href=&quot;../../custom/corporate_defaults.xsl&quot;/&gt; 
+&lt;xsl:import href=&quot;../../base/report/rml_template.xsl&quot;/&gt; 
+&lt;xsl:variable name=&quot;page_format&quot;&gt;a4_normal&lt;/xsl:variable&gt; 
+&lt;xsl:template match=&quot;/&quot;&gt;
+
+    &lt;xsl:call-template name=&quot;rml&quot;/&gt; 
+
+&lt;/xsl:template&gt; 
+&lt;xsl:template name=&quot;stylesheet&quot;&gt;
+
+    &lt;/xsl:template&gt; 
+
+&lt;xsl:template name=&quot;story&quot;&gt;
+
+    &lt;xsl:apply-templates select=&quot;transfer-list&quot;/&gt; 
+
+&lt;/xsl:template&gt; 
+&lt;xsl:template match=&quot;transfer-list&quot;&gt;
+
+    &lt;xsl:apply-templates select=&quot;transfer&quot;/&gt; 
+
+&lt;/xsl:template&gt; 
+&lt;xsl:template match=&quot;transfer&quot;&gt;
+
+    &lt;setNextTemplate name=&quot;other_pages&quot;/&gt; 
+    &lt;para&gt;
+
+        Document: &lt;xsl:value-of select=&quot;name&quot;/&gt; 
+
+    &lt;/para&gt;&lt;para&gt;
+
+        Type: &lt;xsl:value-of select=&quot;type&quot;/&gt; 
+
+    &lt;/para&gt;&lt;para&gt;
+
+        Reference: &lt;xsl:value-of select=&quot;reference&quot;/&gt; 
+
+    &lt;/para&gt;&lt;para&gt;
+
+        Partner ID: &lt;xsl:value-of select=&quot;partner_id&quot;/&gt; 
+
+    &lt;/para&gt;&lt;para&gt;
+
+        Date: &lt;xsl:value-of select=&quot;date&quot;/&gt; 
+
+    &lt;/para&gt;&lt;para&gt;
+
+        Amount: &lt;xsl:value-of select=&quot;amount&quot;/&gt; 
+
+    &lt;/para&gt; 
+    &lt;xsl:if test=&quot;number(change)&gt;0&quot;&gt;
+
+        &lt;para&gt;
+
+            Change: &lt;xsl:value-of select=&quot;change&quot;/&gt; 
+
+        &lt;/para&gt; 
+
+    &lt;/xsl:if&gt; 
+    &lt;setNextTemplate name=&quot;first_page&quot;/&gt; 
+    &lt;pageBreak/&gt; 
+
+&lt;/xsl:template&gt; 
+
+&lt;/xsl:stylesheet&gt; 
+</code></pre>
+
+<h2 id="reports-without-corporate-header">Reports without corporate header</h2>
+<p><strong>Example (with corporate defaults):</strong> :</p>
+<pre><code class="xml">&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot; :xmlns:fo=&quot;http://www.w3.org/1999/XSL/Format&quot;&gt;
+     &lt;xsl:import href=&quot;../../base/report/rml_template.xsl&quot;/&gt;
+     &lt;xsl:variable name=&quot;page_format&quot;&gt;a4_normal&lt;/xsl:variable&gt;
+
+     &lt;xsl:template match=&quot;/&quot;&gt;
+      &lt;xsl:call-template name=&quot;rml&quot;/&gt;
+     &lt;/xsl:template&gt;
+
+     &lt;xsl:template name=&quot;stylesheet&quot;&gt;
+      &lt;/xsl:template&gt;
+
+      &lt;xsl:template name=&quot;story&quot;&gt;
+       &lt;xsl:apply-templates select=&quot;transfer-list&quot;/&gt;
+      &lt;/xsl:template&gt;
+
+      &lt;xsl:template match=&quot;transfer-list&quot;&gt;
+       &lt;xsl:apply-templates select=&quot;transfer&quot;/&gt;
+      &lt;/xsl:template&gt;
+
+      &lt;xsl:template match=&quot;transfer&quot;&gt;
+       &lt;setNextTemplate name=&quot;other_pages&quot;/&gt;
+
+       &lt;para&gt;
+             Document: &lt;xsl:value-of select=&quot;name&quot;/&gt;
+       &lt;/para&gt;&lt;para&gt;
+             Type: &lt;xsl:value-of select=&quot;type&quot;/&gt;
+       &lt;/para&gt;&lt;para&gt;
+             Reference: &lt;xsl:value-of select=&quot;reference&quot;/&gt;
+       &lt;/para&gt;&lt;para&gt;
+             Partner ID: &lt;xsl:value-of select=&quot;partner_id&quot;/&gt;
+       &lt;/para&gt;&lt;para&gt;
+             Date: &lt;xsl:value-of select=&quot;date&quot;/&gt;
+       &lt;/para&gt;&lt;para&gt;
+             Amount: &lt;xsl:value-of select=&quot;amount&quot;/&gt;
+       &lt;/para&gt;
+
+       &lt;xsl:if test=&quot;number(change)&gt;0&quot;&gt;
+            &lt;para&gt;
+                  Change: &lt;xsl:value-of select=&quot;change&quot;/&gt;
+            &lt;/para&gt;
+       &lt;/xsl:if&gt;
+
+       &lt;setNextTemplate name=&quot;first_page&quot;/&gt; 
+      &lt;pageBreak/&gt;
+     &lt;/xsl:template&gt;
+&lt;/xsl:stylesheet&gt;
+</code></pre>
+
+<h2 id="each-report-with-its-own-corporate-header">Each report with its own corporate header</h2>
+<p><strong>Example (with corporate defaults):</strong> :</p>
+<pre><code class="xml">&lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot; :xmlns:fo=&quot;http://www.w3.org/1999/XSL/Format&quot;&gt;
+
+&lt;xsl:import href=&quot;../../custom/corporate_defaults.xsl&quot;/&gt; 
+&lt;xsl:import href=&quot;../../base/report/rml_template.xsl&quot;/&gt; 
+&lt;xsl:variable name=&quot;page_format&quot;&gt;a4_normal&lt;/xsl:variable&gt; 
+..................... 
+&lt;/xsl:template&gt; 
+
+&lt;/xsl:stylesheet&gt; 
+</code></pre>
+
+<h2 id="bar-codes">Bar Codes</h2>
+<h3 id="barcodes-in-rml-files">Barcodes in RML files</h3>
+<p>Barcodes can be generated using the &lt;barCode&gt; tag in RML files. The following formats are supported:</p>
+<ul>
+<li>codabar</li>
+<li>code11</li>
+<li>code128 (default if no 'code' specified')</li>
+<li>standard39</li>
+<li>standard93</li>
+<li>i2of5</li>
+<li>extended39</li>
+<li>extended93</li>
+<li>msi</li>
+<li>fim</li>
+<li>postnet</li>
+<li>ean13</li>
+<li>ean8</li>
+<li>usps_4state</li>
+</ul>
+<p>You can change the following attributes for rendering your barcode:</p>
+<ul>
+<li>'code': 'char'</li>
+<li>'ratio':'float'</li>
+<li>'xdim':'unit'</li>
+<li>'height':'unit'</li>
+<li>'checksum':'bool'</li>
+<li>'quiet':'bool'</li>
+</ul>
+<p>Examples:</p>
+<p>&lt;barcode code="code128" xdim="28cm" ratio="2.2"&gt;`SN12345678&lt;/barcode&gt;</p>
+<h2 id="how-to-add-a-new-report">How to add a new report</h2>
+<p>In 4.0.X</p>
+<p>Administration -&gt; Custom -&gt; Low Level -&gt; Base-&gt;Actions -&gt; ir.actions.report.xml</p>
+<h2 id="usual-tags">Usual TAGS</h2>
+<h3 id="code-within-9191-9393-tags-is-python-code">Code within [[ ]] tags is python code</h3>
+<p>The context of the code (the variable's values you can use) is the same as that described for dynamic-report-content.</p>
+<h2 id="unicode-reports">Unicode reports</h2>
+<p>As of OpenERP 5.0-rc3 unicode printing with ReportLab is still not available. The problem is that OpenERP uses the PDF standard fonts (14 fonts, they are not embedded in the document but the reader provides them) that are Type1 and have only Latin1 characters.</p>
+<h3 id="the-solution-consists-of-3-parts">The solution consists of 3 parts</h3>
+<ul>
+<li>Provide TrueType fonts and make them accessible for ReportLab.</li>
+<li>Register the TrueType fonts with ReportLab before using them in the reports.</li>
+<li>Replace the old fontNames in xsl and rml templates with the TrueType ones.</li>
+</ul>
+<h3 id="all-these-ideas-are-taken-from-the-forums">All these ideas are taken from the forums</h3>
+<p><strong>Free TrueType fonts</strong></p>
+<p>that can be used for this purpose are in the DejaVu family. <a href="http://dejavu-fonts.org/wiki/index.php?title=Main_Page">http://dejavu-fonts.org/wiki/index.php?title=Main_Page</a> They can be installed</p>
+<ul>
+<li>in the ReportLab's fonts directory,</li>
+<li>system-wide and include that directory in rl_config.py,</li>
+<li>in a subdirectory of the OpenERP installation and give that path to ReportLab during the font registration.</li>
+</ul>
+<p><strong>In the server/bin/report/render/rml2pdf/__init__.py</strong> :</p>
+<pre><code class="python">import reportlab.rl_config
+reportlab.rl_config.warnOnMissingFontGlyphs = 0
+
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import reportlab
+
+enc = 'UTF-8'
+
+#repeat these for all the fonts needed
+pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf',enc))
+pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf',enc))
+
+from reportlab.lib.fonts import addMapping
+
+#repeat these for all the fonts needed
+addMapping('DejaVuSans', 0, 0, 'DejaVuSans') #normal
+addMapping('DejaVuSans-Bold', 1, 0, 'DejaVuSans') #normal
+</code></pre>
+
+<p>trml2pdf.py should be modified to load this if invoked from the command line.</p>
+<p><strong>All the xsl and rml files have to be modified</strong></p>
+<p>A list of possible alternatives: :</p>
+<pre><code>'Times-Roman',       'DejaVuSerif.ttf'
+'Times-BoldItalic',  'DejaVuSerif-BoldItalic.ttf'
+'Times-Bold',        'DejaVuSerif-Bold.ttf'
+'Times-Italic',      'DejaVuSerif-Italic.ttf'
+
+'Helvetica',     'DejaVuSans.ttf'
+'Helvetica-BoldItalic',  'DejaVuSans-BoldOblique.ttf'
+'Helvetica-Bold',    'DejaVuSans-Bold.ttf'
+'Helvetica-Italic',  'DejaVuSans-Oblique.ttf'
+
+'Courier',           'DejaVuSansMono.ttf'
+'Courier-Bold',      'DejaVuSansMono-Bold.ttf'
+'Courier-BoldItalic','DejaVuSansMono-BoldOblique.ttf'
+'Courier-Italic',    'DejaVuSansMono-Oblique.ttf'
+
+'Helvetica-ExtraLight',  'DejaVuSans-ExtraLight.ttf'
+
+'TimesCondensed-Roman',      'DejaVuSerifCondensed.ttf'
+'TimesCondensed-BoldItalic', 'DejaVuSerifCondensed-BoldItalic.ttf'
+'TimesCondensed-Bold',       'DejaVuSerifCondensed-Bold.ttf'
+'TimesCondensed-Italic',     'DejaVuSerifCondensed-Italic.ttf'
+
+'HelveticaCondensed',        'DejaVuSansCondensed.ttf'
+'HelveticaCondensed-BoldItalic', 'DejaVuSansCondensed-BoldOblique.ttf'
+'HelveticaCondensed-Bold',   'DejaVuSansCondensed-Bold.ttf'
+'HelveticaCondensed-Italic', 'DejaVuSansCondensed-Oblique.ttf
+</code></pre>
+<h2 id="html-reports-using-mako-templates">Html Reports Using Mako Templates</h2>
+<div class="admonition note">
+
+Implemented in trunk only
+
+Mako is a template library written in Python. It provides a familiar, non-XML syntax which compiles into Python modules for maximum performance.
+
+</div>
+
+<h3 id="mako-template">Mako Template</h3>
+<h4 id="syntax">Syntax</h4>
+<p>A Mako template is parsed from a text stream containing any kind of content, XML, HTML, email text, etc.</p>
+<p>The template can further contain Mako-specific directives which represent variable and/or expression substitutions, control structures (i.e. conditionals and loops), server-side comments, full blocks of Python code, as well as various tags that offer additional functionality. All of these constructs compile into real Python code.</p>
+<p>This means that you can leverage the full power of Python in almost every aspect of a Mako template.</p>
+<h2 id="expression-substitution">Expression Substitution</h2>
+<p>The simplest expression is just a variable substitution. The syntax for this is the \${} construct instead of [[ ]] in rml.</p>
+<p>eg:</p>
+<pre><code>this is x: ${x}
+
+Above, the string representation of x is applied to the template's output stream where x comes from the localcontext supplied to the template's rendering function.
+
+The contents within the ${} tag are evaluated by Python directly.
+</code></pre>
+<p>Control Structures  :     &gt; In Mako, control structures (i.e. if/else, loops (like while and for), as well as things like try/except) are written using the % marker followed by a regular Python control expression, and are "closed" by using another % marker with the tag "end&lt;name&gt;", where "&lt;name&gt;" is the keyword of the expression:</p>
+<p>eg:</p>
+<pre><code>% if x==5:
+      this is some output
+% endif
+</code></pre>
+<h3 id="python-blocks">Python Blocks</h3>
+<p>Within &lt;% %&gt;, you're writing a regular block of Python code. While the code can appear with an arbitrary level of preceding whitespace, it has to be consistently formatted with itself. Mako's compiler will adjust the block of Python to be consistent with the surrounding generated Python code.</p>
+<p>Useful links:</p>
+<p>:   <a href="http://www.makotemplates.org/docs/">http://www.makotemplates.org/docs/</a></p>
+<h4 id="an-overview-of-sale-order-example">An Overview of Sale Order Example</h4>
+<p>For Complete Example of Sale_order please Refer the module sale_report_html from :</p>
+<p><a href="https://code.launchpad.net/~openerp-community/openobject-addons/trunk-addons-community">https://code.launchpad.net/~openerp-community/openobject-addons/trunk-addons-community</a></p>
+<pre><code class="html">## -*- coding: utf-8 -*-
+&lt;html&gt;
+&lt;head&gt;
+    &lt;%include file=&quot;mako_header.html&quot;/&gt;
+&lt;/head&gt;
+% for o in objects:
+&lt;body&gt;
+    &lt;table width=&quot;100&quot; border=&quot;0&quot; cellspacing=&quot;0&quot; cellpadding=&quot;0&quot;&gt;
+        &lt;tr&gt;
+            &lt;td&gt;
+                &lt;p&gt;&lt;small&gt;&lt;b&gt;Shipping address :&lt;/b&gt;&lt;/small&gt;
+            &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;
+                &lt;small&gt;${ o.partner_id.title or '' } ${ o.partner_id.name }&lt;/small&gt;
+            &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;
+                &lt;small&gt;${ o.partner_shipping_id.state_id and o.partner_shipping_id.state_id.name or '' } ${ o.partner_shipping_id.country_id and o.partner_shipping_id.country_id.name or '' }&lt;/small&gt;
+            &lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+    &lt;table&gt;
+           &lt;tr align=&quot;left&quot;&gt;
+              &lt;th&gt;Description&lt;/th&gt;
+              &lt;th&gt;VAT&lt;/th&gt;
+              &lt;th&gt;Quantity&lt;/th&gt;
+              &lt;th&gt;Unit Price&lt;/th&gt;
+              &lt;th&gt;Disc.(%)&lt;/th&gt;
+              &lt;th&gt;Price&lt;/th&gt;
+            &lt;/tr&gt;
+        % for line in o.order_line:
+              &lt;tr&gt;
+              &lt;td&gt;${line.name}&lt;/p&gt;
+              &lt;td&gt;${', '.join(map(lambda x: x.name, line.tax_id))}&lt;/td&gt;
+              &lt;td&gt;${line.product_uos and line.product_uos_qty or line.product_uom_qty}
+              ${line.product_uos and line.product_uos.name or line.product_uom.name}&lt;/td&gt;
+              &lt;td&gt;${line.price_unit}&lt;/td&gt;
+              &lt;td&gt;${line.discount or 0.00 }&lt;/td&gt;
+              &lt;td&gt;${line.price_subtotal or 0.00 }&lt;/td&gt;
+              &lt;/tr&gt;
+          % if line['notes']:
+                &lt;tr&gt;
+                &lt;td&gt;${line.notes}&lt;/td&gt;
+                &lt;/tr&gt;
+
+          % endif
+          % endfor
+    &lt;/table&gt;
+&lt;/body&gt;
+% endfor
+&lt;%include file=&quot;mako_footer.html&quot;/&gt;
+&lt;/html&gt;
+</code></pre>
+
+<p>You can format the report as you need using HTML.</p>
+<h4 id="report-with-header-and-footer">Report with header and footer</h4>
+<p>To create reports with your company header you need to include &lt;%include file=”mako_header.html”/&gt; To create reports with your company footer you need to include &lt;%include file=”mako_footer.html”/&gt; These files will bring the header and footer that you have defined for your company in the database.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

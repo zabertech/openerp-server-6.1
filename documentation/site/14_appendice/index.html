@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>14 appendice - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#appendice">Appendice</a></li>
+            <li><a href="#conventions">Conventions</a></li>
+            <li><a href="#translations">Translations</a></li>
+            <li><a href="#technical-memento">Technical Memento</a></li>
+            <li><a href="#information-repository">Information Repository</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="appendice">Appendice</h1>
+<h2 id="conventions">Conventions</h2>
+<h3 id="guidelines">Guidelines</h3>
+<p>For guidelines and general recommendations with regard to the development of OpenERP modules, please refer to the Guidelines &lt;contribution_guidelines-link&gt; of the Contribution section &lt;/contribute/index&gt;.</p>
+<h3 id="module-structure-and-file-names">Module structure and file names</h3>
+<p>The structure of a module should be:</p>
+<pre><code>/module/
+
+    /__init__.py
+    /__openerp__.py
+    /module.py
+    /module_other.py
+    /module_view.xml
+    /module_data.xml
+    /module_demo.xml
+
+    /wizard/
+    /wizard/__init__.py
+    /wizard/wizard_name.py
+
+    /report/
+    /report/
+    /report/__init__.py
+    /report/report_name.sxw
+    /report/report_name.rml
+    /report/report_name.py
+</code></pre>
+<h3 id="naming-conventions">Naming conventions</h3>
+<ul>
+<li>
+<p>modules: modules must be written in lower case, with underscores. The name of the module is the name of the directory in the addons path of the server. If the module depends on other modules, you can write several module names separated by underscores, starting by the most important name. Example:</p>
+<ul>
+<li>sale</li>
+<li>sale_commission</li>
+</ul>
+</li>
+<li>
+<p>objects: the name of an object must be of the form name_of_module.name1.name2.name3.... The namei part of the object must go from the most important name to the least important one, from left to right, in lower case. Try not to use plurals in object names and to avoid shortcuts in the names. Example:</p>
+<ul>
+<li>sale.order</li>
+<li>sale.order.line</li>
+<li>sale.shop</li>
+<li>sale_commission.commission.rate</li>
+</ul>
+</li>
+<li>
+<p>fields: field must be in lowercase, separated by underscores. Try to use commonly used names for fields: name, state, active, partner_id, eso. Conventions for the field name depends on the field type:</p>
+<ul>
+<li>many2one: must end by '_id' (eg: partner_id, order_line_id)</li>
+<li>many2many: must end by '_ids' (eg: category_ids)</li>
+<li>one2many: must end by '_ids' (eg: line_ids</li>
+</ul>
+</li>
+</ul>
+<h2 id="translations">Translations</h2>
+<p>OpenERP is multilingual. You can add as many languages as you wish. Each user may work with the interface in his own language. Moreover, some resources (the text of reports, product names, etc.) may also be translated.</p>
+<p>This section explains how to change the language of the program shown to individual users, and how to add new languages to OpenERP.</p>
+<p>Nearly all the labels used in the interface are stored on the server. In the same way, the translations are also stored on the server. By default the English dictionary is stored on the server, so if the users want to try OpenERP in a language other than English you must store these languages definitions on the server.</p>
+<p>However, it is not possible to store "everything" on the server. Indeed, the user gets some menus, buttons, etc... that must contain some text <em>even before</em> being connected to the server. These few words and sentences are translated using GETTEXT. The chosen language by default for these is the language of the computer from which the user connects.</p>
+<p>The translation system of OpenERP is not limited to interface texts; it also works with reports and the "content" of some database fields. Obviously, not all the database fields need to be translated. The fields where the content is multilingual are marked thus by a flag icon.</p>
+<h3 id="how-to-change-the-language-of-the-user-interface">How to change the language of the user interface ?</h3>
+<p>The language is a user preference. To change the language of the current user, click on the menu: User &gt; Preferences.</p>
+<p>An administrator may also modify the preferences of a user (including the language of the interface) in the menu: Administration &gt; Users &gt; Users. He merely has to choose a user and toggle on "preferences".</p>
+<h3 id="store-a-translation-file-on-the-server">Store a translation file on the server</h3>
+<p>To import a file having translations, use this command:</p>
+<pre><code>./openerp\_server.py --i18n-import=file.csv -l **LANG**
+</code></pre>
+<p>where <strong>LANG</strong> is the language of the translation data in the CSV file.</p>
+<p>Note that the translation file must be encoded in <strong>UTF8!</strong></p>
+<h3 id="translate-to-a-new-language">Translate to a new language</h3>
+<p><strong>Please keep in mind to use the same translation string for identical sources</strong> . Launchpad Online Translation may give helpful hints.</p>
+<p>More information on accelerators on this website: <a href="http://translate.sourceforge.net/wiki/guide/translation/accelerators">http://translate.sourceforge.net/wiki/guide/translation/accelerators</a></p>
+<p>To translate or modify the translation of a language already translated, you have to:</p>
+<h4 id="1-export-all-the-sentences-to-translate-in-a-csv-file">1. Export all the sentences to translate in a CSV file</h4>
+<p>To export this file, use this command:</p>
+<pre><code>./openerp\_server.py --i18n-export=file.csv -l\**LANG*\*
+</code></pre>
+<p>where <strong>LANG</strong> is the language to which you want to translate the program.</p>
+<h4 id="2-translate-the-last-column-of-the-file">2. Translate the last column of the file</h4>
+<p>You can make a translation for a language, which has already been translated or for a new one. If you ask for a language already translated, the sentences already translated will be written in the last column.</p>
+<p>For example, here are the first lines of a translation file (Dutch):</p>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>name</th>
+<th>res_</th>
+<th>src</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>field</td>
+<td>"account.account,code"</td>
+<td>id &gt; 0</td>
+<td>Code</td>
+<td>Code</td>
+</tr>
+<tr>
+<td>field</td>
+<td>"account.account,name"</td>
+<td>&gt; 0</td>
+<td>Name</td>
+<td>Name</td>
+</tr>
+<tr>
+<td>model</td>
+<td>"account.account,name"</td>
+<td>&gt; 2</td>
+<td>Assets</td>
+<td>Aktiva</td>
+</tr>
+<tr>
+<td>model</td>
+<td>"account.account,name"</td>
+<td>&gt; 25</td>
+<td>Results</td>
+<td>Salden</td>
+</tr>
+<tr>
+<td>model</td>
+<td>"account.account,name"</td>
+<td>&gt; 61</td>
+<td>Liabilities</td>
+<td>Verbindlichkeiten</td>
+</tr>
+</tbody>
+</table>
+<h4 id="3-import-this-file-into-openerp-as-explained-in-the-preceding-section">3. Import this file into OpenERP (as explained in the preceding section)</h4>
+<p><strong>Notes</strong></p>
+<ul>
+<li>You should perform all these tasks on an empty database, so as to avoid over-writing data.</li>
+</ul>
+<p>To create a new database (named 'terp_test'), use these commands:</p>
+<pre><code>createdb terp\_test --encoding=unicode terp\_server.py --database=terp\_test --init=all
+</code></pre>
+<p>Alternatively, you could also delete your current database with these:</p>
+<pre><code>dropdb terp createdb terp --encoding=unicode terp\_server.py --init=all
+</code></pre>
+<h4 id="4-using-launchpad-rosetta-to-translate-modules-and-applications">4. Using Launchpad / Rosetta to translate modules and applications</h4>
+<p>A good starting point is here <a href="https://launchpad.net/openobject">https://launchpad.net/openobject</a></p>
+<p><strong>Online</strong></p>
+<p>Select the module translation section and enter your translation.</p>
+<p><strong>Offline</strong></p>
+<p>Use this, if you want to translate some 100 terms.</p>
+<p>It seems mandatory to follow theses steps to successfully complete a translation cycle. (tested on Linux)</p>
+<ol>
+<li>Download the &lt;po file&gt; from Launchpad</li>
+<li>
+<p>Get the message template file &lt;pot file&gt; from bzr branches</p>
+<ol>
+<li>keep in mind that the &lt;pot file&gt; might not always contain all strings, the &lt;pot files&gt; are updated irregularly.</li>
+<li>msgmerge &lt;pot file&gt; &lt;po file&gt; -o &lt;new po file&gt;</li>
+</ol>
+</li>
+<li>
+<p>translate &lt;new po file&gt; using poedit, kbabel (KDE)</p>
+<ol>
+<li>some programs (like kbabel) allow using dictionaries to create rough translations.</li>
+<li>It is especially useful to create a complete dictionary from existing translations to reuse existing terms related to the application.<ol>
+<li>In OpenERP load most/all of the modules</li>
+<li>Load your language</li>
+<li>export all modules of your language as po file and use this one as dictionary. Depending on context of the module this creates 30-80% exact translations.</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>
+<p>the &lt;new po file&gt; must not contain &lt;fuzzy&gt; comments inserted by kbabel for rough translation</p>
+<ol>
+<li>grep -v fuzzy &lt;new po file&gt; &gt; &lt;po file&gt;</li>
+</ol>
+</li>
+<li>
+<p>check for correct spelling</p>
+<ol>
+<li>msgfmt &lt;po file&gt; -o &lt;mo file&gt;</li>
+</ol>
+</li>
+<li>
+<p>check your translation for correct context</p>
+<ol>
+<li>import the &lt;po file&gt; (for modules)</li>
+<li>install the &lt;mo file&gt; and restart the application (for applications)</li>
+</ol>
+</li>
+<li>
+<p>adjust the translation Online in OpenERP</p>
+<ol>
+<li>check context</li>
+<li>check length of strings</li>
+<li>export &lt;po file&gt;</li>
+</ol>
+</li>
+<li>
+<p>upload &lt;po file&gt; to Launchpad</p>
+<ol>
+<li>keep in mind that Launchpad / Rosetta uses some tags (not sure which) in the header section of the exported &lt;po file&gt; to recognize the imported &lt;po file&gt; as valid.</li>
+<li>after some time (hours) you will receive a confirmation E-Mail (success / error)</li>
+</ol>
+</li>
+</ol>
+<h3 id="using-context-dictionary-for-translations">Using context Dictionary for Translations</h3>
+<p>The context dictionary is explained in details in section "The Objects - Methods - The context Dictionary". If an additional language is installed using the Administration menu, the context dictionary will contain an additional key : lang. For example, if you install the French language then select it for the current user, his or her context dictionary will contain the key lang to which will be associated the value <em>fr_FR</em>.</p>
+<h2 id="technical-memento">Technical Memento</h2>
+<p>A technical reference memento is available, to be used as a quick reference guide for OpenERP developers, often nicknamed a "cheat sheet".</p>
+<ul>
+<li><a href="http://doc.openerp.com/memento"><img alt="t" src="../images/pdf.png" /></a> <a href="http://doc.openerp.com/memento">Technical Memento</a></li>
+</ul>
+<p>The memento is usually updated for each <a href="release_cycle">major version</a> of OpenERP, and contains a global overview of OpenERP's Application Programming Interface, including the declaration of modules, the ORM, the XML syntax, Dynamic views and Workflows. The memento is not an extensive reference, but a way to quickly find out how a certain OpenERP feature is accessed or used. Therefore each topic is only described in a few words, usually with a small example.</p>
+<p>The examples in the technical memento all come from the example module <code>idea</code>, which allows an organisation to manage the generic <em>ideas</em> submitted by its members.</p>
+<p>There are 2 versions of the memento. One is suited for printing in A4 landscape mode, with 3 columns of text per page, so that the whole memento is contained in less than 20 mini-pages (columns). The idea is to print and bind these pages as a reference booklet. The second version contains some more details and is formatted in A4 portrait mode, making it easier to read, but larger.</p>
+<p>All versions of the technical memento (including previous ones) can be found at this location: <a href="http://doc.openerp.com/memento"><img alt="t" src="../images/pdf.png" /></a> <a href="http://doc.openerp.com/memento">Technical Memento</a></p>
+<h2 id="information-repository">Information Repository</h2>
+<p>The information repository is a semantics tree in which the data that are not the resources are stored. We find in this structure:</p>
+<ol>
+<li>the values by default</li>
+<li>
+<p>the conditional values;</p>
+<ul>
+<li>the state depends on the zip code,</li>
+<li>the payment method depends of the partner, ...</li>
+</ul>
+</li>
+<li>
+<p>the reactions to the events client;</p>
+<ul>
+<li>click on the invoice menu,</li>
+<li>print an invoice,</li>
+<li>action on a partner, ...</li>
+</ul>
+</li>
+</ol>
+<p>The IR has 3 methods;</p>
+<ul>
+<li>add a value in the tree</li>
+<li>delete a value in the tree</li>
+<li>obtain all the values of a selected sheet</li>
+</ul>
+<h3 id="setting-value">Setting Value</h3>
+<p>The ir_set tag allows you to insert new values in the "Information Repository". This tag must contain several <em>field</em> tags with <em>name</em> and <em>eval</em> attributes.</p>
+<p>The attributes are those defined by the access methods to the information repository. We must provide it with several attributes: <em>keys</em>, <em>args</em>, <em>name</em>, <em>value</em>, <em>isobject</em>, <em>replace</em>, <em>meta</em> and some optional fields.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;ir_set&gt;
+    &lt;field name=&quot;keys&quot; eval=&quot;[('action','client_print_multi'),('res_model','account.invoice')]&quot;/&gt;
+    &lt;field name=&quot;args&quot; eval=&quot;[]&quot;/&gt;
+    &lt;field name=&quot;name&quot;&gt;Print Invoices&lt;/field&gt;
+    &lt;field name=&quot;value&quot; eval=&quot;'ir.actions.report.xml,'+str(l0)&quot;/&gt;
+    &lt;field name=&quot;isobject&quot; eval=&quot;True&quot;/&gt;
+    &lt;field name=&quot;replace&quot; eval=&quot;False&quot;/&gt;
+&lt;/ir_set&gt;
+</code></pre>
+
+<h3 id="ir-methods">IR Methods</h3>
+<pre><code class="python">def ir_set(cr, uid, key, key2, name, models, value, replace=True, isobject=False, meta=None)
+</code></pre>
+
+<pre><code class="python">def ir_get(cr, uid, key, key2, models, meta=False, context={}, res_id_req=False)
+</code></pre>
+
+<pre><code class="python">def ir_del(cr, uid, id):
+</code></pre>
+
+<p>Description of the fields:   </p>
+<ol>
+<li>key:</li>
+<li>key2:</li>
+<li>name:</li>
+<li>models:</li>
+<li>value:</li>
+<li>isobject:</li>
+<li>replace: whether or not the action described should override an existing action or be appended to the list of actions.</li>
+<li>meta:</li>
+</ol>
+<p>Using ir_set and ir_get:   </p>
+<pre><code class="python">...
+
+    res = ir.ir_set(cr, uid, key, key2, name, models, value, replace, isobject, meta)
+
+...
+
+
+...
+
+    if not report.menu_id:
+
+        ir.ir_set(cr, uid, 'action', 'client_print_multi', name, [(model, False)], action, False, True)
+
+    else:
+
+        ir.ir_set(cr, uid, 'action', 'tree_but_open', 'Menuitem', [('ir.ui.menu', int(m_id))], action, False, True)
+
+...
+
+
+...
+
+    res = ir.ir_get(cr, uid, [('default', self._name), ('field', False)], [('user_id',str(uid))])
+
+...
+
+    account_payable = ir.ir_get(cr, uid, [('meta','res.partner'), ('name','account.payable')], opt)[0][2]
+
+...
+</code></pre></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

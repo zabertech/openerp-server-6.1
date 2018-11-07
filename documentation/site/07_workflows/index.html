@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>07 workflows - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#workflow-business-process">Workflow-Business Process</a></li>
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#defining-workflow">Defining Workflow</a></li>
+            <li><a href="#general-structure-of-a-workflow-xml-file">General structure of a workflow XML file</a></li>
+            <li><a href="#activity">Activity</a></li>
+            <li><a href="#transition">Transition</a></li>
+            <li><a href="#expressions">Expressions</a></li>
+            <li><a href="#user-role">User Role</a></li>
+            <li><a href="#error-handling">Error handling</a></li>
+            <li><a href="#creating-a-workflow">Creating a Workflow</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="workflow-business-process">Workflow-Business Process</h1>
+<h2 id="introduction">Introduction</h2>
+<p>The workflow system in OpenERP is a very powerful mechanism that can describe the evolution of documents (model) in time.</p>
+<p>Workflows are entirely customizable, they can be adapted to the flows and trade logic of almost any company. The workflow system makes OpenERP very flexible and allows it to easily support changing needs without having to program new functionality.</p>
+<p><strong>Goals</strong></p>
+<ul>
+<li>description of document evolution in time</li>
+<li>automatic trigger of actions if some conditions are met</li>
+<li>management of company roles and validation steps</li>
+<li>management of interactions between the different objects/modules</li>
+<li>graphical tool for visualization of document flows</li>
+</ul>
+<p><strong>To understand their utility, see the following three:</strong></p>
+<h3 id="example-1-discount-on-orders">Example 1: Discount On Orders</h3>
+<p>The first diagram represent a very basic workflow of an order:</p>
+<p><img alt="image" src="../images/Workflow_bc1.png" /></p>
+<p>The order starts in the 'draft' state, when it is being written and has not been approved yet. When the user presses on the 'Confirm' button, the invoice is created and the order transitions to the 'CONFIRMED' state.</p>
+<p>Then, two operations are possible:</p>
+<ol>
+<li>the order is done (shipped)</li>
+<li>the order is canceled</li>
+</ol>
+<p>Let's suppose a company has a need not implemented in OpenERP. For example, their sales staff can only offer discounts of 15% or less. Every order having a discount above 15% must be approved by the sales manager.</p>
+<p>This modification in the sales logic doesn't need any lines of Python code! A simple modification of the workflow allows us to take this new need into account and add the extra validation step.</p>
+<p><img alt="image" src="../images/Workflow_bc2.png" /></p>
+<p>The workflow is modified as above and the orders will react as requested. We then only need to modify the order form view and add a validation button at the desired location.</p>
+<p>We could then further improve this workflow by sending a request to the sales manager when an order enters the 'Validation' state. Workflow nodes can execute object methods; only two lines of Python are needed to send a request asking the sales manager to validate or reject the order.</p>
+<h3 id="example-2-a-sale-order-that-generates-an-invoice-and-a-shipping-order">Example 2: A sale order that generates an invoice and a shipping order</h3>
+<p><img alt="image" src="../images/Workflow_sale.png" /></p>
+<h3 id="example-3-account-invoice-basic-workflow">Example 3: Account invoice basic workflow</h3>
+<p><img alt="image" src="../images/Acount_inv_wkf.jpg" /></p>
+<h2 id="defining-workflow">Defining Workflow</h2>
+<p>Workflows are defined in the file <code>server/addons/base/ir/workflow/workflow.py</code>. The first three classes defined in this file are <code>workflow</code>, <code>wkf_activity</code> and <code>wkf_transition</code>. They correspond to the three types of resources necessary to describe a workflow:</p>
+<ul>
+<li><a href="http://openobject.com/wiki/index.php/WkfDefXML">workflow</a> : the workflow,</li>
+<li><a href="http://openobject.com/wiki/index.php/WorkflowActivity">wkf_activity</a> : the activities (nodes),</li>
+<li><a href="http://openobject.com/wiki/index.php/WorkflowTransition">wkf_transition</a> : the transitions between the activities.</li>
+</ul>
+<h2 id="general-structure-of-a-workflow-xml-file">General structure of a workflow XML file</h2>
+<p>The general structure of a workflow XML file is as follows:</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+&lt;data&gt;
+&lt;record model=&quot;workflow&quot; id=workflow_id&gt;
+
+    &lt;field name=&quot;name&quot;&gt;workflow.name&lt;/field&gt;
+    &lt;field name=&quot;osv&quot;&gt;resource.model&lt;/field&gt;
+    &lt;field name=&quot;on_create&quot; eval='True|False' /&gt;
+
+&lt;/record&gt;
+
+&lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p><strong>Where</strong></p>
+<ul>
+<li><strong>id</strong> (here "workflow_id") is a workflow identifier. Each workflow must have an unique identifier.</li>
+<li><strong>name</strong> (here "workflow.name") is the name of the workflow. The name of the workflow must respect the OpenERP syntax of "dotted names".</li>
+<li><strong>osv</strong> (here "resource.model") is the name of the object we use as a model [-(Remember an OpenERP object inherits from osv.osv, hence the '&lt;field name="osv"&gt;')-].</li>
+<li><strong>on_create</strong> is True if workflow.name must be instantiated automatically when resource.model is created, and False otherwise.</li>
+</ul>
+<p><strong>Example</strong></p>
+<p>The workflow <code>sale.order.basic</code> defined in <code>addons/sale/sale_workflow.xml</code> follows exactly this model, the code of its workflow tag is:</p>
+<pre><code class="xml">&lt;record model=&quot;workflow&quot; id=&quot;wkf_sale&quot;&gt;
+
+    &lt;field name=&quot;name&quot;&gt;sale.order.basic&lt;/field&gt;
+    &lt;field name=&quot;osv&quot;&gt;sale.order&lt;/field&gt;
+    &lt;field name=&quot;on_create&quot; eval='True' /&gt;
+
+&lt;/record&gt;
+</code></pre>
+
+<h2 id="activity">Activity</h2>
+<h3 id="introduction_1">Introduction</h3>
+<p>The <code>wkf_activity</code> class represents the nodes of workflows. These nodes are the actions to be executed.</p>
+<h3 id="the-fields">The fields</h3>
+<pre><code>split_mode
+</code></pre>
+<p><img alt="image" src="../images/Wkf_split.png" /></p>
+<p>Possible values:</p>
+<ul>
+<li>XOR: One necessary transition, takes the first one found (default).</li>
+<li>OR: Take only valid transitions (0 or more) in sequential order.</li>
+<li>AND: All valid transitions are launched at the same time (fork).</li>
+</ul>
+<p>In the OR and AND separation mode, certain workitems can be generated.</p>
+<p>In the AND mode, the activity waits for all transitions to be valid, even if some of them are already valid. They are all triggered at the same time.</p>
+<pre><code>join_mode
+</code></pre>
+<p><img alt="image" src="../images/Wkf_join.png" /></p>
+<p>Possible values:</p>
+<ul>
+<li><strong>XOR</strong>: One transition necessary to continue to the destination activity (default).</li>
+<li><strong>AND</strong>: Waits for all transition conditions to be valid to execute the destination activity.</li>
+</ul>
+<!-- -->
+
+<pre><code>kind
+</code></pre>
+<p>Possible values:</p>
+<ul>
+<li><strong>dummy</strong>: Do nothing (default).</li>
+<li><strong>function</strong>: Execute the function selected by an action.</li>
+<li><strong>subflow</strong>: Execute a sub-workflow SUBFLOW_ID. The action method must return the ID of the concerned resource by the subflow. If the action returns False, the workitem disappears.</li>
+<li><strong>stopall</strong>:</li>
+</ul>
+<p>A sub-workflow is executed when an activity is of the type SUBFLOW. This activity ends when the sub-workflow has finished. While the sub-workflow is active, the workitem of this activity is frozen.</p>
+<pre><code>action
+</code></pre>
+<p>The action indicates the method to execute when a workitem comes into this activity. The method must be defined in an object which belongs to this workflow and have the following signature:</p>
+<pre><code class="python">def object_method(self, cr, uid, ids):
+</code></pre>
+
+<p>In the action though, they will be called by a statement like:</p>
+<pre><code class="python">object_method()
+</code></pre>
+
+<pre><code>signal_send
+</code></pre>
+<p>This field is used to specify a signal that will be sent to the parent workflow when the activity becomes active. To do this, set the value to the name of the signal (without the <code>signal.</code> prefix).</p>
+<pre><code>flow_start
+</code></pre>
+<p>Indicates if the node is a start node. When a new instance of a workflow is created, a workitem is activated for each activity marked as a <code>flow_start</code>.</p>
+<div class="admonition warning">
+
+As for all Boolean fields, when writing the `<field>` tag in your XML data, be sure to use the `eval` attribute and not a text node for this attribute. Read the section about the eval attribute &lt;eval-attribute-link&gt; for an explanation.
+
+</div>
+
+<pre><code>flow_stop
+</code></pre>
+<p>Indicates if the node is an ending node. When all the active workitems for a given instance come in the node marked by flow_stop, the workflow is finished.</p>
+<div class="admonition warning">
+
+See above in the description of the `flow_start` field.
+
+</div>
+
+<p>::</p>
+<p>:   wkf_id</p>
+<p>The workflow this activity belongs to.</p>
+<h3 id="defining-activities-using-xml-files">Defining activities using XML files</h3>
+<p>The general structure of an activity record is as follows</p>
+<pre><code class="xml">&lt;record model=&quot;workflow.activity&quot; id=&quot;''activity_id''&quot;&gt;
+      &lt;field name=&quot;wkf_id&quot; ref=&quot;''workflow_id''&quot;/&gt;
+      &lt;field name=&quot;name&quot;&gt;''activity.name''&lt;/field&gt;::
+
+      &lt;field name=&quot;split_mode&quot;&gt;XOR | OR | AND&lt;/field&gt;
+      &lt;field name=&quot;join_mode&quot;&gt;XOR | AND&lt;/field&gt;
+      &lt;field name=&quot;kind&quot;&gt;dummy | function | subflow | stopall&lt;/field&gt;
+
+      &lt;field name=&quot;action&quot;&gt;''(...)''&lt;/field&gt;
+      &lt;field name=&quot;signal_send&quot;&gt;''(...)''&lt;/field&gt;
+      &lt;field name=&quot;flow_start&quot; eval='True | False' /&gt;
+      &lt;field name=&quot;flow_stop&quot; eval='True | False' /&gt;
+  &lt;/record&gt;
+</code></pre>
+
+<p>The first two arguments <strong>wkf_id</strong> and name are mandatory.</p>
+<h3 id="examples">Examples</h3>
+<p>There are too many possibilities of activity definition to choose from using this definition. We recommend you to have a look at the file <code>server/addons/sale/sale_workflow.xml</code> for several examples of activity definitions.</p>
+<h2 id="transition">Transition</h2>
+<h3 id="introduction_2">Introduction</h3>
+<p>Workflow transitions are the conditions which need to be satisfied to move from one activity to the next. They are represented by one-way arrows joining two activities.</p>
+<p>The conditions are of different types:</p>
+<blockquote>
+<ul>
+<li>role that the user must satisfy</li>
+<li>button pressed in the interface</li>
+<li>end of a subflow through a selected activity of subflow</li>
+</ul>
+</blockquote>
+<p>The roles and signals are evaluated before the expression. If a role or a signal is false, the expression will not be evaluated.</p>
+<p>Transition tests may not write values in objects.</p>
+<h3 id="the-fields_1">The fields</h3>
+<pre><code>act_from
+</code></pre>
+<p>Source activity. When this activity is over, the condition is tested to determine if we can start the ACT_TO activity.</p>
+<pre><code>act_to
+</code></pre>
+<p>The destination activity.</p>
+<pre><code>condition
+</code></pre>
+<p><strong>Expression</strong> to be satisfied if we want the transition done.</p>
+<pre><code>signal
+</code></pre>
+<p>When the operation of transition comes from a button pressed in the client form, signal tests the name of the pressed button.</p>
+<p>If signal is NULL, no button is necessary to validate this transition.</p>
+<pre><code>role_id
+</code></pre>
+<p>The <strong>role</strong> that a user must have to validate this transition.</p>
+<h3 id="defining-transitions-using-xml-files">Defining Transitions Using XML Files</h3>
+<p>The general structure of a transition record is as follows</p>
+<pre><code class="xml">&lt;record model=&quot;workflow.transition&quot; id=&quot;transition_id&quot;&gt;
+
+    &lt;field name=&quot;act_from&quot; ref=&quot;activity_id'_1_'&quot;/&gt;
+    &lt;field name=&quot;act_to&quot; ref=&quot;activity_id'_2_'&quot;/&gt;
+
+    &lt;field name=&quot;signal&quot;&gt;(...)&lt;/field&gt;
+    &lt;field name=&quot;role_id&quot; ref=&quot;role_id'_1_'&quot;/&gt;
+    &lt;field name=&quot;condition&quot;&gt;(...)&lt;/field&gt;
+
+    &lt;field name=&quot;trigger_model&quot;&gt;(...)&lt;/field&gt;
+    &lt;field name=&quot;trigger_expr_id&quot;&gt;(...)&lt;/field&gt;
+
+&lt;/record&gt;
+</code></pre>
+
+<p>Only the fields <strong>act_from</strong> and <strong>act_to</strong> are mandatory.</p>
+<h2 id="expressions">Expressions</h2>
+<p>Expressions are written as in Python:</p>
+<ul>
+<li>True</li>
+<li>1==1</li>
+<li>'hello' in ['hello','bye']</li>
+</ul>
+<p>Any field from the resource the workflow refers to can be used in these expressions. For example, if you were creating a workflow for partner addresses, you could use expressions like:</p>
+<ul>
+<li>zip==1400</li>
+<li>phone==mobile</li>
+</ul>
+<h2 id="user-role">User Role</h2>
+<p>Roles can be attached to transitions. If a role is given for a transition, that transition can only be executed if the user who triggered it has the required role.</p>
+<p>Each user can have one or several roles. Roles are defined in a tree of roles, parent roles having the rights of all their children.</p>
+<p>Example:</p>
+<p>CEO</p>
+<ul>
+<li>Technical manager<ul>
+<li>Lead developer<ul>
+<li>Developers</li>
+<li>Testers</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Sales manager<ul>
+<li>Commercials</li>
+<li>...</li>
+</ul>
+</li>
+</ul>
+<p>Let's suppose we handle our own bug database and that the action of marking a bug as valid needs the Testers role. In the example tree above, marking a bug as valid could be done by all the users having the following roles: Testers, Lead developer, Technical manager, CEO.</p>
+<h2 id="error-handling">Error handling</h2>
+<p>As of this writing, there is no exception handling in workflows.</p>
+<p>Workflows being made of several actions executed in batch, they can't trigger exceptions. In order to improve the execution efficiency and to release a maximum of locks, workflows commit at the end of each activity. This approach is reasonable because an activity is only started if the conditions of the transactions are satisfied.</p>
+<p>The only problem comes from exceptions due to programming errors; in that case, only transactions belonging to the entirely completed activities are executed. Other transactions are "rolled back".</p>
+<h2 id="creating-a-workflow">Creating a Workflow</h2>
+<p>Steps for creating a simple state-changing workflow for a custom module called <strong>mymod</strong></p>
+<h3 id="define-the-states-of-your-object">Define the States of your object</h3>
+<p>The first step is to define the States your object can be in. We do this by adding a 'state' field to our object, in the _columns collection</p>
+<pre><code class="python">_columns = {
+ ...
+    'state': fields.selection([
+    ('new','New'),
+    ('assigned','Assigned'),
+    ('negotiation','Negotiation'),
+    ('won','Won'),
+    ('lost','Lost')], 'Stage', readonly=True),
+}
+</code></pre>
+
+<h3 id="define-the-state-change-handling-methods">Define the State-change Handling Methods</h3>
+<p>Add the following additional methods to your object. These will be called by our workflow buttons.</p>
+<pre><code class="python">def mymod_new(self, cr, uid, ids):
+     self.write(cr, uid, ids, {'state': 'new'})
+     return True
+
+def mymod_assigned(self, cr, uid, ids):
+     self.write(cr, uid, ids, {'state': 'assigned'})
+     return True
+
+def mymod_negotiation(self, cr, uid, ids):
+     self.write(cr, uid, ids, {'state': 'negotiation'})
+     return True
+
+def mymod_won(self, cr, uid, ids):
+     self.write(cr, uid, ids, {'state': 'won'})
+     return True
+
+def mymod_lost(self, cr, uid, ids):
+     self.write(cr, uid, ids, {'state': 'lost'})
+     return True
+</code></pre>
+
+<p>Obviously you would extend these methods in the future to do something more useful!</p>
+<h3 id="create-your-workflow-xml-file">Create your Workflow XML file</h3>
+<p>There are three types of records we need to define in a file called <code>mymod_workflow.xml</code></p>
+<ol>
+<li>Workflow header record (only one of these)</li>
+</ol>
+<pre><code class="xml">&lt;record model=&quot;workflow&quot; id=&quot;wkf_mymod&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;mymod.wkf&lt;/field&gt;
+    &lt;field name=&quot;osv&quot;&gt;mymod.mymod&lt;/field&gt;
+    &lt;field name=&quot;on_create&quot; eval='True' /&gt;
+&lt;/record&gt;
+</code></pre>
+
+<ol>
+<li>Workflow Activity records</li>
+</ol>
+<p>These define the actions that must be executed when the workflow reaches a particular state</p>
+<pre><code class="xml">&lt;record model=&quot;workflow.activity&quot; id=&quot;act_new&quot;&gt;
+    &lt;field name=&quot;wkf_id&quot; ref=&quot;wkf_mymod&quot; /&gt;
+    &lt;field name=&quot;flow_start&quot; eval='True' /&gt;
+    &lt;field name=&quot;name&quot;&gt;new&lt;/field&gt;
+    &lt;field name=&quot;kind&quot;&gt;function&lt;/field&gt;
+    &lt;field name=&quot;action&quot;&gt;mymod_new()&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.activity&quot; id=&quot;act_assigned&quot;&gt;
+    &lt;field name=&quot;wkf_id&quot; ref=&quot;wkf_mymod&quot; /&gt;
+    &lt;field name=&quot;name&quot;&gt;assigned&lt;/field&gt;
+    &lt;field name=&quot;kind&quot;&gt;function&lt;/field&gt;
+    &lt;field name=&quot;action&quot;&gt;mymod_assigned()&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.activity&quot; id=&quot;act_negotiation&quot;&gt;
+    &lt;field name=&quot;wkf_id&quot; ref=&quot;wkf_mymod&quot; /&gt;
+    &lt;field name=&quot;name&quot;&gt;negotiation&lt;/field&gt;
+    &lt;field name=&quot;kind&quot;&gt;function&lt;/field&gt;
+    &lt;field name=&quot;action&quot;&gt;mymod_negotiation()&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.activity&quot; id=&quot;act_won&quot;&gt;
+    &lt;field name=&quot;wkf_id&quot; ref=&quot;wkf_mymod&quot; /&gt;
+    &lt;field name=&quot;name&quot;&gt;won&lt;/field&gt;
+    &lt;field name=&quot;kind&quot;&gt;function&lt;/field&gt;
+    &lt;field name=&quot;action&quot;&gt;mymod_won()&lt;/field&gt;
+    &lt;field name=&quot;flow_stop&quot; eval='True' /&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.activity&quot; id=&quot;act_lost&quot;&gt;
+    &lt;field name=&quot;wkf_id&quot; ref=&quot;wkf_mymod&quot; /&gt;
+    &lt;field name=&quot;name&quot;&gt;lost&lt;/field&gt;
+    &lt;field name=&quot;kind&quot;&gt;function&lt;/field&gt;
+    &lt;field name=&quot;action&quot;&gt;mymod_lost()&lt;/field&gt;
+    &lt;field name=&quot;flow_stop&quot; eval='True' /&gt;
+&lt;/record&gt;
+</code></pre>
+
+<ol>
+<li>Workflow Transition records</li>
+</ol>
+<p>These define the possible transitions between workflow states</p>
+<pre><code class="xml">&lt;record model=&quot;workflow.transition&quot; id=&quot;t1&quot;&gt;
+    &lt;field name=&quot;act_from&quot; ref=&quot;act_new&quot; /&gt;
+    &lt;field name=&quot;act_to&quot; ref=&quot;act_assigned&quot; /&gt;
+    &lt;field name=&quot;signal&quot;&gt;mymod_assigned&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.transition&quot; id=&quot;t2&quot;&gt;
+    &lt;field name=&quot;act_from&quot; ref=&quot;act_assigned&quot; /&gt;
+    &lt;field name=&quot;act_to&quot; ref=&quot;act_negotiation&quot; /&gt;
+    &lt;field name=&quot;signal&quot;&gt;mymod_negotiation&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.transition&quot; id=&quot;t3&quot;&gt;
+    &lt;field name=&quot;act_from&quot; ref=&quot;act_negotiation&quot; /&gt;
+    &lt;field name=&quot;act_to&quot; ref=&quot;act_won&quot; /&gt;
+    &lt;field name=&quot;signal&quot;&gt;mymod_won&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;record model=&quot;workflow.transition&quot; id=&quot;t4&quot;&gt;
+    &lt;field name=&quot;act_from&quot; ref=&quot;act_negotiation&quot; /&gt;
+    &lt;field name=&quot;act_to&quot; ref=&quot;act_lost&quot; /&gt;
+    &lt;field name=&quot;signal&quot;&gt;mymod_lost&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h3 id="add-mymod95workflowxml-to-9595openerp9595py">Add mymod_workflow.xml to __openerp__.py</h3>
+<p>Edit your module's <code>__openerp__.py</code> and add <code>"mymod_workflow.xml"</code> to the <code>update_xml</code> array, so that OpenERP picks it up next time your module is loaded.</p>
+<h3 id="add-workflow-buttons-to-your-view">Add Workflow Buttons to your View</h3>
+<p>The final step is to add the required buttons to <code>mymod_views.xml</code> file.</p>
+<p>Add the following at the end of the <code>&lt;form&gt;</code> section of your object's view definition:</p>
+<pre><code class="xml">&lt;separator string=&quot;Workflow Actions&quot; colspan=&quot;4&quot;/&gt;
+&lt;group colspan=&quot;4&quot; col=&quot;3&quot;&gt;
+    &lt;button name=&quot;mymod_assigned&quot; string=&quot;Assigned&quot; states=&quot;new&quot; /&gt;
+    &lt;button name=&quot;mymod_negotiation&quot; string=&quot;In Negotiation&quot; states=&quot;assigned&quot; /&gt;
+    &lt;button name=&quot;mymod_won&quot; string=&quot;Won&quot; states=&quot;negotiating&quot; /&gt;
+    &lt;button name=&quot;mymod_lost&quot; string=&quot;Lost&quot; states=&quot;negotiating&quot; /&gt;
+&lt;/group&gt;
+</code></pre>
+
+<h3 id="testing">Testing</h3>
+<p>Now use the Module Manager to install or update your module. If you have done everything correctly you shouldn't get any errors. You can check if your workflow is installed in the menu Administration --&gt; Customization --&gt; Workflow Definitions.</p>
+<p>When you are testing, remember that the workflow will only apply to NEW records that you create.</p>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p>If your buttons do not seem to be doing anything, one of the following two things are likely:</p>
+<ol>
+<li>The record you are working on does not have a Workflow Instance record associated with it (it was probably created before you defined your workflow)</li>
+<li>You have not set the <code>osv</code> field correctly in your workflow XML file</li>
+</ol></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

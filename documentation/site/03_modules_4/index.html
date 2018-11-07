@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>03 modules 4 - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#menu-and-actions">Menu and Actions</a></li>
+            <li><a href="#menus">Menus</a></li>
+            <li><a href="#actions">Actions</a></li>
+            <li><a href="#security">Security</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="menu-and-actions">Menu and Actions</h1>
+<h2 id="menus">Menus</h2>
+<p>Here's the template of a menu item : :</p>
+<pre><code class="xml">&lt;menuitem id=&quot;menuitem_id&quot; 
+      name=&quot;Position/Of/The/Menu/Item/In/The/Tree&quot; 
+      action=&quot;action_id&quot; 
+      icon=&quot;NAME_FROM_LIST&quot; 
+      groups=&quot;groupname&quot; 
+      sequence=&quot;&lt;integer&gt;&quot;/&gt;
+</code></pre>
+
+<p>Where</p>
+<ul>
+<li><strong><code>id</code></strong>: specifies the identifier of the menu item in the menu items table. This identifier must be unique. Mandatory field.</li>
+<li><strong><code>name</code></strong> defines the position of the menu item in the menu hierarchy. Elements are separated by slashes ("/"). A menu item name with no slash in its text is a top level menu. Mandatory field.</li>
+<li>action specifies the identifier of the action that must have been defined in the action table (ir.actions.act_window). Note that this field is not mandatory : you can define menu elements without associating actions to them. This is useful when defining custom icons for menu elements that will act as folders (for example this is how custom icons for "Projects", "Human Resources" in OpenERP are defined).</li>
+<li><strong><code>icon</code></strong> specifies which icon will be displayed for the menu item using the menu item. The default icon is STOCK_OPEN.</li>
+<li>
+<p>The available icons are : STOCK_ABOUT, STOCK_ADD, STOCK_APPLY, STOCK_BOLD, STOCK_CANCEL, STOCK_CDROM, STOCK_CLEAR, STOCK_CLOSE, STOCK_COLOR_PICKER, STOCK_CONNECT, STOCK_CONVERT, STOCK_COPY, STOCK_CUT, STOCK_DELETE, STOCK_DIALOG_AUTHENTICATION, STOCK_DIALOG_ERROR, STOCK_DIALOG_INFO, STOCK_DIALOG_QUESTION, STOCK_DIALOG_WARNING, STOCK_DIRECTORY, STOCK_DISCONNECT, STOCK_DND, STOCK_DND_MULTIPLE, STOCK_EDIT, STOCK_EXECUTE, STOCK_FILE, STOCK_FIND, STOCK_FIND_AND_REPLACE, STOCK_FLOPPY, STOCK_GOTO_BOTTOM, STOCK_GOTO_FIRST, STOCK_GOTO_LAST, STOCK_GOTO_TOP, STOCK_GO_BACK, STOCK_GO_DOWN, STOCK_GO_FORWARD, STOCK_GO_UP, STOCK_HARDDISK, STOCK_HELP, STOCK_HOME, STOCK_INDENT, STOCK_INDEX, STOCK_ITALIC, STOCK_JUMP_TO, STOCK_JUSTIFY_CENTER, STOCK_JUSTIFY_FILL, STOCK_JUSTIFY_LEFT, STOCK_JUSTIFY_RIGHT, STOCK_MEDIA_FORWARD, STOCK_MEDIA_NEXT, STOCK_MEDIA_PAUSE, STOCK_MEDIA_PLAY, STOCK_MEDIA_PREVIOUS, STOCK_MEDIA_RECORD, STOCK_MEDIA_REWIND, STOCK_MEDIA_STOP, STOCK_MISSING_IMAGE, STOCK_NETWORK, STOCK_NEW, STOCK_NO, STOCK_OK, STOCK_OPEN, STOCK_PASTE, STOCK_PREFERENCES, STOCK_PRINT, STOCK_PRINT_PREVIEW, STOCK_PROPERTIES, STOCK_QUIT,STOCK_REDO, STOCK_REFRESH, STOCK_REMOVE, STOCK_REVERT_TO_SAVED, STOCK_SAVE, STOCK_SAVE_AS, STOCK_SELECT_COLOR, STOCK_SELECT_FONT, STOCK_SORT_ASCENDING, STOCK_SORT_DESCENDING, STOCK_SPELL_CHECK, STOCK_STOP, STOCK_STRIKETHROUGH, STOCK_UNDELETE, STOCK_UNDERLINE, STOCK_UNDO, STOCK_UNINDENT, STOCK_YES, STOCK_ZOOM_100, STOCK_ZOOM_FIT, STOCK_ZOOM_IN, STOCK_ZOOM_OUT, terp-account, terp-crm, terp-mrp, terp-product, terp-purchase, terp-sale, terp-tools, terp-administration, terp-hr, terp-partner, terp-project, terp-report, terp-stock</p>
+</li>
+<li>
+<p><strong><code>groups</code></strong> specifies which group of user can see the menu item (example : groups="admin"). See section " Management of Access Rights" for more information. Multiple groups should be separated by a ',' (example: groups="admin,user")</p>
+</li>
+<li><strong><code>sequence</code></strong> is an integer that is used to sort the menu item in the menu. The higher the sequence number, the downer the menu item. This argument is not mandatory: if sequence is not specified, the menu item gets a default sequence number of 10. Menu items with the same sequence numbers are sorted by order of creation (<em>_order =</em> "<em>sequence,id</em>").</li>
+</ul>
+<h3 id="example">Example</h3>
+<p>In server/bin/addons/sale/sale_view.xml, we have, for example :</p>
+<pre><code class="xml">&lt;menuitem name=&quot;Sales Management/Sales Order/Sales Order in Progress&quot; id=&quot;menu_action_order_tree4&quot; action=&quot;action_order_tree4&quot;/&gt;
+</code></pre>
+
+<p>To change the icon of menu item:</p>
+<ul>
+<li>Highlight the menu with the icon you want to change.</li>
+<li>Select the "Switch to list/form" option from the "Form" menu. This will take you to the Menu editor.</li>
+<li>From here you can change the icon of the selected menu.</li>
+</ul>
+<h2 id="actions">Actions</h2>
+<h3 id="introduction">Introduction</h3>
+<p>The actions define the behavior of the system in response to the actions of the users ; login of a new user, double-click on an invoice, click on the action button, ...</p>
+<p>There are different types of simple actions:</p>
+<ul>
+<li>Window: Opening of a new window</li>
+<li>Report: The printing of a report:   o Custom Report: The personalized reports o RML Report: The XSL:RML reports</li>
+<li>Wizard: The beginning of a Wizard</li>
+<li>Execute: The execution of a method on the server side</li>
+<li>Group: Gather some actions in one group</li>
+</ul>
+<p>The actions are used for the following events;</p>
+<ul>
+<li>User connection,</li>
+<li>The user double-clicks on the menu,</li>
+<li>The user clicks on the icon 'print' or 'action'.</li>
+</ul>
+<h3 id="example-of-events">Example of events</h3>
+<p>In OpenERP, all the actions are described and not configured. Two examples:</p>
+<ul>
+<li>Opening of a window when double-clicking in the menu</li>
+<li>User connection</li>
+</ul>
+<h4 id="opening-of-the-menu">Opening of the menu</h4>
+<p>When the user open the option of the menu "Operations &gt; Partners &gt; Partners Contact", the next steps are done to give the user information on the action to undertake.</p>
+<ol>
+<li>Search the action in the IR.</li>
+<li>Execution of the action<ol>
+<li>If the action is the type Opening the Window; it indicates to the user that a new window must be opened for a selected object and it gives you the view (form or list) and the filed to use (only the pro-forma invoice).</li>
+<li>The user asks the object and receives information necessary to trace a form; the fields description and the XML view.</li>
+</ol>
+</li>
+</ol>
+<h4 id="user-connection">User connection</h4>
+<p>When a new user is connected to the server, the client must search the action to use for the first screen of this user. Generally, this action is: open the menu in the 'Operations' section.</p>
+<p>The steps are:</p>
+<ol>
+<li>Reading of a user file to obtain ACTION_ID</li>
+<li>Reading of the action and execution of this one</li>
+</ol>
+<h4 id="the-fields">The fields</h4>
+<p><strong>Action Name</strong>  :   The action name</p>
+<p><strong>Action Type</strong>  :   Always 'ir.actions.act_window'</p>
+<p><strong>View Ref</strong>  :   The view used for showing the object</p>
+<p><strong>Model</strong>  :   The model of the object to post</p>
+<p><strong>Type of View</strong>  :   The type of view (Tree/Form)</p>
+<p><strong>Domain Value</strong>  :   The domain that decreases the visible data with this view</p>
+<h3 id="the-view">The view</h3>
+<p>The view describes how the edition form or the data tree/list appear on screen. The views can be of 'Form' or 'Tree' type, according to whether they represent a form for the edition or a list/tree for global data viewing.</p>
+<p>A form can be called by an action opening in 'Tree' mode. The form view is generally opened from the list mode (like if the user pushes on 'switch view').</p>
+<h3 id="the-domain">The domain</h3>
+<p>This parameter allows you to regulate which resources are visible in a selected view.(restriction)</p>
+<p>For example, in the invoice case, you can define an action that opens a view that shows only invoices not paid.</p>
+<p>The domains are written in python; list of tuples. The tuples have three elements;</p>
+<ul>
+<li>the field on which the test must be done</li>
+<li>the operator used for the test (&lt;, &gt;, =, like)</li>
+<li>the tested value</li>
+</ul>
+<p>For example, if you want to obtain only 'Draft' invoice, use the following domain; [('state','=','draft')]</p>
+<p>In the case of a simple view, the domain define the resources which are the roots of the tree. The other resources, even if they are not from a part of the domain will be posted if the user develop the branches of the tree.</p>
+<h3 id="window-action">Window Action</h3>
+<p>Actions are explained in more detail in the Client Action &lt;client-action&gt; section. Here's the template of an action XML record:</p>
+<pre><code class="xml">&lt;record model=&quot;ir.actions.act_window&quot; id=&quot;action_id_1&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;action.name&lt;/field&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;view_id_1&quot;/&gt;
+    &lt;field name=&quot;domain&quot;&gt;[&quot;list of 3-tuples (max 250 characters)&quot;]&lt;/field&gt;
+    &lt;field name=&quot;context&quot;&gt;{&quot;context dictionary (max 250 characters)&quot;}&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;Open.object&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form|tree&lt;/field&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;form,tree|tree,form|form|tree&lt;/field&gt;
+    &lt;field name=&quot;usage&quot;&gt;menu&lt;/field&gt;
+    &lt;field name=&quot;target&quot;&gt;new&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p><strong>Where</strong></p>
+<ul>
+<li><strong>id</strong> is the identifier of the action in the table "ir.actions.act_window". It must be unique.</li>
+<li><strong>name</strong> is the name of the action (mandatory).</li>
+<li><strong>view_id</strong> is the name of the view to display when the action is activated. If this field is not defined, the view of a kind (list or form) associated to the object res_model with the highest priority field is used (if two views have the same priority, the first defined view of a kind is used).</li>
+<li><strong>domain</strong> is a list of constraints used to refine the results of a selection, and hence to get less records displayed in the view. Constraints of the list are linked together with an AND clause : a record of the table will be displayed in the view only if all the constraints are satisfied.</li>
+<li><strong>context</strong> is the context dictionary which will be visible in the view that will be opened when the action is activated. Context dictionaries are declared with the same syntax as Python dictionaries in the XML file. For more information about context dictionaries, see section " The context Dictionary".</li>
+<li><strong>res_model</strong> is the name of the object on which the action operates.</li>
+<li><strong>view_type</strong> is set to form when the action must open a new form view, and is set to tree when the action must open a new tree view.</li>
+<li>
+<p><strong>view_mode</strong> is only considered if view_type is form, and ignored otherwise. The four possibilities are :</p>
+<p>:   -   <strong>form,tree</strong> : the view is first displayed as a form, the list view can be displayed by clicking the "alternate view button" ;
+    -   <strong>tree,form</strong> : the view is first displayed as a list, the form view can be displayed by clicking the "alternate view button" ;
+    -   <strong>form</strong> : the view is displayed as a form and there is no way to switch to list view ;
+    -   <strong>tree</strong> : the view is displayed as a list and there is no way to switch to form view.</p>
+</li>
+</ul>
+<p>(version 5 introduced <strong>graph</strong> and <strong>calendar</strong> views)</p>
+<ul>
+<li><strong>usage</strong> is used [+ <strong><em>TODO</em></strong> +]</li>
+<li><strong>target</strong> the view will open in new window like wizard.</li>
+<li><strong>context</strong> will be passed to the action itself and added to its global context</li>
+</ul>
+<pre><code class="xml">&lt;record model=&quot;ir.actions.act_window&quot; id=&quot;a&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;account.account.tree1&lt;/field&gt; 
+    &lt;field name=&quot;res_model&quot;&gt;account.account&lt;/field&gt; 
+    &lt;field name=&quot;view_type&quot;&gt;tree&lt;/field&gt; 
+    &lt;field name=&quot;view_mode&quot;&gt;form,tree&lt;/field&gt; 
+    &lt;field name=&quot;view_id&quot; ref=&quot;v&quot;/&gt; 
+    &lt;field name=&quot;domain&quot;&gt;[('code','=','0')]&lt;/field&gt; 
+    &lt;field name=&quot;context&quot;&gt;{'project_id': active_id}&lt;/field&gt; 
+&lt;/record&gt;
+</code></pre>
+
+<p>They indicate at the user that he has to open a new window in a new 'tab'.</p>
+<p>Administration &gt; Custom &gt; Low Level &gt; Base &gt; Action &gt; Window Actions</p>
+<p><img alt="" src="../images/module_base_action_window.png" /></p>
+<h4 id="examples-of-actions">Examples of actions</h4>
+<p>This action is declared in server/bin/addons/project/project_view.xml. :</p>
+<pre><code class="xml">&lt;record model=&quot;ir.actions.act_window&quot; id=&quot;open_view_my_project&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;project.project&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;project.project&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;tree&lt;/field&gt;
+    &lt;field name=&quot;domain&quot;&gt;[('parent_id','=',False), ('manager', '=', uid)]&lt;/field&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;view_my_project&quot; /&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>This action is declared in server/bin/addons/stock/stock_view.xml. :</p>
+<pre><code class="xml">&lt;record model=&quot;ir.actions.act_window&quot; id=&quot;action_picking_form&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;stock.picking&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;stock.picking&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;ir.actions.act_window&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;view_picking_form&quot;/&gt;
+    &lt;field name=&quot;context&quot;&gt;{'contact_display': 'partner'}&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h3 id="url-action">Url Action</h3>
+<h3 id="wizard-action">Wizard Action</h3>
+<p>Here's an example of a .XML file that declares a wizard. :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+     &lt;wizard string=&quot;Employee Info&quot;
+             model=&quot;hr.employee&quot;
+             name=&quot;employee.info.wizard&quot;
+             id=&quot;wizard_employee_info&quot;/&gt;
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>A wizard is declared using a wizard tag. See "Add A New Wizard" for more information about wizard XML.</p>
+<p>also you can add wizard in menu using following xml entry :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+     &lt;data&gt;
+     &lt;wizard string=&quot;Employee Info&quot;
+             model=&quot;hr.employee&quot;
+             name=&quot;employee.info.wizard&quot;
+             id=&quot;wizard_employee_info&quot;/&gt;
+     &lt;menuitem
+             name=&quot;Human Resource/Employee Info&quot;
+             action=&quot;wizard_employee_info&quot;
+             type=&quot;wizard&quot;
+             id=&quot;menu_wizard_employee_info&quot;/&gt;
+     &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<h3 id="report-action">Report Action</h3>
+<h4 id="report-declaration">Report declaration</h4>
+<p>Reports in OpenERP are explained in chapter "Reports Reporting". Here's an example of a XML file that declares a RML report : :</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+    &lt;report id=&quot;sale_category_print&quot;
+            string=&quot;Sales Orders By Categories&quot;
+            model=&quot;sale.order&quot;
+            name=&quot;sale_category.print&quot;
+            rml=&quot;sale_category/report/sale_category_report.rml&quot;
+            menu=&quot;True&quot;
+            auto=&quot;False&quot;/&gt;
+     &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>A report is declared using a <strong>report tag</strong> inside a "data" block. The different arguments of a report tag are :</p>
+<ul>
+<li><strong>id</strong> : an identifier which must be unique.</li>
+<li><strong>string</strong> : the text of the menu that calls the report (if any, see below).</li>
+<li><strong>model</strong> : the OpenERP object on which the report will be rendered.</li>
+<li><strong>rml</strong> : the .RML report model. Important Note : Path is relative to addons/ directory.</li>
+<li><strong>menu</strong> : whether the report will be able to be called directly via the client or not. Setting menu to False is useful in case of reports called by wizards.</li>
+<li><strong>auto</strong> : determines if the .RML file must be parsed using the default parser or not. Using a custom parser allows you to define additional functions to your report.</li>
+</ul>
+<h2 id="security">Security</h2>
+<p>Three concepts are differentiated into OpenERP;</p>
+<ol>
+<li>The users: person identified by his login/password</li>
+<li>The groups: define the access rights of the resources</li>
+<li>The roles: determine the roles/duties of the users</li>
+</ol>
+<p><img alt="" src="../images/module_base_user.png" /></p>
+<p><strong>The users</strong></p>
+<p>They represent physical persons. These are identified with a login and a password. A user may belong to several groups and may have several roles.</p>
+<p>A user must have an action set up. This action is executed when the user connects to the program with his login and password. An example of action would be to open the menu at 'Operations'.</p>
+<p>The preferences of the user are available with the preference icon. You can, for example, through these preferences, determine the working language of this user. English is set by default.</p>
+<p>A user can modify his own preferences while he is working with OpenERP. To do that, he clicks on this menu: User &gt; Preferences. The OpenERP administrator can also modify some preferences of each and every user.</p>
+<p><strong>The groups</strong></p>
+<p>The groups determine the access rights to the different resources. There are three types of right:</p>
+<ul>
+<li>The writing access: recording &amp; creation,</li>
+<li>The reading access: reading of a file,</li>
+<li>The execution access: the buttons of workflows or wizards.</li>
+</ul>
+<p>A user can belong to several groups. If he belongs to several groups, we always use the group with the highest rights for a selected resource.</p>
+<p><strong>The roles</strong></p>
+<p>The roles define a hierarchical structure in tree. They represent the different jobs/roles inside the company. The biggest role has automatically the rights of all the inferior roles.</p>
+<p><strong>Example:</strong></p>
+<p>CEO</p>
+<ul>
+<li>Technical manager<ul>
+<li>Chief of projects<ul>
+<li>Developers</li>
+<li>Testers</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Commercial manager<ul>
+<li>Salesmen</li>
+<li>...</li>
+</ul>
+</li>
+</ul>
+<p>If we want to validate the test of a program (=role Testers), it may be done by a user having one of the following roles: Testers, Chief of the project, Technical manager, CEO.</p>
+<p>The roles are used for the transition of Workflow actions into confirmation, choice or validation actions. Their implications will be detailed in the Workflow section.</p>
+<h3 id="menu-access">Menu Access</h3>
+<p>It's easy (but risky) to grant grained access to menu based on the user's groups.</p>
+<p>First of all, you should know that if a menu is not granted to any group then it is accessible to everybody ! If you want to grant access to some groups just go to <strong>Menu &gt; Administration &gt; Security &gt; Define access to Menu-items</strong> and select the groups that can use this menu item.</p>
+<p><img alt="" src="../images/grant_access.png" /></p>
+<p>Beware ! If the Administrator does not belong to one of the group, he will not be able to reach this menu again.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

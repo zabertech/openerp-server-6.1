@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>10 testing - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#testing">Testing</a></li>
+            <li><a href="#unit-testing">Unit testing</a></li>
+            <li><a href="#acceptance-testing">Acceptance testing</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="testing">Testing</h1>
+<h2 id="unit-testing">Unit testing</h2>
+<p>Since version 4.2 of OpenERP, the XML api provides several features to test your modules. They allow you to</p>
+<ul>
+<li>test the properties of your records, your class invariants etc.</li>
+<li>test your methods</li>
+<li>manipulate your objects to check your workflows and specific methods</li>
+</ul>
+<p>This thus allows you to simulate user interaction and automatically test your modules.</p>
+<h3 id="generalities">Generalities</h3>
+<p>As you will see in the next pages, unit testing through OpenERP's XML can be done using three main tags: &lt;assert&gt;, &lt;workflow&gt; and &lt;function&gt;. All these tags share some common optional attributes:</p>
+<p>uid:    allows you to do the tag interpretation through a specific User ID (you must specify the XML id of that user, for example "base.user_demo")</p>
+<p>context:    allows you to specify a context dictionary (given as a Python expression) to use when applicable (for &lt;function&gt; notice that not all objects methods take a context attribute so it won't be automatically transmitted to them, however it applies on &lt;value&gt;)</p>
+<p>These two attributes might be set on any of those tags (for &lt;functions&gt;, only the root &lt;function&gt; tag may accept it) or on the &lt;data&gt; tag itself. If you set a context attribute on both, they will be merged automatically.</p>
+<p>Notice that Unit Testing tags will not be interpreted inside a &lt;data&gt; tag set in noupdate.</p>
+<h3 id="using-unit-tests">Using unit tests</h3>
+<p>You can declare unit tests in all your .XML files. We suggest you to name the files like this:</p>
+<ul>
+<li>module_name_test.xml</li>
+</ul>
+<p>If your tests are declared as demo data in the __openerp__.py, they will be checked at the installation of the system with demo data. Example of usage, testing the demo sale order produce a correct amount in the generated invoice.</p>
+<p>If your tests are declared like init data, they will be checked at all installation of the software. Use it to test the consistency of the software after installation.</p>
+<p>If your tests are declared in update sections, the tests are checked at the installation and also at all updates. Use it to tests consistencies, invariants of the module. Example: The sum of the credits must be equal to the sum of the debits for all non draft entries in the accounting module. Putting tests in update sections is very useful to check consistencies of migrations or new version upgrades.</p>
+<h3 id="assert-tag">Assert Tag</h3>
+<p>The assert tag allows you to define some assertions that have to be checked at boot time. Example :</p>
+<pre><code class="xml">&lt;assert model=&quot;res.company&quot; id=&quot;main_company&quot; string=&quot;The main company name is Open sprl&quot;&gt;
+    &lt;test expr=&quot;name&quot;&gt;Open sprl&lt;/test&gt;
+&lt;/assert&gt;
+</code></pre>
+
+<p>This assert will check that the company with id main_company has a name equal to "Open sprl". The expr field specifies a python expression to evaluate. The expression can access any field of the specified model and any python built-in function (such as sum, reduce etc.). The ref function, which gives the database id corresponding to a specified XML id, is also available (in the case that "ref" is also the name of an attribute of the specified model, you can use _ref instead). The resulting value is then compared with the text contained in the test tag. If the assertion fails, it is logged as a message containing the value of the string attribute and the test tag that failed.</p>
+<p>For more complex tests it is not always sufficient to compare a result to a string. To do that you may instead omit the tag's content and just put an expression that must evaluate to True:</p>
+<pre><code class="xml">&lt;assert model=&quot;res.company&quot; 
+            id=&quot;main_company&quot; 
+            string=&quot;The main company's currency is €&quot; severity=&quot;warning&quot;&gt;
+    &lt;test expr=&quot;currency_id.code == 'eur'.upper()&quot;/&gt;
+&lt;/assert&gt;
+</code></pre>
+
+<p>The severity attribute defines the level of the assertion: debug, info, warning, error or critical. The default is error. If an assertion of too high severity fails, an exception is thrown and the parsing stops. If that happens during server initialization, the server will stop. Else the exception will be transmitted to the client. The level at which a failure will throw an exception is by default at warning, but can be specified at server launch through the <code>--assert-exit-level</code> argument.</p>
+<p>As sometimes you do not know the id when you're writing the test, you can use a search instead. So we can define another example, which will be always true:</p>
+<pre><code class="xml">&lt;assert model=&quot;res.partner&quot; 
+            search=&quot;[('name','=','Agrolait')]&quot; 
+            string=&quot;The name of Agrolait is :Agrolait&quot;&gt;
+    &lt;test expr=&quot;name&quot;&gt;Agrolait&lt;/test&gt;
+&lt;/assert&gt;
+</code></pre>
+
+<p>When you use the search, each resulting record is tested but the assertion is counted only once. Thus if an assertion fails, the remaining records won't be tested. In addition, if the search finds no record, nothing will be tested so the assertion will be considered successful. If you want to make sure that there are a certain number of results, you might use the count parameter:</p>
+<pre><code class="xml">&lt;assert model=&quot;res.partner&quot; 
+            search=&quot;[('name','=','Agrolait')]&quot; 
+            string=&quot;The name of Agrolait is :Agrolait&quot; 
+            count=&quot;1&quot;&gt;
+    &lt;test expr=&quot;name&quot;&gt;Agrolait&lt;/test&gt;
+&lt;/assert&gt;
+</code></pre>
+
+<p>Example</p>
+<p>:   </p>
+<p>Require the version of a module.</p>
+<pre><code class="xml">&lt;!-- modules requirement --&gt;
+&lt;assert model=&quot;ir.module.module&quot; 
+            search=&quot;[('name','=','common')]&quot; 
+            severity=&quot;critical&quot; count=&quot;1&quot;&gt;
+    &lt;test expr=&quot;state == 'installed'&quot; /&gt;
+    &lt;!-- only check module version --&gt;
+    &lt;test expr=&quot;'.'.join(installed_version.split('.')[3:]) &gt;= '2.4'&quot; /&gt;
+&lt;/assert&gt;
+</code></pre>
+
+<h3 id="workflow-tag">Workflow Tag</h3>
+<p>The workflow tag allows you to call for a transition in a workflow by sending a signal to it. It is generally used to simulate an interaction with a user (clicking on a button…) for test purposes:</p>
+<pre><code class="xml">&lt;workflow model=&quot;sale.order&quot; ref=&quot;test_order_1&quot; action=&quot;order_confirm&quot; /&gt;
+</code></pre>
+
+<p>This is the syntax to send the signal <code>order_confirm</code> to the sale order with id <code>test_order_1</code>.</p>
+<p>Notice that workflow tags (as all other tags) are interpreted as root which might be a problem if the signals handling needs to use some particular property of the user (typically the user's company, while root does not belong to one). In that case you might specify a user to switch to before handling the signal, through the uid property:</p>
+<pre><code class="xml">&lt;workflow model=&quot;sale.order&quot; ref=&quot;test_order_1&quot; action=&quot;manual_invoice&quot; uid=&quot;base.user_admin&quot; /&gt;
+</code></pre>
+
+<p>(here we had to specify the module base - from which user_admin comes - because this tag is supposed to be placed in an xml file of the sale module)</p>
+<p>In some particular cases, when you write the test, you don't know the id of the object to manipulate through the workflow. It is thus allowed to replace the ref attribute with a value child tag:</p>
+<pre><code class="xml">&lt;workflow model=&quot;account.invoice&quot; action=&quot;invoice_open&quot;&gt;
+    &lt;value model=&quot;sale.order&quot; eval=&quot;obj(ref('test_order_1')).invoice_ids[0].id&quot; /&gt;
+&lt;/workflow&gt;
+</code></pre>
+
+<p>(notice that the eval part must evaluate to a valid database id)</p>
+<h3 id="function-tag">Function Tag</h3>
+<p>The function tag allows to call some method of an object. The called method must have the following signature:</p>
+<p>def mymethod(self, cr, uid [, …])</p>
+<p>Where</p>
+<ul>
+<li>cr is the database cursor</li>
+<li>uid is the user id</li>
+</ul>
+<p>Most of the methods defined in Tiny respect that signature as cr and uid are required for a lot of operations, including database access.</p>
+<p>The function tag can then be used to call that method:</p>
+<pre><code class="xml">&lt;function model=&quot;mypackage.myclass&quot; name=&quot;mymethod&quot; /&gt;
+</code></pre>
+
+<p>Most of the time you will want to call your method with additional arguments. Suppose the method has the following signature:</p>
+<p>def mymethod(self, cr, uid, mynumber)</p>
+<p>There are two ways to call that method:</p>
+<ul>
+<li>either by using the eval attribute, which must be a python expression evaluating to the list of additional arguments:</li>
+</ul>
+<pre><code class="xml">&lt;function model=&quot;mypackage.myclass&quot; name=&quot;mymethod&quot; eval=&quot;[42]&quot; /&gt;
+</code></pre>
+
+<p>In that case you have access to all native python functions, to a function <code>ref()</code> that takes as its argument an XML id and returns the corresponding database id, and to a function <code>obj()</code> that takes a database id and returns an object with all fields loaded as well as related records.</p>
+<ul>
+<li>or by putting a child node inside the function tag:</li>
+</ul>
+<pre><code class="xml">&lt;function model=&quot;mypackage.myclass&quot; name=&quot;mymethod&quot;&gt;
+     &lt;value eval=&quot;42&quot; /&gt;
+&lt;/function&gt;
+</code></pre>
+
+<p>Only value and function tags have meaning as function child nodes (using other tags will give unspecified results). This means that you can use the returned result of a method call as an argument of another call. You can put as many child nodes as you want, each one being an argument of the method call (keeping them in order). You can also mix child nodes and the eval attribute. In that case the attribute will be evaluated first and child nodes will be appended to the resulting list.</p>
+<h2 id="acceptance-testing">Acceptance testing</h2>
+<p>This document describes all tests that are made each time someone install OpenERP on a computer. You can then assume that all these tests are valid as we must launch them before publishing a new module or a release of OpenERP.</p>
+<h3 id="integrity-tests-on-migrations">Integrity tests on migrations</h3>
+<ul>
+<li>Sum credit = Sum debit</li>
+<li>Balanced account chart</li>
+</ul>
+<p>... Describe all integrity tests here</p>
+<h3 id="workflow-tests">Workflow tests</h3>
+<p>... Describe all processes tested here.</p>
+<h3 id="record-creation">Record creation</h3>
+<p>More than 300 records are created, describe them here.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

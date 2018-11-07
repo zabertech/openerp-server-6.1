@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>04 wizard - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#creating-wizard-the-process">Creating Wizard - (The Process)</a></li>
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#wizards-principles">Wizards - Principles</a></li>
+            <li><a href="#specification">Specification</a></li>
+            <li><a href="#add-a-new-wizard">Add A New Wizard</a></li>
+            <li><a href="#osv95memory-wizard-system">osv_memory Wizard System</a></li>
+            <li><a href="#osv95memory-configuration-item">osv_memory configuration item</a></li>
+            <li><a href="#guidelines-on-how-to-convert-old-style-wizard-to-new-osv95memory-style">Guidelines on how to convert old-style wizard to new osv_memory style</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="creating-wizard-the-process">Creating Wizard - (The Process)</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Wizards describe interaction sequences between the client and the server.</p>
+<p>Here is, as an example, a typical process for a wizard:</p>
+<blockquote>
+<ol>
+<li>A window is sent to the client (a form to be completed)</li>
+<li>The client sends back the data from the fields which were filled in</li>
+<li>The server gets the result, usually execute a function and possibly sends another window/form to the client</li>
+</ol>
+</blockquote>
+<p><img alt="image" src="../images/Wizard.png" /></p>
+<p>Here is a screenshot of the wizard used to reconcile transactions (when you click on the gear icon in an account chart):</p>
+<p><img alt="image" src="../images/Wizard_screenshot.png" />{width="100%"}</p>
+<h2 id="wizards-principles">Wizards - Principles</h2>
+<p>A wizard is a succession of steps. A step is composed of several actions;</p>
+<ol>
+<li>send a form to the client and some buttons</li>
+<li>get the form result and the button pressed from the client</li>
+<li>execute some actions</li>
+<li>send a new action to the client (form, print, ...)</li>
+</ol>
+<p>To define a wizard, you have to create a class inheriting from <strong>wizard.interface</strong> and instantiate it. Each wizard must have a unique name, which can be chosen arbitrarily except for the fact it has to start with the module name (for example: account.move.line.reconcile). The wizard must define a dictionary named <strong>states</strong> which defines all its steps. A full example of a simple wizard can be found at <a href="http://www.openobject.com/forum/post43900.html#43900">http://www.openobject.com/forum/post43900.html#43900</a></p>
+<p>Here is an example of such a class:</p>
+<pre><code class="python">class wiz_reconcile(wizard.interface):
+      states = {
+       'init': {
+            'actions': [_trans_rec_get],
+            'result': {'type': 'form', 
+                       'arch': _transaction_form, 
+                       'fields': _transaction_fields,  
+                       'state':[('reconcile','Reconcile'),('end','Cancel')]}
+      },
+       'reconcile': {
+            'actions': [_trans_rec_reconcile],
+            'result': {'type': 'state', 'state':'end'}
+      }
+     }
+wiz_reconcile('account.move.line.reconcile');
+</code></pre>
+
+<p>The 'states' dictionary define all the states of the wizard. In this example; <strong>init</strong> and <strong>reconcile</strong>. There is another state which is named end which is implicit.</p>
+<p>A wizard always starts in the <strong>init</strong> state and ends in the <strong>end</strong> state.</p>
+<p>A state define two things:</p>
+<ol>
+<li>a list of actions</li>
+<li>a result</li>
+</ol>
+<h3 id="the-list-of-actions">The list of actions</h3>
+<p>Each step/state of a wizard defines a list of actions which are executed when the wizard enters the state. This list can be empty.</p>
+<p>The function (actions) must have the following signatures:</p>
+<pre><code class="python">def _trans_rec_get(self, uid, data, res_get=False):
+</code></pre>
+
+<p>Where:</p>
+<ul>
+<li><strong>self</strong> is the pointer to the wizard object</li>
+<li><strong>uid</strong> is the user ID of the user which is executing the wizard</li>
+<li>
+<p><strong>data</strong> is a dictionary containing the following data:</p>
+<ul>
+<li><strong>ids</strong>: the list of ids of resources selected when the user executed the wizard</li>
+<li><strong>id</strong>: the id highlighted when the user executed the wizard</li>
+<li><strong>form</strong>: a dictionary containing all the values the user completed in the preceding forms. If you change values in this dictionary, the following forms will be pre-completed.</li>
+</ul>
+</li>
+</ul>
+<p>Each action function must return a dictionary. Any entries in this dictionary will be merged with the data that is passed to the form when it's displayed.</p>
+<h3 id="the-result">The result</h3>
+<p>Here are some result examples:</p>
+<p>Result: next step</p>
+<pre><code class="python">'result': {'type': 'state', 
+           'state':'end'}
+</code></pre>
+
+<p>Indicate that the wizard has to continue to the next state: 'end'. If this is the 'end' state, the wizard stops.</p>
+<p>Result: new dialog for the client</p>
+<pre><code class="python">'result': {'type': 'form', 
+           'arch': _form, 
+           'fields': _fields, 
+           'state':[('reconcile','Reconcile'),('end','Cancel')]}
+</code></pre>
+
+<p>The type=form indicate that this step is a dialog to the client. The dialog is composed of:</p>
+<ol>
+<li>a form : with fields description and a form description</li>
+<li>some buttons : on which the user press after completing the form</li>
+</ol>
+<p>The form description (arch) is like in the views objects. Here is an example of form:</p>
+<pre><code class="xml">_form = &quot;&quot;&quot;&lt;?xml version=&quot;1.0&quot;?&gt;
+    &lt;form title=&quot;Reconciliation&quot;&gt;
+      &lt;separator string=&quot;Reconciliation transactions&quot; colspan=&quot;4&quot;/&gt;
+      &lt;field name=&quot;trans_nbr&quot;/&gt;
+      &lt;newline/&gt;
+      &lt;field name=&quot;credit&quot;/&gt;
+      &lt;field name=&quot;debit&quot;/&gt;
+      &lt;field name=&quot;state&quot;/&gt;
+      &lt;separator string=&quot;Write-Off&quot; colspan=&quot;4&quot;/&gt;
+      &lt;field name=&quot;writeoff&quot;/&gt;
+      &lt;newline/&gt;
+      &lt;field name=&quot;writeoff_acc_id&quot; colspan=&quot;3&quot;/&gt;
+    &lt;/form&gt;
+    &quot;&quot;&quot;
+</code></pre>
+
+<p>The fields description is similar to the fields described in the python ORM objects. Example:</p>
+<pre><code class="python">_transaction_fields = {
+      'trans_nbr': {'string':'# of Transaction', 'type':'integer', 'readonly':True},
+      'credit': {'string':'Credit amount', 'type':'float', 'readonly':True},
+      'debit': {'string':'Debit amount', 'type':'float', 'readonly':True},
+      'state': { 
+            'string':&quot;Date/Period Filter&quot;, 
+            'type':'selection', 
+            'selection':[('bydate','By Date'),
+                     ('byperiod','By Period'),
+                     ('all','By Date and Period'),
+                     ('none','No Filter')], 
+            'default': lambda *a:'none' 
+            }, 
+      'writeoff': {'string':'Write-Off amount', 'type':'float', 'readonly':True},
+      'writeoff_acc_id': {'string':'Write-Off account', 
+                               'type':'many2one', 
+                               'relation':'account.account'
+                             },
+}
+</code></pre>
+
+<p>Each step/state of a wizard can have several buttons. Those are located on the bottom right of the dialog box. The list of buttons for each step of the wizard is declared in the state key of its result dictionary.</p>
+<p>For example:</p>
+<pre><code class="python">'state':[('end', 'Cancel', 'gtk-cancel'), ('reconcile', 'Reconcile', '', True)]
+</code></pre>
+
+<ol>
+<li>the next step name (determine which state will be next)</li>
+<li>the button string (to display for the client)</li>
+<li>the gtk stock item without the stock prefix (since 4.2)</li>
+<li>a boolean, if true the button is set as the default action (since 4.2)</li>
+</ol>
+<p>Here is a screenshot of this form:</p>
+<p><img alt="image" src="../images/Wizard_screenshot1.png" />{width="100%"}</p>
+<p>Result: call a method to determine which state is next</p>
+<pre><code class="python">def _check_refund(self, cr, uid, data, context):
+    ...
+    return datas['form']['refund_id'] and 'wait_invoice' or 'end'
+
+    ...
+
+    'result': {'type':'choice', 'next_state':_check_refund}
+</code></pre>
+
+<p>Result: print a report</p>
+<pre><code class="python">def _get_invoice_id(self, uid, datas):
+      ...
+      return {'ids': [...]}
+
+      ...
+
+      'actions': [_get_invoice_id],
+      'result': {'type':'print', 
+             'report':'account.invoice', 
+             'get_id_from_action': True, 
+             'state':'check_refund'}
+</code></pre>
+
+<p>Result: client run an action</p>
+<pre><code class="python">def _makeInvoices(self, cr, uid, data, context):
+    ...
+    return {
+        'domain': &quot;[('id','in', [&quot;+','.join(map(str,newinv))+&quot;])]&quot;,
+        'name': 'Invoices',
+        'view_type': 'form',
+        'view_mode': 'tree,form',
+        'res_model': 'account.invoice',
+        'view_id': False,
+        'context': &quot;{'type':'out_refund'}&quot;,
+        'type': 'ir.actions.act_window'
+    }
+
+    ...
+
+    'result': {'type': 'action', 
+    'action': _makeInvoices, 
+    'state': 'end'}
+</code></pre>
+
+<p>The result of the function must be an all the fields of an ir.actions.* Here it is an ir.action.act_window, so the client will open an new tab for the objects account.invoice For more information about the fields used click here.</p>
+<p>It is recommended to use the result of a read on the ir.actions object like this:</p>
+<pre><code class="python">def _account_chart_open_window(self, cr, uid, data, context):
+    mod_obj = pooler.get_pool(cr.dbname).get('ir.model.data')
+    act_obj = pooler.get_pool(cr.dbname).get('ir.actions.act_window')
+
+    result = mod_obj._get_id(cr, uid, 'account', 'action_account_tree')
+    id = mod_obj.read(cr, uid, [result], ['res_id'])[0]['res_id']
+    result = act_obj.read(cr, uid, [id])[0]
+    result['context'] = str({'fiscalyear': data['form']['fiscalyear']})
+    return result
+
+    ...
+
+    'result': {'type': 'action', 
+               'action': _account_chart_open_window, 
+               'state':'end'}
+</code></pre>
+
+<h2 id="specification">Specification</h2>
+<h3 id="form">Form</h3>
+<pre><code class="xml">_form = '''&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;form string=&quot;Your String&quot;&gt;
+    &lt;field name=&quot;Field 1&quot;/&gt;
+    &lt;newline/&gt;
+    &lt;field name=&quot;Field 2&quot;/&gt;
+&lt;/form&gt;'''
+</code></pre>
+
+<h3 id="fields">Fields</h3>
+<h4 id="standard">Standard</h4>
+<pre><code class="python">Field type: char, integer, boolean, float, date, datetime
+
+_fields = {
+      'str_field': {'string':'product name', 'type':'char', 'readonly':True},
+}
+</code></pre>
+
+<ul>
+<li><strong>string</strong>: Field label (required)</li>
+<li><strong>type</strong>: (required)</li>
+<li><strong>readonly</strong>: (optional)</li>
+</ul>
+<h4 id="relational">Relational</h4>
+<pre><code class="python">Field type: one2one,many2one,one2many,many2many
+
+_fields = {
+    'field_id': {'string':'Write-Off account', 'type':'many2one', 'relation':'account.account'}
+}
+</code></pre>
+
+<ul>
+<li><strong>string</strong>: Field label (required)</li>
+<li><strong>type</strong>: (required)</li>
+<li><strong>relation</strong>: name of the relation object</li>
+</ul>
+<h4 id="selection">Selection</h4>
+<pre><code class="python">Field type: selection
+
+_fields = {
+    'field_id':  { 
+         'string':&quot;Date/Period Filter&quot;, 
+         'type':'selection', 
+         'selection':[('bydate','By Date'),
+                  ('byperiod','By Period'),
+                  ('all','By Date and Period'),
+                  ('none','No Filter')], 
+         'default': lambda *a:'none' 
+         },
+</code></pre>
+
+<ul>
+<li><strong>string</strong>: Field label (required)</li>
+<li><strong>type</strong>: (required)</li>
+<li><strong>selection</strong>: key and values for the selection field</li>
+</ul>
+<h2 id="add-a-new-wizard">Add A New Wizard</h2>
+<p>To create a new wizard, you must:</p>
+<ul>
+<li>
+<p>create the wizard definition in a .py file:</p>
+<ul>
+<li>wizards are usually defined in the wizard subdirectory of their module as in server/bin/addons/module_name/wizard/your_wizard_name.py</li>
+</ul>
+</li>
+<li>
+<p>add your wizard to the list of import statements in the __init__.py file of your module's wizard subdirectory.</p>
+</li>
+<li>declare your wizard in the database</li>
+</ul>
+<p>The declaration is needed to map the wizard with a key of the client; when to launch which client. To declare a new wizard, you need to add it to the module_name_wizard.xml file, which contains all the wizard declarations for the module. If that file does not exist, you need to create it first.</p>
+<p>Here is an example of the account_wizard.xml file;</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+    &lt;delete model=&quot;ir.actions.wizard&quot; search=&quot;[('wiz_name','like','account.')]&quot; /&gt;
+    &lt;wizard string=&quot;Reconcile Transactions&quot; model=&quot;account.move.line&quot; 
+                    name=&quot;account.move.line.reconcile&quot; /&gt;
+    &lt;wizard string=&quot;Verify Transac steptions&quot; model=&quot;account.move.line&quot; 
+                    name=&quot;account.move.line.check&quot; keyword=&quot;tree_but_action&quot; /&gt; 
+    &lt;wizard string=&quot;Verify Transactions&quot; model=&quot;account.move.line&quot;  
+                    name=&quot;account.move.line.check&quot; /&gt;
+    &lt;wizard string=&quot;Print Journal&quot; model=&quot;account.account&quot; 
+                    name=&quot;account.journal&quot; /&gt;
+    &lt;wizard string=&quot;Split Invoice&quot; model=&quot;account.invoice&quot; 
+                    name=&quot;account.invoice.split&quot; /&gt;
+    &lt;wizard string=&quot;Refund Invoice&quot; model=&quot;account.invoice&quot; 
+                    name=&quot;account.invoice.refund&quot; /&gt;
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>Attributes for the wizard tag:</p>
+<ul>
+<li><strong>id</strong>: Unique identifier for this wizard.</li>
+<li><strong>string</strong>: The string which will be displayed if there are several wizards for one resource. (The user will be presented a list with the wizards' names).</li>
+<li><strong>model</strong>: The name of the <strong>model</strong> where the data needed by the wizard is.</li>
+<li><strong>name</strong>: The name of the wizard. It is used internally and should be unique.</li>
+<li><strong>replace</strong> (optional): Whether or not the wizard should override <strong>all</strong> existing wizards for this model. Default value: False.</li>
+<li><strong>menu</strong> (optional): Whether or not (True|False) to link the wizard with the 'gears' button (i.e. show the button or not). Default value: True.</li>
+<li>
+<p><strong>keyword</strong> (optional): Bind the wizard to another action (print icon, gear icon, ...). Possible values for the keyword attribute are:</p>
+<p>:   -   <strong>client_print_multi</strong>: the print icon in a form
+    -   <strong>client_action_multi</strong>: the 'gears' icon in a form
+    -   <strong>tree_but_action</strong>: the 'gears' icon in a tree view (with the shortcuts on the left)
+    -   <strong>tree_but_open</strong>: the double click on a branch of a tree (with the shortcuts on the left). For example, this is used, to bind wizards in the menu.</p>
+</li>
+</ul>
+<p><strong>__openerp__.py</strong></p>
+<p>If the wizard you created is the first one of its module, you probably had to create the modulename_wizard.xml file yourself. In that case, it should be added to the update_xml field of the __openerp__.py file of the module.</p>
+<p>Here is, for example, the <strong>__openerp__.py</strong> file for the account module.</p>
+<pre><code class="python">{
+    &quot;name&quot;: OpenERP Accounting&quot;,
+    &quot;version&quot;: &quot;0.1&quot;,
+    &quot;depends&quot;: [&quot;base&quot;],
+    &quot;init_xml&quot;: [&quot;account_workflow.xml&quot;, &quot;account_data.xml&quot;],
+    &quot;update_xml&quot;: [&quot;account_view.xml&quot;,&quot;account_report.xml&quot;, &quot;account_wizard.xml&quot;],
+}
+</code></pre>
+
+<h2 id="osv95memory-wizard-system">osv_memory Wizard System</h2>
+<p>To develop osv_memory wizard, just create a normal object, But instead of inheriting from osv.osv, Inherit from osv.osv_memory. Methods of "wizard" are in object and if the wizard is complex, You can define workflow on object. osv_memory object is managed in memory instead of storing in postgresql.</p>
+<p>That's all, nothing more than just changing the inherit. These wizards can be defined at any location unlike addons/modulename/modulename_wizard.py. Historically, the _wizard prefix is for actual (old-style) wizards, so there might be a connotation there, the "new-style" osv_memory based "wizards" are perfectly normal objects (just used to emulate the old wizards, so they don't really match the old separations. Furthermore, osv_memory based "wizards" tend to need more than one object (e.g. one osv_memory object for each state of the original wizard) so the correspondence is not exactly 1:1.</p>
+<p>So what makes them looks like 'old' wizards?</p>
+<ul>
+<li>In the action that opens the object, you can put</li>
+</ul>
+<pre><code class="python">&lt;field name=&quot;target&quot;&gt;new&lt;/field&gt;
+</code></pre>
+
+<p>It means the object will open in a new window instead of the current one.</p>
+<blockquote>
+<ul>
+<li>On a button, you can use &lt;button special="cancel" .../&gt; to close the window.</li>
+</ul>
+</blockquote>
+<p>Example : In project.py file.</p>
+<pre><code class="python">class config_compute_remaining(osv.osv_memory):
+    _name='config.compute.remaining'
+    def _get_remaining(self,cr, uid, ctx):
+    if 'active_id' in ctx:
+        return self.pool.get('project.task').browse(cr,uid,ctx['active_id']).remaining_hours
+    return False
+    _columns = {
+    'remaining_hours' : fields.float('Remaining Hours', digits=(16,2),),
+        }
+    _defaults = {
+    'remaining_hours': _get_remaining
+    }
+    def compute_hours(self, cr, uid, ids, context=None):
+    if 'active_id' in context:
+        remaining_hrs=self.browse(cr,uid,ids)[0].remaining_hours
+        self.pool.get('project.task').write(cr,uid,context['active_id'],
+                                                     {'remaining_hours' : remaining_hrs})
+    return {
+            'type': 'ir.actions.act_window_close',
+     }
+config_compute_remaining()
+</code></pre>
+
+<ul>
+<li>View is same as normal view (Note buttons).</li>
+</ul>
+<p>Example :</p>
+<pre><code class="xml">&lt;record id=&quot;view_config_compute_remaining&quot; model=&quot;ir.ui.view&quot;&gt;
+        &lt;field name=&quot;name&quot;&gt;Compute Remaining Hours &lt;/field&gt;
+        &lt;field name=&quot;model&quot;&gt;config.compute.remaining&lt;/field&gt;
+        &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+        &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+            &lt;form string=&quot;Remaining Hours&quot;&gt;
+                &lt;separator colspan=&quot;4&quot; string=&quot;Change Remaining Hours&quot;/&gt;
+                &lt;newline/&gt;
+                &lt;field name=&quot;remaining_hours&quot; widget=&quot;float_time&quot;/&gt;
+                &lt;group col=&quot;4&quot; colspan=&quot;4&quot;&gt;
+                    &lt;button icon=&quot;gtk-cancel&quot; special=&quot;cancel&quot; string=&quot;Cancel&quot;/&gt;
+                    &lt;button icon=&quot;gtk-ok&quot; name=&quot;compute_hours&quot; string=&quot;Update&quot; type=&quot;object&quot;/&gt;
+                &lt;/group&gt;
+            &lt;/form&gt;
+        &lt;/field&gt;
+    &lt;/record&gt;
+</code></pre>
+
+<ul>
+<li>Action is also same as normal action (don't forget to add target attribute)</li>
+</ul>
+<p>Example :</p>
+<pre><code class="xml">&lt;record id=&quot;action_config_compute_remaining&quot; model=&quot;ir.actions.act_window&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;Compute Remaining Hours&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;ir.actions.act_window&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;config.compute.remaining&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;target&quot;&gt;new&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h2 id="osv95memory-configuration-item">osv_memory configuration item</h2>
+<p>Sometimes, your addon can't do with configurable defaults and needs upfront configuration settings to work correctly. In these cases, you want to provide a configuration wizard right after installation, and potentially one which can be re-run later if needed.</p>
+<p>Up until 5.0, OpenERP had such a facility but it was hardly documented and a very manual, arduous process. A simpler, more straightforward solution has been implemented for those needs.</p>
+<h3 id="the-basic-concepts">The basic concepts</h3>
+<p>The new implementation provides a base behavior <code>osv_memory</code> object from which you need to inherit. This behavior handles the flow between the configuration items of the various extensions, and inheriting from it is therefore mandatory.</p>
+<p>There is also an inheritable view which provides a basic canvas, through mechanisms which will be explained later it's highly customizable. It's therefore strongly suggested that you should inherit from that view from yours as well.</p>
+<h3 id="creating-a-basic-configuration-item">Creating a basic configuration item</h3>
+<h4 id="your-configuration-model">Your configuration model</h4>
+<p>First comes the creation of the configuration item itself. This is a normal <code>osv_memory</code> object with a few constraints:</p>
+<ul>
+<li>it has to inherit from <code>res.config</code>, which provides the basic configuration behaviors as well as the base event handlers and extension points</li>
+<li>it has to provide an <code>execute</code> method.[^1] This method will be called when validating the configuration form and contains the validation logic. It shouldn't return anything.</li>
+</ul>
+<pre><code class="python">class my_item_config(osv.osv_memory):
+    _name = 'my.model.config'
+    _inherit = 'res.config' # mandatory
+
+    _columns = {
+        'my_field': fields.char('Field', size=64, required=True),
+    }
+
+    def execute(self, cr, uid, ids, context=None):
+        'do whatever configuration work you need here'
+my_item_config()
+</code></pre>
+
+<h4 id="your-configuration-view">Your configuration view</h4>
+<p>Then comes the configuration form. OpenERP provides a base view which you can inherit so you don't have to deal with creating buttons and handling the progress bar (which should be displayed at the bottom left of all initial configuration dialogs). It's very strongly recommended that you use this base view.</p>
+<p>Simply add an <code>inherit_id</code> field to a regular <code>ir.ui.view</code> and set its value to <code>res_config_view_base</code>:</p>
+<pre><code class="xml">&lt;record id=&quot;my_config_view_form&quot; model=&quot;ir.ui.view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;my.item.config.view&lt;/field&gt;
+    &lt;!-- this is the model defined above --&gt;
+    &lt;field name=&quot;model&quot;&gt;my.model.config&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.res_config_view_base&quot;/&gt;
+    ...
+&lt;/record&gt;
+</code></pre>
+
+<p>While this could be used as-is, it would display an empty dialog with a progress bar and two buttons which isn't of much interest. <code>res_config_view_base</code> has a special group hook which you should replace with your own content like so:</p>
+<pre><code class="xml">&lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+    &lt;group string=&quot;res_config_contents&quot; position=&quot;replace&quot;&gt;
+        &lt;!-- your content should be inserted within this, the string
+             attribute of the previous group is used to easily find
+             it for replacement --&gt;
+        &lt;label colspan=&quot;4&quot; align=&quot;0.0&quot; string=&quot;
+            Configure this item by defining its field&quot;/&gt;
+        &lt;field colspan=&quot;2&quot; name=&quot;my_field&quot;/&gt;
+    &lt;/group&gt;
+&lt;/field&gt;
+</code></pre>
+
+<h4 id="opening-your-window">Opening your window</h4>
+<p>The next step is to create the <code>act_window</code> which links to the configuration model and the view:</p>
+<pre><code class="xml">&lt;record id=&quot;my_config_window&quot; model=&quot;ir.actions.act_window&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;My config window&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;ir.actions.act_window&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;my.model.config&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;my_config_view_form&quot;/&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;target&quot;&gt;new&lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Note that the <code>name</code> field of this <code>act_window</code> will be displayed when listing the various configuration items in the Config Wizard Steps submenu (in Administration &gt; Configuration &gt; Configuration Wizards).</p>
+<h4 id="registering-your-action">Registering your action</h4>
+<p>Finally comes actually registering the configuration item with OpenERP. This is done with an <code>ir.actions.todo</code> object, which mandates a single <code>action_id</code> field referencing the <code>act_window</code> created previously:</p>
+<pre><code class="xml">&lt;record id=&quot;my_config_step&quot; model=&quot;ir.actions.todo&quot;&gt;
+    &lt;field name=&quot;action_id&quot; ref=&quot;my_config_window&quot;/&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p><code>ir.actions.todo</code> also has 3 optional fields:</p>
+<p><code>sequence</code> (default: <code>10</code>)  :   The order in which the different steps are to be executed, lowest first.</p>
+<p><code>active</code> (default: <code>True</code>)  :   An inactive step will not be executed on the next round of configuration.</p>
+<p><code>state</code> (default: <code>'open'</code>)  :   The current state for the configuration step, mostly used to register what happened during its execution. The possible values are <code>'open'</code>, <code>'done'</code>, <code>'skip'</code> and <code>'cancel'</code>.</p>
+<p>The result at this point is the following:</p>
+<p><img alt="image" src="../images/config_wizard_base.png" />{width="100%"}</p>
+<h3 id="customizing-your-configuration-item">Customizing your configuration item</h3>
+<p>While your current knowledge is certainly enough to configure your addon, a bit of good customization can be the difference between a good user experience and a great user experience.</p>
+<h4 id="more-extensive-view-customization">More extensive view customization</h4>
+<p>As you might have noticed from the previous screen shot, by default your configuration window doesn't have a <em>title</em>, which isn't a problem but doesn't look very good either.</p>
+<p>Before setting a title, a small modification to the existing view is needed though: the existing <code>group</code> needs to be wrapped in a <code>data</code> element so it's possible to customize more than one item of the parent view:</p>
+<pre><code class="xml">&lt;record id=&quot;my_config_view_form&quot; model=&quot;ir.ui.view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;my.item.config.view&lt;/field&gt;
+    &lt;!-- this is the model defined above --&gt;
+    &lt;field name=&quot;model&quot;&gt;my.model.config&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot;&gt;res_config_view_base&lt;/field&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;data&gt;
+            &lt;group string=&quot;res_config_contents&quot; position=&quot;replace&quot;&gt;
+                &lt;!-- your content should be inserted within this, the
+                     string attribute of the previous group is used to
+                     easily find it for replacement
+                 --&gt;
+                 &lt;label colspan=&quot;4&quot; align=&quot;0.0&quot; string=&quot;
+                        Configure this item by defining its field
+                 &quot;&gt;
+                 &lt;field colspan=&quot;2&quot; name=&quot;my_field&quot;/&gt;
+             &lt;/group&gt;
+         &lt;/data&gt;
+     &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Then it becomes possible to alter the <code>string</code> attribute of the original <code>form</code> by adding the following code within the <code>data</code> element (in this case, probably before <code>group</code>):</p>
+<pre><code class="xml">&lt;!-- position=attributes is new and is used to alter the
+     element's attributes, instead of its content --&gt;
+&lt;form position=&quot;attributes&quot;&gt;
+    &lt;!-- set the value of the 'string' attribute --&gt;
+    &lt;attribute name=&quot;string&quot;&gt;Set item field&lt;/attribute&gt;
+&lt;/form&gt;
+</code></pre>
+
+<div class="admonition warning">
+
+Comments in view overload
+
+At this point (December 2009) OpenERP cannot handle comments at the toplevel of the view element overload. When testing or reusing these examples, remember to strip out the comments or you will get runtime errors when testing the addon.
+
+</div>
+
+<p>With this, the configuration form gets a nice title:</p>
+<p><img alt="image" src="../images/config_wizard_title.png" />{width="100%"}</p>
+<p>More interesting customizations might be to alter the buttons provided by <code>res_config_view_base</code> at the bottom of the dialog: remove a button (if the configuration action shouldn't be skipped), change the button labels, ...</p>
+<p>Since no specific hooks are provided for these alterations, they require the use of xpath selectors (using the <code>xpath</code> element).</p>
+<p>Removing the Skip button and changing the label of the Record button to Set, for instance, would be done by adding the following after the <code>group</code> element:</p>
+<pre><code class="xml">&lt;!-- select the button 'action_skip' of the original template
+     and replace it by nothing, removing it --&gt;
+&lt;xpath expr=&quot;//button[@name='action_skip']&quot;
+    position=&quot;replace&quot;/&gt;
+</code></pre>
+
+<pre><code class="xml">&lt;!-- select the button 'action_next' --&gt;
+&lt;xpath expr=&quot;//button[@name='action_next']&quot;
+       position=&quot;attributes&quot;&gt;
+    &lt;!-- and change the attribute 'string' to 'Set' --&gt;
+    &lt;attribute name=&quot;string&quot;&gt;Set&lt;/attribute&gt;
+&lt;/xpath&gt;
+</code></pre>
+
+<p>and yield:</p>
+<p><img alt="image" src="../images/config_wizard_buttons.png" />{width="100%"}</p>
+<p>It is also possible to use this method to change the name of the button, and thus the method invoked on the object (though that isn't necessarily recommended).</p>
+<h4 id="model-customization">Model customization</h4>
+<p>Though most of the requirements should be easy to fulfill using the provided <code>execute</code> method hook, some addon-specific requirements are a bit more complex. <code>res.config</code> should be able to provide all the hooks necessary for more complex behaviors.</p>
+<h5 id="ignoring-the-next-step">Ignoring the next step</h5>
+<p>Ultimately, the switch to the next configuration item is done by calling the <code>self.next</code> method of <code>res.config</code>[^2]. This is the last thing the base implementations of <code>action_next</code> and <code>action_skip</code> do. But in some cases, looping on the current view or implementing a workflow-like behavior is needed. In these cases, you can simply return a dictionary from <code>execute</code>, and <code>res.config</code> will jump to that view instead of the one returned by <code>self.next</code>.</p>
+<p>This is what the user creation item does, for instance, to let the user create several new users in a row.</p>
+<h5 id="performing-an-action-on-skipping">Performing an action on skipping</h5>
+<p>As opposed to <code>action_next</code> which requires that <code>execute</code> be implemented by the children classes, <code>action_skip</code> comes fully implemented in <code>res.config</code>. But in the case where the child model needs to perform an action upon skipping discovery, it also provides a hook method called <code>cancel</code> which you can overload in a way similar to <code>execute</code>. Its behavior is identical to <code>execute</code>'s: not only is <code>next</code> called automatically at the end of <code>cancel</code> but it also gives the possibility of <a href="">ignoring the next step</a>.</p>
+<h5 id="alternative-actions">Alternative actions</h5>
+<p>It's also possible to either overload <code>action_next</code> and <code>action_skip</code> or, more useful, to implement more actions than these two, if more than two buttons are needed for instance.</p>
+<p>In this case, please remember that you should always provide a way to reach <code>self.next</code> to the user, in order for him to be able to configure the rest of his addons.</p>
+<h3 id="resconfigs-public-api"><code>res.config</code>'s public API</h3>
+<p>All of the public API methods take the standard OpenERP set of arguments: <code>self</code>, <code>cr</code>, <code>uid</code>, <code>ids</code> and <code>context</code>.</p>
+<h4 id="execute"><code>execute</code></h4>
+<p>Hook method called in case the <code>action_next</code> button (default label: Record) is clicked. Should not return <em>anything</em> unless you want to display another view than the next configuration item. Returning anything other than a view dictionary will lead to undefined behaviors.</p>
+<p>It is mandatory to overload it. Failure to do so will result in a <code>NotImplementedError</code> being raised at runtime.</p>
+<p>The default <code>res.config</code> implementation should not be called in the overload (don't use <code>super</code>).</p>
+<h4 id="cancel"><code>cancel</code></h4>
+<p>Hook method called in case the <code>action_skip</code> button (default label: Skip) is clicked. Its behavior is the same as <a href="">execute</a>'s, except it's not mandatory to overload it.</p>
+<h4 id="next"><code>next</code></h4>
+<p>Method called to fetch the todo (and the corresponding action) for the next configuration item. It can be overloaded if the configuration item needs custom behavior common to all events.</p>
+<p>If overloaded, the default <code>res.config</code> implementation must be called and its result returned in order to get and execute the next configuration item.</p>
+<h4 id="action_next-and-action_skip"><code>action_next</code> and <code>action_skip</code></h4>
+<p>Event handler for the buttons of the base view, overloading them should never be necessary but in case it's needed the default <code>res.config</code> implementation should be called (via <code>super</code>) and its result returned.</p>
+<h2 id="guidelines-on-how-to-convert-old-style-wizard-to-new-osv95memory-style">Guidelines on how to convert old-style wizard to new osv_memory style</h2>
+<h3 id="osv-memory-wizard">OSV Memory Wizard</h3>
+<p>provide important advantages over the pre-5.0 wizard system, with support features that were difficult to implement in wizards previously, such as:</p>
+<ol>
+<li>inheritance</li>
+<li>workflows</li>
+<li>complex relation fields</li>
+<li>computed fields</li>
+<li>all kind of views (lists, graphs, ...)</li>
+</ol>
+<p>The new wizards are also easier and more intuitive to write as they make use of the same syntax as other osv objects and views.</p>
+<p>This section will highlight the main steps usually required when porting a classical wizard to the new osv_memory wizard system. For more details about the osv_memory wizard see also section XXX.</p>
+<p>Basically the idea is to create a regular osv object to hold the data structures and the logic of the wizard, but instead of inheriting from osv.osv, you inherit from osv.osv_memory. The methods of the old-style wizard will be moved as methods of the osv_memory object, and the various views changed into real views defined on the model of the wizard.</p>
+<p>If the wizard is complex, you could even define a workflow on the wizard object (see section XXX for details about workflows)</p>
+<p>Using a very simple wizard as an example, here is a step-by-step conversion to the new osv_memory system:</p>
+<h3 id="steps">Steps</h3>
+<ol>
+<li>Create a new object that extends osv_memory, including the required fields and methods:</li>
+</ol>
+<p><img alt="image" src="../images/wizard_window.png" /></p>
+<pre><code class="python">def _action_open_window(self, cr, uid, data, context): 
+.
+.
+
+class product_margins(wizard.interface): 
+    form1 = '''&lt;?xml version=&quot;1.0&quot;?&gt; 
+    &lt;form string=&quot;View Stock of Products&quot;&gt; 
+        &lt;separator string=&quot;Select &quot; colspan=&quot;4&quot;/&gt; 
+        &lt;field name=&quot;from_date&quot;/&gt; 
+        &lt;field name=&quot;to_date&quot;/&gt; 
+        &lt;field name=&quot;invoice_state&quot;/&gt; 
+    &lt;/form&gt;''' 
+
+    form1_fields = { 
+    'from_date': { 
+                'string': 'From', 
+                'type': 'date', 
+                'default': lambda *a:time.strftime('%Y-01-01'), 
+
+        }, 
+    'to_date': { 
+                'string': 'To', 
+                'type': 'date', 
+                'default': lambda *a:time.strftime('%Y-12-31'), 
+
+        }, 
+    'invoice_state': { 
+                'string': 'Invoice State', 
+                'type': 'selection', 
+                'selection': [('paid','Paid'),('open_paid','Open and Paid'),('draft_open_paid','Draft, Open and Paid'),], 
+                'required': True, 
+                'default': lambda *a:&quot;open_paid&quot;, 
+        }, 
+    } 
+
+    states = { 
+      'init': { 
+            'actions': [], 
+            'result': {'type': 'form', 'arch':form1, 'fields':form1_fields, 'state': [('end', 'Cancel','gtk-cancel'),('open', 'Open Margins','gtk-ok')]} 
+        }, 
+    'open': { 
+            'actions': [], 
+            'result': {'type': 'action', 'action': _action_open_window, 'state':'end'} 
+        } 
+    } 
+product_margins('product.margins')
+</code></pre>
+
+<h3 id="new-wizard-file-module95name95filenamepy">New Wizard File : &lt;&lt;module_name&gt;&gt;_&lt;&lt;filename&gt;&gt;.py</h3>
+<pre><code class="python">class product_margin(osv.osv_memory): 
+    ''' 
+    Product Margin 
+    ''' 
+    _name = 'product.margin' 
+    _description = 'Product Margin' 
+
+    def _action_open_window(self, cr, uid, ids, context): 
+    . 
+    . 
+    . 
+
+    _columns = { 
+        #TODO : import time required to get correct date 
+        'from_date': fields.date('From'), 
+        #TODO : import time required to get correct date 
+        'to_date': fields.date('To'), 
+        'invoice_state':fields.selection([ 
+           ('paid','Paid'), 
+           ('open_paid','Open and Paid'), 
+           ('draft_open_paid','Draft, Open and Paid'), 
+        ],'Invoice State', select=True, required=True), 
+    } 
+    _defaults = { 
+        'from_date':  lambda *a:time.strftime('%Y-01-01'), 
+        'to_date': lambda *a:time.strftime('%Y-01-01'), 
+        'invoice_state': lambda *a:&quot;open_paid&quot;, 
+    } 
+product_margin()
+</code></pre>
+
+<p>Convert the views into real view records defined on the model of your wizard:</p>
+<h3 id="old-wizard-file-wizard95product95marginpy">Old Wizard File : wizard_product_margin.py</h3>
+<pre><code class="python">form1 = '''&lt;?xml version=&quot;1.0&quot;?&gt; 
+&lt;form string=&quot;View Stock of Products&quot;&gt; 
+    &lt;separator string=&quot;Select &quot; colspan=&quot;4&quot;/&gt; 
+    &lt;field name=&quot;date&quot;/&gt; 
+    &lt;field name=&quot;invoice_state&quot;/&gt; 
+&lt;/form&gt;''' 
+</code></pre>
+
+<h3 id="new-wizard-file-wizardmodule95name95filename95viewxml">New Wizard File : wizard/&lt;&lt;module_name&gt;&gt;_&lt;&lt;filename&gt;&gt;_view.xml</h3>
+<pre><code class="xml">&lt;record id=&quot;product_margin_form_view&quot; model=&quot;ir.ui.view&quot;&gt; 
+    &lt;field name=&quot;name&quot;&gt;product.margin.form&lt;/field&gt; 
+    &lt;field name=&quot;model&quot;&gt;product.margin&lt;/field&gt; 
+    &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt; 
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt; 
+        &lt;form string=&quot;Properties categories&quot;&gt; 
+        &lt;separator colspan=&quot;4&quot; string=&quot;General Information&quot;/&gt; 
+        &lt;field name=&quot;from_date&quot; /&gt; 
+        &lt;field name=&quot;to_date&quot; /&gt; 
+        &lt;field name=&quot;invoice_state&quot; /&gt; 
+        &lt;group col=&quot;4&quot; colspan=&quot;2&quot;&gt; 
+                &lt;button special=&quot;cancel&quot; string=&quot;Cancel&quot; type=&quot;object&quot;/&gt; 
+                &lt;button name=&quot;_action_open_window&quot; string=&quot;Open Margins&quot; type=&quot;object&quot; default_focus=”1”/&gt; 
+        &lt;/group&gt; 
+        &lt;/form&gt; 
+    &lt;/field&gt; 
+&lt;/record&gt; 
+</code></pre>
+
+<h3 id="default95focus-attribute">Default_focus attribute</h3>
+<pre><code class="xml">&lt;button name=&quot;_action_open_window&quot; string=&quot;Open Margins&quot; type=&quot;object&quot; default_focus=”1”/&gt; 
+</code></pre>
+
+<p><strong>default_focus="1"</strong> is a new attribute added in 5.2. While opening wizard default control will be on the widget having this attribute. There must be only one widget on a view having this attribute = 1 otherwise it will raise exception.</p>
+<p>Note: For all states in the old wizard, we need to create buttons in new approach.</p>
+<ol>
+<li>To open the new wizard, you need to register an action that opens the first view on your wizard object. You will need to do the same for each view if your wizard contains several views. To make the view open in a pop-up window you can add a special target='new' field in the action:</li>
+</ol>
+<pre><code class="xml">&lt;act_window name=&quot;Open Margin&quot; 
+    res_model=&quot;product.margin&quot; 
+    src_model=&quot;product.product&quot; 
+    view_mode=&quot;form&quot; 
+    target=&quot;new&quot; 
+    key2=&quot;client_action_multi&quot;    
+    id=&quot;product_margin_act_window&quot;/&gt;
+</code></pre>
+
+<p>key2="client_action_multi" : While using it in the act_window, wizard will be added in the</p>
+<ol>
+<li>Action</li>
+</ol>
+<p><img alt="image" src="../images/wizard_button.png" /></p>
+<ol>
+<li>Sidebar</li>
+</ol>
+<p><img alt="image" src="../images/wizard_panel.png" /></p>
+<p>If key2 is omitted then it will be displayed only in sidebar.</p>
+<p>Note: The "src_model" attribute is only required if you want to put the wizard in the side bar of an object, you can leave it out, for example if you define an action to open the second view of a wizard.</p>
+<ol>
+<li>You can register this new action as a menuitem or in the context bar of any object by using a &lt;menuitem&gt; or &lt;act_window&gt; record instead of the old &lt;wizard&gt; tag that can be removed:</li>
+</ol>
+<h3 id="in-menu-item">In Menu Item</h3>
+<p>To open a wizard view via a menuitem you can use the following syntax for the menu, using the XML id of the corresponding act_window.</p>
+<pre><code class="xml">&lt;menuitem id=&quot;main&quot; name=&quot;OSV Memory Wizard Test&quot;/&gt;
+&lt;menuitem
+        action=&quot;product_margin_act_window&quot;
+        id=&quot;menu_product_act&quot;
+        parent=&quot;main&quot; /&gt;
+</code></pre>
+
+<ol>
+<li>To open a wizard view via a button in another form you can use the following syntax for the button, using the XML id of the corresponding act_window. This can be used to have multiple steps in your wizard:</li>
+</ol>
+<pre><code class="xml">&lt;button name=&quot;%(product_margin.product_margin_act_window)d&quot; 
+        string=&quot;Test Wizard&quot; type=&quot;action&quot; states=&quot;draft&quot;/&gt;                     
+</code></pre>
+
+<ol>
+<li>Finally, you need to cleanup the module, update the python __init__.py files if you have changed the python file name for the wizard, and add your new XML files in the update_xml list in the __openerp__.py file.</li>
+</ol>
+<p>[^1]: This isn't completely true, as you will see when <a href="">Customizing your configuration item</a></p>
+<p>[^2]: this method is part of the official API and you're free to overload it if needed, but you should always call <code>res.config</code>'s through <code>super</code> when your work is done. Overloading <code>next</code> is also probably overkill in most situations.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
