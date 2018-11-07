@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>13 build and deploy - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#build-and-deploy">Build and deploy</a></li>
+            <li><a href="#building">Building</a></li>
+            <li><a href="#deploy">Deploy</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="build-and-deploy">Build and deploy</h1>
+<p>This page describes how to build a custom version of OpenERP for Windows.</p>
+<h2 id="building">Building</h2>
+<h3 id="dependencies">Dependencies</h3>
+<p>The first step is to build the dependencies. To do so, grab the Windows installer branch:</p>
+<pre><code>bzr branch lp:~openerp-groupes/openerp/win-installer-trunk
+</code></pre>
+<p>and install the packages:</p>
+<ul>
+<li>7z465.msi</li>
+<li>python-2.5.2.msi</li>
+<li>setuptools-0.6c9.win32-py2.5.exe</li>
+<li>Beaker-1.4.1.tar.gz</li>
+<li>Mako-0.2.4.tar.gz</li>
+<li>pytz-2010l.win32.exe</li>
+</ul>
+<h4 id="server">Server</h4>
+<p>Install the packages:</p>
+<ul>
+<li>lxml-2.1.2.win32-py2.5.exe</li>
+<li>PIL-1.1.6.win32-py2.5.exe</li>
+<li>psycopg2-2.2.2.win32-py2.5-pg9.0.1-release.exe</li>
+<li>PyChart-1.39.win32.exe</li>
+<li>pydot-1.0.2.win32.exe</li>
+<li>python-dateutil-1.5.tar.gz</li>
+<li>pywin32-212.win32-py2.5.exe</li>
+<li>PyYAML-3.09.win32-py2.5.exe</li>
+<li>ReportLab-2.2.win32-py2.5.exe</li>
+</ul>
+<h4 id="web">Web</h4>
+<p>Install the packages:</p>
+<ul>
+<li>Babel-0.9.4-py2.5.egg</li>
+<li>CherryPy-3.1.2.win32.exe</li>
+<li>FormEncode-1.2.2.tar.gz</li>
+<li>simplejson-2.0.9-py2.5-win32.egg</li>
+<li>xlwt-0.7.2.win32.exe</li>
+</ul>
+<h3 id="source-distribution">Source distribution</h3>
+<p>The second step is to build a source distribution on Linux.</p>
+<h4 id="server_1">Server</h4>
+<p>Let's assume you work on your own server branch named <strong>6.0</strong> and you want to build a server with the following modules:</p>
+<ul>
+<li>base_setup</li>
+<li>base_tools</li>
+<li>board</li>
+</ul>
+<p>This implies that these modules have been linked in <em>bin/addons</em> by a command similar to:</p>
+<pre><code>ln -s ~/openerp/addons/6.0/{base_setup,base_tools,board} .
+</code></pre>
+<p>To build the server, go to the root directory and type:</p>
+<pre><code>python setup.py sdist --format=zip
+</code></pre>
+<p>You now have a new file in the <strong>dist</strong> directory, called openerp-server-M.m.P.zip where:</p>
+<ul>
+<li><strong>M</strong> is the major version, example 6</li>
+<li><strong>m</strong> is the minor version, example 0</li>
+<li><strong>p</strong> is the patch version, example 1</li>
+</ul>
+<h4 id="web_1">Web</h4>
+<p>To build the web client, go to the root directory and type:</p>
+<pre><code>python setup.py sdist --format=zip
+</code></pre>
+<p>You now have a new file in the <strong>dist</strong> directory, called openerp-web-M.m.P.zip where:</p>
+<ul>
+<li><strong>M</strong> is the major version, example 6</li>
+<li><strong>m</strong> is the minor version, example 0</li>
+<li><strong>p</strong> is the patch version, example 1</li>
+</ul>
+<h3 id="binary-distribution">Binary distribution</h3>
+<p>The third step is to build a binary distribution on Windows.</p>
+<h4 id="server_2">Server</h4>
+<p>Open a command prompt and unzip the file:</p>
+<pre><code>7z x openerp-server-M.m.P.zip -oC:\openerp
+</code></pre>
+<p>Go to the <strong>win32</strong> directory:</p>
+<pre><code>cd C:\openerp\openerp-server-M.m.P\win32
+</code></pre>
+<p>Generate the service exe with:</p>
+<pre><code>python setup.py py2exe
+</code></pre>
+<p>Go to the parent directory:</p>
+<pre><code>cd ..
+</code></pre>
+<p>Generate the server exe with:</p>
+<pre><code>python setup.py py2exe
+</code></pre>
+<p>Build the Windows installer with:</p>
+<pre><code>makensis setup.nsi
+</code></pre>
+<p>You now have a new file in the root directory, called openerp-server-setup-M.m.P.exe. This file is the installer that you can use the install a custom version of OpenERP.</p>
+<h4 id="web_2">Web</h4>
+<p>Open a command prompt and unzip the file:</p>
+<pre><code>7z x openerp-web-M.m.P.zip -oC:\openerp
+</code></pre>
+<p>Go to the <strong>win32</strong> directory:</p>
+<pre><code>cd C:\openerp\openerp-web-M.m.P\win32
+</code></pre>
+<p>Generate the service exe with:</p>
+<pre><code>python setup.py py2exe
+</code></pre>
+<p>Go to the parent directory:</p>
+<pre><code>cd ..
+</code></pre>
+<p>Generate the web exe with:</p>
+<pre><code>python setup.py py2exe
+</code></pre>
+<p>Build the Windows installer with:</p>
+<pre><code>makensis setup.nsi
+</code></pre>
+<p>You now have a new file in the root directory, called openerp-web-setup-M.m.P.exe. This file is the installer that you can use the install a custom version of OpenERP.</p>
+<h2 id="deploy">Deploy</h2>
+<p>This page describes how to deploy a custom version of OpenERP on Windows.</p>
+<h3 id="package-script">Package script</h3>
+<p>The first step is to grab the package script branch:</p>
+<pre><code>bzr branch lp:~openerp-groupes/openerp/package-script
+</code></pre>
+<h3 id="batch">Batch</h3>
+<p>Go to the <em>packaging</em> directory of the branch and copy the file <em>build.bat</em> to the <em>C:\openerp</em> directory of your Windows machine.</p>
+<h3 id="ssh-server">SSH server</h3>
+<p>You need to install a SSH server on Windows. You can for example install <a href="http://www.freesshd.com/">freeSSHd</a>.</p>
+<h3 id="fabric">Fabric</h3>
+<p>You need to install the tool <a href="http://docs.fabfile.org/0.9.3/">Fabric</a> to run commands on Windows from Linux using SSH. Refer to your linux package manager to install it.</p>
+<h4 id="configure">Configure</h4>
+<p>Go to the <em>packaging</em> directory of the branch and edit the file fabfile.py. Change what need to be changed.</p>
+<h4 id="run">Run</h4>
+<p>run the command:</p>
+<pre><code>fab -H host -u user server
+</code></pre>
+<p>where:</p>
+<ul>
+<li><em>host</em> is the Windows host name</li>
+<li><em>user</em> is the Windows user name</li>
+</ul></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

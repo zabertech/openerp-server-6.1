@@ -1,0 +1,6 @@
+site_name: Zerp Documentation
+nav:
+  - Home: index.md
+markdown_extensions:
+  - fenced_code
+
