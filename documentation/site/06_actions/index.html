@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>06 actions - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#server-action">Server Action</a></li>
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#step-1-definition-of-server-action">Step 1: Definition of Server Action</a></li>
+            <li><a href="#step-2-mapping-server-actions-to-workflows">Step 2: Mapping Server actions to workflows</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="server-action">Server Action</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Server action is an new feature available since the OpenERP version 5.0 beta. This is an useful feature to fulfill customer requirements. It provides a quick and easy configuration for day to day requirements such as sending emails on confirmation of sale orders or invoice, logging operations on invoices (confirm, cancel, etc.), or running wizard/report on confirmation of sales, purchases, or invoices.</p>
+<h2 id="step-1-definition-of-server-action">Step 1: Definition of Server Action</h2>
+<p>Here is the list of the different action types supplied under the Server Action.</p>
+<ul>
+<li>Client Action</li>
+<li>Dummy</li>
+<li>Iteration</li>
+<li>Python Code</li>
+<li>Trigger</li>
+<li>Email</li>
+<li>SMS</li>
+<li>Create Object</li>
+<li>Write Object</li>
+<li>Multi Action</li>
+</ul>
+<p>Each type of action has special features and different configuration parameters. The following sections review each action type and describe how to configure them, together with a list of parameters affecting the system.</p>
+<h3 id="client-action">Client Action</h3>
+<p>This action executes on the client side. It can be used to run a wizard or report on the client side. For example, a Client Action can print an invoice after it has been confirmed and run the payment wizard. Technically we can run any client action executed on client side. This includes ir.actions.report.custom, ir.actions.report.xml, ir.actions.act_window, ir.actions.wizard, and ir.actions.url. In the following example, we can configure a Client Action to print the invoice after it has been confirmed.</p>
+<p><img alt="image" src="../images/client_action.png" /></p>
+<p>Important fields are:</p>
+<p>Object:   the object affected by the workflow on for which we want to run the action</p>
+<p>Client Action:   the client action, which will be executed on the client side. It must have one of the following types:</p>
+<ul>
+<li>ir.actions.report.custom</li>
+<li>ir.actions.report.xml</li>
+<li>ir.actions.act_window</li>
+<li>ir.actions.wizard</li>
+<li>ir.actions.url</li>
+</ul>
+<h3 id="iteration">Iteration</h3>
+<p>Using a Python loop expression, it is possible to iterate over a server action. For example, when confirming a inward stock move, each line item must be historized. You can loop on expression object.move_lines and create another server action which is referred to do the historizing job.</p>
+<h3 id="python-code">Python Code</h3>
+<p>This action type is used to execute multiline python code. The returned value is the value of the variable <code>action</code>, defaulting to <code>{}</code>. This makes sense only if you want to pop a specific window(form) specific to the context, but a return value is generally not needed.</p>
+<p>Note: The code is executed using Python's <code>exec</code> built-in function. This function is run in a dedicated namespace containing the following identifiers: <code>object</code>, <code>time</code>, <code>cr</code>, <code>uid</code>, <code>ids</code>.</p>
+<h3 id="trigger">Trigger</h3>
+<p>Any transition of the workflow can be triggered using this action. The options you need to set are:</p>
+<p>Object:   the object affected by the workflow on for which we want to run the action</p>
+<p>Workflow on:   The target object on which you want to trigger the workflow.</p>
+<p>Trigger on:   the ID of the target model record, e.g. Invoice if you want to trigger a change on an invoice.</p>
+<p>Trigger Name:   the signal you have to use to initiate the transition. The drop down lists all possible triggers. Note: the list contains all possible transitions from other models also, so ensure you select the right trigger. Models are shown in brackets.</p>
+<p>The following example shows the configuration of a trigger used to automatically confirm invoices:</p>
+<p><img alt="image" src="../images/trigger_action.png" /></p>
+<h3 id="email-action">Email Action</h3>
+<p>This action fulfills a common requirement for all business process, sending a confirmation by email whenever sales order, purchase order, invoice, payment or shipping of goods takes place.</p>
+<p>Using this action does not require a dedicated email server: any existing SMTP email server and account can be used, including free email account (Gmail, Yahoo !, etc...)</p>
+<p><em>Server Configuration</em></p>
+<p>The OpenERP server must know how to connect to the SMTP server. This can be done from the command line when starting the server or by editing the configuration file. Here are the command line options:</p>
+<pre><code>--email-from=&lt;sender_email@address&gt;
+--smtp=&lt;smtp server name or IP address&gt;
+--smtp-port=&lt;smtp server port&gt;
+--smtp-user=&lt;smtp user name, if required&gt;
+--smtp-password=&lt;smtp user password, if required&gt;
+--smtp-ssl=&lt;true if the server requires SSL for sending email, else false&gt;
+</code></pre>
+<p>Here is an example configuration an action which sends an email when an invoice is confirmed</p>
+<p><img alt="image" src="../images/email_action.png" /></p>
+<p>Important Fields are:</p>
+<p>Object:   the object affected by the workflow on for which we want to run the action</p>
+<p>Contact:   the field from which action will find the email address of the recipient of the email. The system will displays all the fields related to the object selected in the Object field.</p>
+<p>Message:   the message template with the fields that will filled using the current object. The notation is the same as the one used RML to design reports: you can use the [[ ]] + HTML tags to design in the HTML format. For example to get the partner name we can use [[ object.partner_id.name ]], object refers to the current object and we can access any fields which exist in the model.</p>
+<p>After configuring this action, whenever an invoice is confirmed, an email such as the following is sent:</p>
+<p><img alt="image" src="../images/email_confirm.png" /></p>
+<h3 id="create-object">Create Object</h3>
+<p>This type of action can be used to emulate the Event history feature currently available on Partners, which logs sales orders issued by a partner, on other objects which do not natively support this feature, such as invoices:</p>
+<p><img alt="image" src="../images/create_object.png" /></p>
+<p>Create Object action configuration can be tricky, since it is currently necessary to remember the field names (or to check them out from the source code itself). There are plans to provide an expression builder inside OpenERP in the future, which will be useful to build complex expressions.</p>
+<p>Important fields are:</p>
+<p>Object:   the object affected by the workflow on for which we want to run the action</p>
+<p>Model:   the target model for the object to be created. If empty, it refers to the current object and allows to select the fields from it. It is recommended to provide a model in all cases.</p>
+<p>Fields Mapping:   Need to provide 3 values:</p>
+<ol>
+<li><em>Destination</em>: any of the fields from the target model</li>
+<li><em>Type</em>: the type of the mapping. Allowed values are <code>value</code> or <code>formula</code></li>
+<li><em>Value</em>: provide the value or expression the expression. The <code>object</code> refers to the current object.</li>
+</ol>
+<p><em>You must select the all required fields from the target model</em></p>
+<p>Record Id:   the field in which the id of the new record is stored. This is used to refer to the same object in future operations (see below)</p>
+<h3 id="write-object">Write Object</h3>
+<p>The configuration is very similar to the Create Object actions. The following example writes 'Additional Information' on the same object</p>
+<p><img alt="image" src="../images/write_object.png" /></p>
+<p>Important Fields are</p>
+<p><strong>same as the Create Object</strong></p>
+<h3 id="multi-action">Multi Action</h3>
+<p>This action allows to execute multiple server actions on the same business operation. For instance, it can be used to print <em>and</em> send an email on confirmation of an invoice. This requires creating 3 server actions:</p>
+<ul>
+<li>Print Invoice</li>
+<li>Invoice Confirmation Email !!</li>
+<li>Multi Action</li>
+</ul>
+<p>There is a fundamental restriction on this action: it can execute many actions at the server side, but only one single client action. It is therefore not possible to print a report and execute a wizard at the same time.</p>
+<p><img alt="image" src="../images/multi_action.png" /></p>
+<p>Important Fields are:</p>
+<p>Object:   the object affected by the workflow on for which we want to run the action</p>
+<p>Other Actions:   the list of server action. Any number of actions can be selected, but beware of the restriction mentioned above: if you select more than one Client action, only the first will be executed.</p>
+<h2 id="step-2-mapping-server-actions-to-workflows">Step 2: Mapping Server actions to workflows</h2>
+<p>Server actions by themselves are useless, until a workflow stage is set up to trigger them.</p>
+<p>Workflows can be accessed at: Administration &gt;&gt; Customization &gt;&gt; Workflow Definitions &gt;&gt; Workflows. Open the corresponding workflow, edit the stage at which the server action needs to be triggered. Then Select the server action in the box.</p>
+<p>The following example shows how to associate the Print invoice action to the Open state of the Invoice workflow:</p>
+<p><img alt="image" src="../images/link_workflow.png" /></p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

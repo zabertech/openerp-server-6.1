@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>01 getting started - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#getting-starting-with-openerp-development">Getting starting with OpenERP development</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#configuration">Configuration</a></li>
+            <li><a href="#command-line-options">Command line options</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="getting-starting-with-openerp-development">Getting starting with OpenERP development</h1>
+<h2 id="installation">Installation</h2>
+<h3 id="windows">Windows</h3>
+<p>Windows install:</p>
+<p>:   -   executable location
+    -   howto</p>
+<h3 id="debianubuntu">Debian/Ubuntu</h3>
+<p>How to get .deb packages</p>
+<h3 id="sources">Sources</h3>
+<p>In order to get the sources, you will need Bazaar version control to pull the source from Launchpad. Check how to get Bazaar according to your development environment. After having installed and configured Bazaar, setup your development environment by typing:</p>
+<pre><code>mkdir source;cd source
+</code></pre>
+<p>Get the setup script of OpenERP by typing:</p>
+<pre><code>bzr cat -d lp:~openerp-dev/openerp-tools/trunk setup.sh | sh
+</code></pre>
+<p>Get the current trunk version of OpenERP by typing:</p>
+<pre><code>make init-trunk
+</code></pre>
+<p>The makefile contains other options. For details about options, please type:</p>
+<pre><code>make
+</code></pre>
+<p>Some dependencies are necessary to use OpenERP. Depending on your environment, you might have to install the following packets:</p>
+<pre><code>sudo apt-get install graphviz ghostscript postgresql python-imaging python-matplotlib
+</code></pre>
+<p>You then have to initialise the database. This will create a new openerp role:</p>
+<pre><code>make db-setup
+</code></pre>
+<p>Finally, launch the OpenERP server:</p>
+<pre><code>make server
+</code></pre>
+<p>Testing your installation can be done on <a href="http://localhost:8069/">http://localhost:8069/</a></p>
+<h3 id="development-version">Development version</h3>
+<p>Location of development version + specifics if necessary to precise</p>
+<h2 id="configuration">Configuration</h2>
+<p>Two configuration files are available:</p>
+<ul>
+<li>one for the client: \~/.openerprc</li>
+<li>one for the server: \~/.openerp_serverrc</li>
+</ul>
+<p>Those files follow the convention used by python's ConfigParser module.</p>
+<p>Lines beginning with "#" or ";" are comments.</p>
+<p>The client configuration file is automatically generated upon the first start. The one of the server can automatically be created using the command: :</p>
+<pre><code>openerp-server.py -s
+</code></pre>
+<p>If they are not found, the server and the client will start with the default configuration.</p>
+<p><strong>Server Configuration File</strong></p>
+<p>The server configuration file .openerp_serverrc is used to save server startup options. Here is the list of the available options:</p>
+<p>interface:   Address to which the server will be bound</p>
+<p>port:   Port the server will listen on</p>
+<p>database:   Name of the database to use</p>
+<p>user:   Username used when connecting to the database</p>
+<p>translate_in:   File used to translate OpenERP to your language</p>
+<p>translate_out:   File used to export the language OpenERP use</p>
+<p>language:   Use this language as the language of the server. This must be specified as an ISO country code, as specified by the W3C.</p>
+<p>verbose:   Enable debug output</p>
+<p>init:   init a module (use "all" for all modules)</p>
+<p>update:   update a module (use "all" for all modules)</p>
+<p>upgrade:   Upgrade/install/uninstall modules</p>
+<p>db_name:   specify the database name</p>
+<p>db_user:   specify the database user name</p>
+<p>db_password:   specify the database password</p>
+<p>pg_path:   specify the pg executable path</p>
+<p>db_host:   specify the database host</p>
+<p>db_port:   specify the database port</p>
+<p>translate_modules:   Specify modules to export. Use in combination with --i18n-export</p>
+<p>You can create your own configuration file by specifying -s or --save on the server command line. If you would like to write an alternative configuration file, use -c &lt;config file&gt; or --config=&lt;config file&gt; Here is a basic configuration for a server:</p>
+<pre><code class="ini">[options]
+verbose = False
+xmlrpc = True
+database = terp
+update = {}
+port = 8069
+init = {}
+interface = 127.0.0.1
+reportgz = False
+</code></pre>
+
+<p>Full Example for Server V5.0 :</p>
+<pre><code class="ini">[printer]
+path = none
+softpath_html = none
+preview = True
+softpath = none
+
+[logging]
+output = stdout
+logger = 
+verbose = True
+level = error
+
+[help]
+index = http://www.openerp.com/documentation/user-manual/
+context = http://www.openerp.com/scripts/context_index.php
+
+[form]
+autosave = False
+toolbar = True
+
+[support]
+recipient = support@openerp.com
+support_id = 
+
+[tip]
+position = 0
+autostart = False
+
+[client]
+lang = en_US
+default_path = /home/user
+filetype = {}
+theme = none
+toolbar = icons
+form_tab_orientation = 0
+form_tab = top
+
+[survey]
+position = 3
+
+[path]
+pixmaps = /usr/share/pixmaps/openerp-client/
+share = /usr/share/openerp-client/
+
+[login]
+db = eo2
+login = admin
+protocol = http://
+port = 8069
+server = localhost
+</code></pre>
+
+<h2 id="command-line-options">Command line options</h2>
+<h3 id="general-options">General Options</h3>
+<p>--version show program version number and exit -h, --help show this help message and exit -c CONFIG, --config=CONFIG specify alternate config file -s, --save save configuration to \~/.terp_serverrc -v, --verbose enable debugging --pidfile=PIDFILE file where the server pid will be stored --logfile=LOGFILE file where the server log will be stored -n INTERFACE, --interface=INTERFACE specify the TCP IP address -p PORT, --port=PORT specify the TCP port --net_interface=NETINTERFACE specify the TCP IP address for netrpc --net_port=NETPORT specify the TCP port for netrpc --no-netrpc disable netrpc --no-xmlrpc disable xmlrpc -i INIT, --init=INIT init a module (use "all" for all modules) --without-demo=WITHOUT_DEMO load demo data for a module (use "all" for all modules) -u UPDATE, --update=UPDATE update a module (use "all" for all modules) --stop-after-init stop the server after it initializes --debug enable debug mode -S, --secure launch server over https instead of http --smtp=SMTP_SERVER specify the SMTP server for sending mail</p>
+<h3 id="database-related-options">Database related options:</h3>
+<p>-d DB_NAME, --database=DB_NAME  :   specify the database name</p>
+<p>-r DB_USER, --db_user=DB_USER  :   specify the database user name</p>
+<p>-w DB_PASSWORD, --db_password=DB_PASSWORD  :   specify the database password</p>
+<p>--pg_path=PG_PATH specify the pg executable path --db_host=DB_HOST specify the database host --db_port=DB_PORT specify the database port</p>
+<h3 id="internationalization-options">Internationalization options:</h3>
+<p>Use these options to translate OpenERP to another language. See i18n section of the user manual. Option '-l' is mandatory.</p>
+<p>-l LANGUAGE, --language=LANGUAGE  :   specify the language of the translation file. Use it with --i18n-export and --i18n-import</p>
+<p>--i18n-export=TRANSLATE_OUT  :   export all sentences to be translated to a CSV file and exit</p>
+<p>--i18n-import=TRANSLATE_IN  :   import a CSV file with translations and exit</p>
+<p>--modules=TRANSLATE_MODULES  :   specify modules to export. Use in combination with --i18n-export</p>
+<h3 id="options-from-previous-versions">Options from previous versions:</h3>
+<p>Some options were removed in version 6. For example, <code>price_accuracy</code> is now configured through the decimal_accuracy screen.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

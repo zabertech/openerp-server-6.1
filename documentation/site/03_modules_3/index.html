@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>03 modules 3 - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#views-and-events">Views and Events</a></li>
+            <li><a href="#introduction-to-views">Introduction to Views</a></li>
+            <li><a href="#form-views">Form views</a></li>
+            <li><a href="#tree-views">Tree views</a></li>
+            <li><a href="#graph-views">Graph views</a></li>
+            <li><a href="#search-views">Search views</a></li>
+            <li><a href="#calendar-views">Calendar Views</a></li>
+            <li><a href="#gantt-views">Gantt Views</a></li>
+            <li><a href="#design-elements">Design Elements</a></li>
+            <li><a href="#inheritance-in-views">Inheritance in Views</a></li>
+            <li><a href="#specify-the-views-you-want-to-use">Specify the views you want to use</a></li>
+            <li><a href="#events">Events</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="views-and-events">Views and Events</h1>
+<h2 id="introduction-to-views">Introduction to Views</h2>
+<p>As all program data is stored in objects, as explained in the Objects section, how are these objects exposed to the user ? We will try to answer this question in this section.</p>
+<p>First of all, let's note that every resource type uses its own interface. For example, the screen to modify a partner's data is not the same as the one to modify an invoice.</p>
+<p>Then, you should know that the OpenERP user interface is dynamic, which means it is not described "statically" by some code, but is dynamically built from XML descriptions of the client screens.</p>
+<p>From now on, we will call these screen descriptions views.</p>
+<p>A notable characteristic of these views is that they can be edited at any time (even during program execution). After modifying a displayed view you simply need to close the tab corresponding to that 'view' and re-open it for the changes to appear.</p>
+<h3 id="views-principles">Views principles</h3>
+<p>Views describe how each object (type of resource) is displayed. More precisely, for each object, we can define one (or several) view(s) to describe which fields should be drawn and how.</p>
+<p>There are two types of views:</p>
+<ol>
+<li>form views</li>
+<li>tree views</li>
+</ol>
+<h2 id="form-views">Form views</h2>
+<p>The field disposition in a form view always follows the same principle. Fields are distributed on the screen following the rules below:</p>
+<ul>
+<li>By default, each field is preceded by a label, with its name.</li>
+<li>Fields are placed on the screen from left to right, and from top to bottom, according to the order in which they are declared in the view.</li>
+<li>Every screen is divided into 4 columns, each column being able to contain either a label, or an "edition" field. As every edition field is preceded (by default) by a label with its name, there will be two fields (and their respective labels) on each line of the screen. The green and red zones on the screen-shot below illustrate those 4 columns. They designate respectively the labels and their corresponding fields.</li>
+</ul>
+<p><img alt="" src="../images/sale_order.png" /></p>
+<p>Views also support more advanced placement options:</p>
+<ul>
+<li>A view field can use several columns. For example, on the screen-shot below, the zone in the blue frame is, in fact, the only field of a "one to many". We will come back later on this note, but let's note that it uses the whole width of the screen and not only one column.</li>
+</ul>
+<p><img alt="" src="../images/sale_order_sale_order_lines.png" /></p>
+<pre><code>&gt; scale:   50
+&gt; align:   center
+</code></pre>
+<ul>
+<li>We can also make the opposite operation: take a columns group and divide it in as many columns as desired. The surrounded green zones of the screen above are good examples. Precisely, the green framework up and on the right side takes the place of two columns, but contains 4 columns.</li>
+</ul>
+<p>As we can see below in the purple zone of the screen, there is also a way to distribute the fields of an object on different tabs.</p>
+<p><img alt="" src="../images/sale_order_notebook.png" /></p>
+<h2 id="tree-views">Tree views</h2>
+<p>These views are used when we work in list mode (in order to visualise several resources at once) and in the search screen. These views are simpler than the form views and thus have less options.</p>
+<p><img alt="" src="../images/tree_view.png" /></p>
+<h2 id="graph-views">Graph views</h2>
+<p>A graph is a new mode of view for all views of type form. If, for example, a sale order line must be visible as list or as graph, define it like this in the action that opens this sale order line. Do not set the view mode as "tree,form,graph" or "form,graph" - it must be "graph,tree" to show the graph first or "tree,graph" to show the list first. (This view mode is extra to your "form,tree" view and should have a separate menu item):</p>
+<pre><code class="xml">&lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+&lt;field name=&quot;view_mode&quot;&gt;tree,graph&lt;/field&gt;
+</code></pre>
+
+<p>view_type:</p>
+<ul>
+<li>tree = (tree with shortcuts at the left)</li>
+<li>form = (switchable view form/list) </li>
+</ul>
+<p>view_mode:</p>
+<ul>
+<li>tree,graph : sequences of the views when switching</li>
+</ul>
+<p>Then, the user will be able to switch from one view to the other. Unlike forms and trees, OpenERP is not able to automatically create a view on demand for the graph type. So, you must define a view for this graph:</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_order_line_graph&quot;&gt;
+   &lt;field name=&quot;name&quot;&gt;sale.order.line.graph&lt;/field&gt;
+   &lt;field name=&quot;model&quot;&gt;sale.order.line&lt;/field&gt;
+   &lt;field name=&quot;type&quot;&gt;graph&lt;/field&gt;
+   &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+     &lt;graph string=&quot;Sales Order Lines&quot;&gt;
+          &lt;field name=&quot;product_id&quot; group=&quot;True&quot;/&gt;
+          &lt;field name=&quot;price_unit&quot; operator=&quot;*&quot;/&gt;
+    &lt;/graph&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>The graph view</p>
+<p>A view of type graph is just a list of fields for the graph.</p>
+<h3 id="graph-tag">Graph tag</h3>
+<p>The default type of the graph is a pie chart - to change it to a barchart change <strong>&lt;graph string="Sales Order Lines"&gt;</strong> to <strong>&lt;graph string="Sales Order Lines" type="bar"&gt;</strong> You also may change the orientation.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;graph string=&quot;Sales Order Lines&quot; orientation=&quot;horizontal&quot; type=&quot;bar&quot;&gt;
+</code></pre>
+
+<h3 id="field-tag">Field tag</h3>
+<p>The first field is the X axis. The second one is the Y axis and the optional third one is the Z axis for 3 dimensional graphs. You can apply a few attributes to each field/axis:</p>
+<ul>
+<li><strong>group</strong>: if set to true, the client will group all item of the same value for this field. For every other field, it will apply an operator</li>
+<li>
+<p><strong>operator</strong>: the operator to apply if another field is grouped. By default it is '+'. Allowed values are:</p>
+<blockquote>
+<ul>
+<li>+: addition</li>
+<li>*: multiply</li>
+<li>**: exponent</li>
+<li>min: minimum of the list</li>
+<li>max: maximum of the list</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<p>Defining real statistics on objects:</p>
+<p>The easiest method to compute real statistics on objects is:</p>
+<ol>
+<li>Define a statistic object which is a postgresql view</li>
+<li>Create a tree view and a graph view on this object</li>
+</ol>
+<p>You can get an example in all modules of the form: report_.... Example: report_crm.</p>
+<h2 id="search-views">Search views</h2>
+<p>Search views are a new feature of OpenERP supported as of version 6.0. It creates a customized search panel, and is declared quite similarly to a form view, except that the view type and root element change to <code>search</code> instead of <code>form</code>.</p>
+<p><img alt="image" src="../images/search.png" /></p>
+<p>Following is the list of new elements and features supported in search views.</p>
+<h3 id="group-tag">Group tag</h3>
+<p>Unlike form group elements, search view groups support unlimited number of widgets (fields or filters) in a row (no automatic line wrapping), and only use the following attributes:</p>
+<ul>
+<li><code>expand</code>: turns on the expander icon on the group (1 for expanded by default, 0 for collapsed)</li>
+<li><code>string</code>: label for the group</li>
+</ul>
+<p>Example:</p>
+<pre><code class="xml">&lt;group expand=&quot;1&quot; string=&quot;Group By...&quot;&gt;
+   &lt;filter string=&quot;Users&quot; icon=&quot;terp-project&quot; domain=&quot;[]&quot; context=&quot;{'group_by':'user_id'}&quot;/&gt;
+   &lt;filter string=&quot;Project&quot; icon=&quot;terp-project&quot; domain=&quot;[]&quot; context=&quot;{'group_by':'project_id'}&quot;/&gt;
+   &lt;separator orientation=&quot;vertical&quot;/&gt;
+   &lt;filter string=&quot;Deadline&quot; icon=&quot;terp-project&quot; domain=&quot;[]&quot; context=&quot;{'group_by':'date_deadline'}&quot;/&gt;
+&lt;/group&gt;
+</code></pre>
+
+<p>In the screenshot above the green area is an expandable group.</p>
+<h3 id="filter-tag">Filter tag</h3>
+<p>Filters are displayed as a toggle button on search panel Filter elements can add new values in the current domain or context of the search view. Filters can be added as a child element of field too, to indicate that they apply specifically to that field (in this case the button's icon will smaller)</p>
+<p>In the picture above the red area contains filters at the top of the form while the blue area highlights a field and its child filter.</p>
+<pre><code class="xml">&lt;filter string=&quot;Current&quot; domain=&quot;[('state','in',('open','draft'))]&quot; help=&quot;Draft, Open and Pending Tasks&quot; icon=&quot;terp-project&quot;/&gt;
+&lt;field name=&quot;project_id&quot; select=&quot;1&quot; widget=&quot;selection&quot;&gt;
+    &lt;filter domain=&quot;[('project_id.user_id','=',uid)]&quot; help=&quot;My Projects&quot; icon=&quot;terp-project&quot;/&gt;
+&lt;/field&gt;
+</code></pre>
+
+<h3 id="group-by">Group By</h3>
+<pre><code class="xml">&lt;filter string=&quot;Project&quot; icon=&quot;terp-project&quot; domain=&quot;[]&quot; context=&quot;{'group_by':'project_id'}&quot;/&gt;
+</code></pre>
+
+<p>Above filters groups records sharing the same <code>project_id</code> value. Groups are loaded lazily, so the inner records are only loaded when the group is expanded. The group header lines contain the common values for all records in that group, and all numeric fields currently displayed in the view are replaced by the sum of the values in that group.</p>
+<p>It is also possible to group on multiple values by specifying a list of fields instead of a single string. In this case nested groups will be displayed:</p>
+<pre><code class="xml">&lt;filter string=&quot;Project&quot; icon=&quot;terp-project&quot; domain=&quot;[]&quot; context=&quot;{'group_by': ['project_id', 'user_id'] }&quot;/&gt;
+</code></pre>
+
+<h3 id="fields">Fields</h3>
+<p>Field elements in search views are used to get user-provided values for searches. As a result, as for group elements, they are quite different than form view's fields:</p>
+<ul>
+<li>
+<p>a search field can contain filters, which generally indicate that both field and filter manage the same field and are related.</p>
+<p>Those inner filters are rendered as smaller buttons, right next to the field, and <em>must not</em> have a <code>string</code> attribute.</p>
+</li>
+<li>
+<p>a search field really builds a domain composed of <code>[(field_name, operator, field_value)]</code>. This domain can be overridden in two ways:</p>
+<ul>
+<li><code>@operator</code> replaces the default operator for the field (which depends on its type)</li>
+<li><code>@filter_domain</code> lets you provide a fully custom domain, which will replace the default domain creation</li>
+</ul>
+</li>
+<li>a search field does not create a context by default, but you can provide an <code>@context</code> which will be evaluated and merged into the wider context (as with a <code>filter</code> element).</li>
+</ul>
+<p>To get the value of the field in your <code>@context</code> or <code>@filter_domain</code>, you can use the variable <code>self</code>:</p>
+<pre><code class="xml">&lt;field name=&quot;location_id&quot; string=&quot;Location&quot;
+</code></pre>
+
+<p>or</p>
+<pre><code class="xml">&lt;field name=&quot;journal_id&quot; widget=&quot;selection&quot;
+       context=&quot;{'journal_id':self, 'visible_id':self, 'normal_view':False}&quot;/&gt;
+</code></pre>
+
+<h4 id="range-fields-date-datetime-time">Range fields (date, datetime, time)</h4>
+<p>The range fields are composed of two input widgets (from and to) instead of just one.</p>
+<p>This leads to peculiarities (compared to non-range search fields):</p>
+<ul>
+<li>It is not possible to override the operator of a range field via <code>@operator</code>, as the domain is built of two sections and each section uses a different operator.</li>
+<li>
+<p>Instead of being a simple value (integer, string, float) <code>self</code> for use in <code>@filter_domain</code> and <code>@context</code> is a <code>dict</code>.</p>
+<p>Because each input widget of a range field can be empty (and the field itself will still be valid), care must be taken when using <code>self</code>: it has two string keys <code>"from"</code> and <code>"to"</code>, but any of these keys can be either missing entirely or set to the value <code>False</code>.</p>
+</li>
+</ul>
+<h3 id="actions-for-search-view">Actions for Search view</h3>
+<p>After declaring a search view, it will be used automatically for all tree views on the same model. If several search views exist for a single model, the one with the highest priority (lowest sequence) will be used. Another option is to explicitly select the search view you want to use, by setting the <code>search_view_id</code> field of the action.</p>
+<p>In addition to being able to pass default form values in the context of the action, OpenERP 6.0 now supports passing initial values for search views too, via the context. The context keys need to match the <code>search_default_XXX</code> format. <code>XXX</code> may refer to the <code>name</code> of a <code>&lt;field&gt;</code> or <code>&lt;filter&gt;</code> in the search view (as the <code>name</code> attribute is not required on filters, this only works for filters that have an explicit <code>name</code> set). The value should be either the initial value for search fields, or simply a boolean value for filters, to toggle them</p>
+<pre><code class="xml">&lt;record id=&quot;action_view_task&quot; model=&quot;ir.actions.act_window&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;Tasks&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;project.task&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;tree,form,calendar,gantt,graph&lt;/field&gt;
+    &lt;field eval=&quot;False&quot; name=&quot;filter&quot;/&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;view_task_tree2&quot;/&gt;
+    &lt;field name=&quot;context&quot;&gt;{&quot;search_default_current&quot;:1,&quot;search_default_user_id&quot;:uid}&lt;/field&gt;
+    &lt;field name=&quot;search_view_id&quot; ref=&quot;view_task_search_form&quot;/&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h3 id="custom-filters">Custom Filters</h3>
+<p>As of v6.0, all search views feature custom search filters, as shown below. Users can define their own custom filters using any of the fields available on the current model, combining them with AND/OR operators. It is also possible to save any search context (the combination of all currently applied domain and context values) as a personal filter, which can be recalled at any time. Filters can also be turned into Shortcuts directly available in the User's homepage.</p>
+<p><img alt="image" src="../images/filter.png" /></p>
+<p>In above screenshot we filter Partner where Salesman = Demo user and Country = Belgium, We can save this search criteria as a Shortcut or save as Filter.</p>
+<p>Filters are user specific and can be modified via the Manage Filters option in the filters drop-down.</p>
+<h2 id="calendar-views">Calendar Views</h2>
+<p>Calendar view provides timeline/schedule view for the data.</p>
+<h3 id="view-specification">View Specification</h3>
+<p>Here is an example view:</p>
+<pre><code class="xml">&lt;calendar color=&quot;user_id&quot; date_delay=&quot;planned_hours&quot; date_start=&quot;date_start&quot; string=&quot;Tasks&quot;&gt;
+    &lt;field name=&quot;name&quot;/&gt;
+    &lt;field name=&quot;project_id&quot;/&gt;
+&lt;/calendar&gt;
+</code></pre>
+
+<p>Here is the list of supported attributes for <code>calendar</code> tag:</p>
+<ul>
+<li><code>string</code> :   The title string for the view.</li>
+<li><code>date_start</code>:   A <code>datetime</code> field to specify the starting date for the calendar item. This attribute is required.</li>
+<li><code>date_stop</code>:   A <code>datetime</code> field to specify the end date. Ignored if <code>date_delay</code> attribute is specified.</li>
+<li><code>date_delay</code>:   A <code>numeric</code> field to specify time in hours for a record. This attribute will get preference over <code>date_stop</code> and <code>date_stop</code> will be ignored.</li>
+<li><code>day_length</code> :   An <code>integer</code> value to specify working day length. Default is <code>8</code> hours.</li>
+<li><code>color</code>:   A field, generally <code>many2one</code>, to colourise calendar/gantt items.</li>
+<li><code>mode</code>:   A string value to set default view/zoom mode. For <code>calendar</code> view, this can be one of following (default is <code>month</code>):<ul>
+<li><code>day</code></li>
+<li><code>week</code></li>
+<li><code>month</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="screenshots">Screenshots</h3>
+<p>Month Calendar:</p>
+<p><img alt="" src="../images/calendar_month.png" /></p>
+<p>Week Calendar:</p>
+<p><img alt="" src="../images/calendar_week.png" /></p>
+<h2 id="gantt-views">Gantt Views</h2>
+<p>Gantt view provides timeline view for the data. Generally, it can be used to display project tasks and resource allocation.</p>
+<p>A Gantt chart is a graphical display of all the tasks that a project is composed of. Each bar on the chart is a graphical representation of the length of time the task is planned to take.</p>
+<p>A resource allocation summary bar is shown on top of all the grouped tasks, representing how effectively the resources are allocated among the tasks.</p>
+<p>Color coding of the summary bar is as follows:</p>
+<ul>
+<li>Gray shows that the resource is not allocated to any task at that time</li>
+<li>Blue shows that the resource is fully allocated at that time.</li>
+<li>Red shows that the resource is overallocated</li>
+</ul>
+<h3 id="view-specification_1">View Specification</h3>
+<p>Here is an example view:</p>
+<pre><code class="xml">&lt;gantt color=&quot;user_id&quot; date_delay=&quot;planned_hours&quot; date_start=&quot;date_start&quot; string=&quot;Tasks&quot;&gt;
+    &lt;level object=&quot;project.project&quot; link=&quot;project_id&quot; domain=&quot;[]&quot;&gt;
+        &lt;field name=&quot;name&quot;/&gt;
+    &lt;/level&gt;
+&lt;/gantt&gt;
+</code></pre>
+
+<p>The <code>attributes</code> accepted by the <code>gantt</code> tag are similar to <code>calendar</code> view tag. The <code>level</code> tag is used to group the records by some <code>many2one</code> field. Currently, only one level is supported.</p>
+<p>Here is the list of supported attributes for <code>gantt</code> tag:</p>
+<ul>
+<li><code>string</code>:   The title string for the view.
+ <code>date_start</code>:   A <code>datetime</code> field to specify the starting date for the gantt item. This attribute is required.</li>
+<li><code>date_stop</code>:   A <code>datetime</code> field to specify the end date. Ignored if <code>date_delay</code> attribute is specified.</li>
+<li><code>date_delay</code>:   A <code>numeric</code> field to specify time in hours for a record. This attribute will get preference over <code>date_stop</code> and <code>date_stop</code> will be ignored.</li>
+<li><code>day_length</code>:   An <code>integer</code> value to specify working day length. Default is <code>8</code> hours.</li>
+<li><code>color</code>:   A field, generally <code>many2one</code>, to colorize calendar/gantt items.</li>
+<li><code>mode</code>:   A string value to set default view/zoom mode. For <code>gantt</code> view, this can be one of following (default is <code>month</code>):<ul>
+<li><code>day</code></li>
+<li><code>3days</code></li>
+<li><code>week</code></li>
+<li><code>3weeks</code></li>
+<li><code>month</code></li>
+<li><code>3months</code></li>
+<li><code>year</code></li>
+<li><code>3years</code></li>
+<li><code>5years</code></li>
+</ul>
+</li>
+</ul>
+<p>The <code>level</code> tag supports following attributes:</p>
+<ul>
+<li><code>object</code>:   An openerp object having many2one relationship with view object.</li>
+<li><code>link</code>:   The field name in current object that links to the given <code>object</code>.</li>
+<li><code>domain</code>:   The domain to be used to filter the given <code>object</code> records.</li>
+</ul>
+<h3 id="drag-and-drop">Drag and Drop</h3>
+<p>The left side pane displays list of the tasks grouped by the given <code>level</code> field. You can reorder or change the group of any records by dragging them.</p>
+<p>The main content pane displays horizontal bars plotted on a timeline grid. A group of bars are summarised with a top summary bar displaying resource allocation of all the underlying tasks.</p>
+<p>You can change the task start time by dragging the tasks horizontally. While end time can be changed by dragging right end of a bar.</p>
+<div class="admonition note">
+
+The time is calculated considering `day_length` so a bar will span more then one day if total time for a task is greater then `day_length` value.
+
+</div>
+
+<h3 id="screenshots_1">Screenshots</h3>
+<p><img alt="" src="../images/gantt.png" /></p>
+<h2 id="design-elements">Design Elements</h2>
+<p>The files describing the views are of the form:</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+   &lt;data&gt;
+       [view definitions]
+   &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<p>The view definitions contain mainly three types of tags:</p>
+<ul>
+<li><strong>&lt;record&gt;</strong> tags with the attribute model="ir.ui.view", which contain the view definitions themselves</li>
+<li><strong>&lt;record&gt;</strong> tags with the attribute model="ir.actions.act_window", which link actions to these views</li>
+<li><strong>&lt;menuitem&gt;</strong> tags, which create entries in the menu, and link them with actions</li>
+</ul>
+<p>New : You can specify groups for whom the menu is accessible using the groups attribute in the menuitem tag.</p>
+<p>New : You can now add shortcut using the shortcut tag.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;shortcut 
+    name=&quot;Draft Purchase Order (Proposals)&quot; 
+    model=&quot;purchase.order&quot; 
+    logins=&quot;demo&quot; 
+    menu=&quot;m&quot;/&gt;
+</code></pre>
+
+<p>Note that you should add an id attribute on the menuitem which is referred by menu attribute.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;v&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;sale.order.form&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;sale.order&lt;/field&gt;
+    &lt;field name=&quot;priority&quot; eval=&quot;2&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;form string=&quot;Sale Order&quot;&gt;
+            .........
+        &lt;/form&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Default value for the priority field : 16. When not specified the system will use the view with the lower priority.</p>
+<h3 id="view-types">View Types</h3>
+<h4 id="tree-view">Tree View</h4>
+<p>You can specify the columns to include in the list, along with some details of the list's appearance. The search fields aren't specified here, they're specified by the select attribute in the form view fields.</p>
+<pre><code class="xml">&lt;record id=&quot;view_location_tree2&quot; model=&quot;ir.ui.view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;stock.location.tree&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;stock.location&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;tree&lt;/field&gt;
+    &lt;field name=&quot;priority&quot; eval=&quot;2&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;tree 
+            colors=&quot;blue:usage=='view';darkred:usage=='internal'&quot;&gt;
+
+            &lt;field name=&quot;complete_name&quot;/&gt;
+            &lt;field name=&quot;usage&quot;/&gt;
+            &lt;field 
+                name=&quot;stock_real&quot; 
+                invisible=&quot;'product_id' not in context&quot;/&gt;
+            &lt;field 
+                name=&quot;stock_virtual&quot; 
+                invisible=&quot;'product_id' not in context&quot;/&gt;
+        &lt;/tree&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>That example is just a flat list, but you can also display a real tree structure by specifying a field_parent. The name is a bit misleading, though; the field you specify must contain a list of all <strong>child</strong> entries.</p>
+<pre><code class="xml">&lt;record id=&quot;view_location_tree&quot; model=&quot;ir.ui.view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;stock.location.tree&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;stock.location&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;tree&lt;/field&gt;
+    &lt;field name=&quot;field_parent&quot;&gt;child_ids&lt;/field&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;tree toolbar=&quot;1&quot;&gt;
+            &lt;field icon=&quot;icon&quot; name=&quot;name&quot;/&gt;
+        &lt;/tree&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>On the tree element, the following attributes are supported:</p>
+<ul>
+<li><code>colors</code>:   Conditions for applying different colours to items in the list. The default is black.</li>
+<li><code>toolbar</code>:   Set this to 1 if you want a tree structure to list the top level entries in a separate toolbar area. When you click on an entry in the toolbar, all its descendants will be displayed in the main tree. The value is ignored for flat lists.</li>
+</ul>
+<h3 id="grouping-elements">Grouping Elements</h3>
+<h4 id="separator">Separator</h4>
+<p>Adds a separator line</p>
+<p>Example:   </p>
+<pre><code class="xml">&lt;separator string=&quot;Links&quot; colspan=&quot;4&quot;/&gt;
+</code></pre>
+
+<p>The string attribute defines its label and the colspan attribute defines his horizontal size (in number of columns).</p>
+<h4 id="notebook">Notebook</h4>
+<p>&lt;notebook&gt;: With notebooks you can distribute the view fields on different tabs (each one defined by a page tag). You can use the tabpos properties to set tab at: up, down, left, right.</p>
+<p>Example:   </p>
+<pre><code class="xml">&lt;notebook colspan=&quot;4&quot;&gt;....&lt;/notebook&gt;
+</code></pre>
+
+<h4 id="group">Group</h4>
+<p>&lt;group&gt;: groups several columns and split the group in as many columns as desired.</p>
+<ul>
+<li><strong>colspan</strong>: the number of columns to use</li>
+<li><strong>rowspan</strong>: the number of rows to use</li>
+<li><strong>expand</strong>: if we should expand the group or not</li>
+<li><strong>col</strong>: the number of columns to provide (to its children)</li>
+<li><strong>string</strong>: (optional) If set, a frame will be drawn around the group of fields, with a label containing the string. Otherwise, the frame will be invisible.</li>
+</ul>
+<p>Example:   </p>
+<pre><code class="xml">&lt;group col=&quot;3&quot; colspan=&quot;2&quot;&gt;
+    &lt;field name=&quot;invoiced&quot; select=&quot;2&quot;/&gt;
+    &lt;button colspan=&quot;1&quot; name=&quot;make_invoice&quot; states=&quot;confirmed&quot; string=&quot;Make Invoice&quot;
+        type=&quot;object&quot;/&gt;
+&lt;/group&gt;
+</code></pre>
+
+<h4 id="page">Page</h4>
+<p>Defines a new notebook page for the view.</p>
+<p>Example:   </p>
+<pre><code class="xml">&lt;page string=&quot;Order Line&quot;&gt; ... &lt;/page&gt;:
+</code></pre>
+
+<ul>
+<li><strong>string</strong>: defines the name of the page.</li>
+</ul>
+<h3 id="data-elements">Data Elements</h3>
+<h4 id="field">Field</h4>
+<p>attributes for the "field" tag</p>
+<ul>
+<li><code>select="1"</code>: mark this field as being one of the search criteria for this resource's search view. A value of 1 means that the field is included in the basic search, and a value of 2 means that it is in the advanced search.</li>
+<li><code>colspan="4"</code>: the number of columns on which a field must extend.</li>
+<li><code>readonly="1"</code>: set the widget as read only</li>
+<li><code>required="1"</code>: the field is marked as required. If a field is marked as required, a user has to fill it the system won't save the resource if the field is not filled. This attribute supersede the required field value defined in the object.</li>
+<li><code>nolabel="1"</code>: hides the label of the field (but the field is not hidden in the search view).</li>
+<li><code>invisible="True"</code>: hides both the label and the field.</li>
+<li><code>password="True"</code>: replace field values by asterisks, "*".</li>
+<li><code>string=""</code>: change the field label. Note that this label is also used in the search view: see select attribute above).</li>
+<li><code>domain</code>: can restrict the domain. Example: <code>domain="\[('partner\_id','=',partner\_id)\]"</code></li>
+<li><code>widget</code>: can change the widget.  Example: <code>widget="one2many\_list"</code>:<ul>
+<li>one2one_list</li>
+<li>one2many_list</li>
+<li>many2one_list</li>
+<li>many2many</li>
+<li>url</li>
+<li>email</li>
+<li>image</li>
+<li>float_time</li>
+<li>reference</li>
+</ul>
+</li>
+<li><code>mode</code>: sequences of the views when switching. Example: <code>mode="tree,graph"</code></li>
+<li><code>on_change</code>: define a function that is called when the content of the field changes. Example: <code>on\_change="onchange\_partner(type,partner\_id)"</code> See the on change event &lt;onchange-event-link&gt; for details.</li>
+<li><code>attrs</code>: Permits to define attributes of a field depends on other fields of the same window. (It can be use on page, group, button and notebook tag also)<ul>
+<li>Format: "{'attribute':[('field_name','operator','value'),('field_name','operator','value')],'attribute2':[('field_name','operator','value'),]}"</li>
+<li>where attribute will be readonly, invisible, required</li>
+<li>Default value: {}.</li>
+</ul>
+</li>
+</ul>
+<p>Example: (in product.product)</p>
+<pre><code class="xml">&lt;field digits=&quot;(14, 3)&quot; name=&quot;volume&quot; attrs=&quot;{'readonly':[('type','=','service')]}&quot;/&gt;
+</code></pre>
+
+<ul>
+<li><code>eval</code>: evaluate the attribute content as if it was Python code (see below &lt;eval-attribute-link&gt; for example)</li>
+<li><code>default_focus</code>: set to <code>1</code> to put the focus (cursor position) on this field when the form is first opened. There can only be one field within a view having this attribute set to <code>1</code> <strong>(new as of 5.2)</strong></li>
+</ul>
+<p>Example:</p>
+<pre><code class="xml">&lt;field name=&quot;name&quot; default_focus=”1”/&gt; 
+</code></pre>
+
+<p>Here's the source code of the view of a sale order object. This is the object shown on the screen shots of the presentation.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+    &lt;record id=&quot;view_partner_form&quot; model=&quot;ir.ui.view&quot;&gt;
+            &lt;field name=&quot;name&quot;&gt;res.partner.form&lt;/field&gt;
+            &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+            &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+            &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+            &lt;form string=&quot;Partners&quot;&gt;
+                &lt;group colspan=&quot;4&quot; col=&quot;6&quot;&gt;
+                    &lt;field name=&quot;name&quot; select=&quot;1&quot;/&gt;
+                    &lt;field name=&quot;ref&quot; select=&quot;1&quot;/&gt;
+                    &lt;field name=&quot;customer&quot; select=&quot;1&quot;/&gt;
+                    &lt;field domain=&quot;[('domain', '=', 'partner')]&quot; name=&quot;title&quot;/&gt;
+                    &lt;field name=&quot;lang&quot; select=&quot;2&quot;/&gt;
+                    &lt;field name=&quot;supplier&quot; select=&quot;2&quot;/&gt;
+                &lt;/group&gt;
+                &lt;notebook colspan=&quot;4&quot;&gt;
+                    &lt;page string=&quot;General&quot;&gt;
+                        &lt;field colspan=&quot;4&quot; mode=&quot;form,tree&quot; name=&quot;address&quot;
+                         nolabel=&quot;1&quot; select=&quot;1&quot;&gt;
+                            &lt;form string=&quot;Partner Contacts&quot;&gt;
+                                &lt;field name=&quot;name&quot; select=&quot;2&quot;/&gt;
+                                &lt;field domain=&quot;[('domain', '=', 'contact')]&quot; name=&quot;title&quot;/&gt;
+                                &lt;field name=&quot;function&quot;/&gt;
+                                &lt;field name=&quot;type&quot; select=&quot;2&quot;/&gt;
+                                &lt;field name=&quot;street&quot; select=&quot;2&quot;/&gt;
+                                &lt;field name=&quot;street2&quot;/&gt;
+                                &lt;newline/&gt;
+                                &lt;field name=&quot;zip&quot; select=&quot;2&quot;/&gt;
+                                &lt;field name=&quot;city&quot; select=&quot;2&quot;/&gt;
+                                &lt;newline/&gt;
+                                &lt;field completion=&quot;1&quot; name=&quot;country_id&quot; select=&quot;2&quot;/&gt;
+                                &lt;field name=&quot;state_id&quot; select=&quot;2&quot;/&gt;
+                                &lt;newline/&gt;
+                                &lt;field name=&quot;phone&quot;/&gt;
+                                &lt;field name=&quot;fax&quot;/&gt;
+                                &lt;newline/&gt;
+                                &lt;field name=&quot;mobile&quot;/&gt;
+                                &lt;field name=&quot;email&quot; select=&quot;2&quot; widget=&quot;email&quot;/&gt;
+                            &lt;/form&gt;
+                            &lt;tree string=&quot;Partner Contacts&quot;&gt;
+                                &lt;field name=&quot;name&quot;/&gt;
+                                &lt;field name=&quot;zip&quot;/&gt;
+                                &lt;field name=&quot;city&quot;/&gt;
+                                &lt;field name=&quot;country_id&quot;/&gt;
+                                &lt;field name=&quot;phone&quot;/&gt;
+                                &lt;field name=&quot;email&quot;/&gt;
+                            &lt;/tree&gt;
+                        &lt;/field&gt;
+                        &lt;separator colspan=&quot;4&quot; string=&quot;Categories&quot;/&gt;
+                        &lt;field colspan=&quot;4&quot; name=&quot;category_id&quot; nolabel=&quot;1&quot; select=&quot;2&quot;/&gt;
+                    &lt;/page&gt;
+                    &lt;page string=&quot;Sales &amp;amp; Purchases&quot;&gt;
+                        &lt;separator string=&quot;General Information&quot; colspan=&quot;4&quot;/&gt;
+                        &lt;field name=&quot;user_id&quot; select=&quot;2&quot;/&gt;
+                        &lt;field name=&quot;active&quot; select=&quot;2&quot;/&gt;
+                        &lt;field name=&quot;website&quot; widget=&quot;url&quot;/&gt;
+                        &lt;field name=&quot;date&quot; select=&quot;2&quot;/&gt;
+                        &lt;field name=&quot;parent_id&quot;/&gt;
+                        &lt;newline/&gt;
+                    &lt;/page&gt;
+                    &lt;page string=&quot;History&quot;&gt;
+                        &lt;field colspan=&quot;4&quot; name=&quot;events&quot; nolabel=&quot;1&quot; widget=&quot;one2many_list&quot;/&gt;
+                    &lt;/page&gt;
+                    &lt;page string=&quot;Notes&quot;&gt;
+                        &lt;field colspan=&quot;4&quot; name=&quot;comment&quot; nolabel=&quot;1&quot;/&gt;
+                    &lt;/page&gt;
+                &lt;/notebook&gt;
+            &lt;/form&gt;
+            &lt;/field&gt;
+        &lt;/record&gt;
+    &lt;menuitem
+            action=&quot;action_partner_form&quot;
+            id=&quot;menu_partner_form&quot;
+            parent=&quot;base.menu_base_partner&quot;
+            sequence=&quot;2&quot;/&gt;
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+
+<h5 id="the-eval-attribute">The eval attribute</h5>
+<p>The <strong>eval</strong> attribute evaluates its content as if it was Python code. This allows you to define values that are not strings.</p>
+<p>Normally, content inside <em>&lt;field&gt;</em> tags are always evaluated as strings.</p>
+<pre><code class="xml">&lt;field name=&quot;value&quot;&gt;2.3&lt;/field&gt;
+</code></pre>
+
+<p>This will evaluate to the string <code>'2.3'</code> and not the float <code>2.3</code></p>
+<pre><code class="xml">&lt;field name=&quot;value&quot;&gt;False&lt;/field&gt;
+</code></pre>
+
+<p>This will evaluate to the string <code>'False'</code> and not the boolean <code>False</code>. This is especially tricky because Python's conversion rules consider any non-empty string to be <code>True</code>, so the above code will end up storing the opposite of what is desired.</p>
+<p>If you want to evaluate the value to a float, a boolean or another type, except string, you need to use the <strong>eval</strong> attribute:</p>
+<pre><code class="xml">&lt;field name=&quot;value&quot; eval=&quot;2.3&quot; /&gt;
+&lt;field name=&quot;value&quot; eval=&quot;False&quot; /&gt;
+</code></pre>
+
+<h4 id="button">Button</h4>
+<p>Adds a button to the current view. Allows the user to perform various actions on the current record.</p>
+<p>After a button has been clicked, the record should always be reloaded.</p>
+<p>Buttons have the following attributes:</p>
+<p><code>type</code>:   Defines the type of action performed when the button is activated:</p>
+<p><code>workflow</code> (default):   The button will send a workflow signal[^1] on the current model using the <code>@name</code> of the button as workflow signal name and providing the record id as parameter (in a list).</p>
+<p>The workflow signal may return an action descriptor &lt;window-action&gt;, which should be executed. Otherwise it will return <code>False</code>.</p>
+<p><code>object</code>:   The button will execute the method of name <code>@name</code> on the current model, providing the record id as parameter (in a list). This call may return an action descriptor &lt;window-action&gt;, which should be executed. Otherwise it will return <code>False</code>.</p>
+<p><code>action</code>:   The button will trigger the execution of an action (<code>ir.actions.actions</code>). The <code>id</code> of this action is the <code>@name</code> of the button.</p>
+<p>From there, follows the normal action-execution workflow. One extra action type is to just close the window.</p>
+<pre><code class="python">return {'type': 'ir.actions.act_window_close'}
+</code></pre>
+
+<p><code>special</code>:   Only has one possible value currently: <code>cancel</code>, which indicates that the popup should be closed without performing any RPC call or action resolution.</p>
+<div class="admonition note">
+Only meaningful within a popup-type window (e.g. a wizard). Otherwise, is a noop.
+</div>
+
+<div class="admonition warning">
+`special` and `type` are incompatible.
+</div>
+
+<p><code>name</code>:   The button's identifier, used to indicate which method should be called, which signal sent or which action executed.</p>
+<p><code>confirm</code>:   A confirmation popup to display before executing the button's task. If the confirmation is dismissed the button's task <em>must not</em> be executed.</p>
+<p><code>string</code>:   The label which should be displayed on the button[^2].</p>
+<p><code>icon</code>:   Display an icon on the button, if absent the button is text-only [^3].</p>
+<p><code>states</code>, <code>attrs</code>, <code>invisible</code>:   Standard OpenERP meaning for those view attributes</p>
+<p><code>default_focus</code>:   If set to a truthy value (<code>1</code>), automatically selects that button so it is used if <code>RETURN</code> is pressed while on the form. May be ignored by the client.</p>
+<p>Example</p>
+<pre><code class="xml">&lt;button name=&quot;order_confirm&quot; states=&quot;draft&quot; string=&quot;Confirm Order&quot; icon=&quot;gtk-execute&quot;/&gt;
+&lt;button name=&quot;_action_open_window&quot; string=&quot;Open Margins&quot; type=&quot;object&quot; default_focus=”1”/&gt;
+</code></pre>
+
+<h4 id="label">Label</h4>
+<p>Adds a simple label using the string attribute as caption.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;label string=&quot;Test&quot;/&gt;
+</code></pre>
+
+<h4 id="new-line">New Line</h4>
+<p>Force a return to the line even if all the columns of the view are not filled in.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;newline/&gt;
+</code></pre>
+
+<h2 id="inheritance-in-views">Inheritance in Views</h2>
+<p>When you create and inherit objects in some custom or specific modules, it is better to inherit (than to replace) from an existing view to add/modify/delete some fields and preserve the others.</p>
+<p>Example:</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;notebook position=&quot;inside&quot;&gt;
+            &lt;page string=&quot;Relations&quot;&gt;
+                &lt;field name=&quot;relation_ids&quot; colspan=&quot;4&quot; nolabel=&quot;1&quot;/&gt;
+            &lt;/page&gt;
+        &lt;/notebook&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>This will add a page to the notebook of the <code>res.partner.form</code> view in the base module.</p>
+<p>The inheritance engine will parse the existing view and search for the root nodes of</p>
+<pre><code class="xml">&lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+</code></pre>
+
+<p>It will append or edit the content of this tag. If this tag has some attributes, it will look in the parent view for a node with matching attributes (except position).</p>
+<p>You can use these values in the position attribute:</p>
+<ul>
+<li>inside (default): your values will be appended inside the tag</li>
+<li>after: add the content after the tag</li>
+<li>before: add the content before the tag</li>
+<li>replace: replace the content of the tag.</li>
+</ul>
+<h3 id="replacing-content">Replacing Content</h3>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form1&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit1&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;page string=&quot;Extra Info&quot; position=&quot;replace&quot;&gt;
+            &lt;field name=&quot;relation_ids&quot; colspan=&quot;4&quot; nolabel=&quot;1&quot;/&gt;
+        &lt;/page&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Will replace the content of the Extra Info tab of the notebook with the <code>relation_ids</code> field.</p>
+<p>The parent and the inherited views are correctly updated with <code>--update=all</code> argument like any other views.</p>
+<h3 id="deleting-content">Deleting Content</h3>
+<p>To delete a field from a form, an empty element with <code>position="replace"</code> attribute is used. Example:</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form2&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit2&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;lang&quot; position=&quot;replace&quot;/&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h3 id="inserting-content">Inserting Content</h3>
+<p>To add a field into a form before the specified tag use <code>position="before"</code> attribute.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form3&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit3&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;lang&quot; position=&quot;before&quot;&gt;
+            &lt;field name=&quot;relation_ids&quot;/&gt;
+        &lt;/field&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Will add <code>relation_ids</code> field before the <code>lang</code> field.</p>
+<p>To add a field into a form after the specified tag use <code>position="after"</code> attribute.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form4&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit4&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;lang&quot; position=&quot;after&quot;&gt;
+            &lt;field name=&quot;relation_ids&quot;/&gt;
+        &lt;/field&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Will add <code>relation_ids</code> field after the <code>lang</code> field.</p>
+<h3 id="multiple-changes">Multiple Changes</h3>
+<p>To make changes in more than one location, wrap the fields in a data element.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form5&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit5&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;data&gt;
+            &lt;field name=&quot;lang&quot; position=&quot;replace&quot;/&gt;
+            &lt;field name=&quot;website&quot; position=&quot;after&quot;&gt;
+                &lt;field name=&quot;lang&quot;/&gt;
+            &lt;/field&gt;
+        &lt;/data&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Will delete the <code>lang</code> field from its usual location, and display it after the <code>website</code> field.</p>
+<h3 id="xpath-element">XPath Element</h3>
+<p>Sometimes a view is too complicated to let you simply identify a target field by name. For example, the field might appear in two places. When that happens, you can use an <code>xpath</code> element to describe where your changes should be placed.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;view_partner_form6&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;res.partner.form.inherit6&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;res.partner&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;base.view_partner_form&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;data&gt;
+            &lt;xpath 
+                expr=&quot;//field[@name='address']/form/field[@name='email']&quot;
+                position=&quot;after&quot;&gt;
+                &lt;field name=&quot;age&quot;/&gt;
+            &lt;/xpath&gt;
+            &lt;xpath 
+                expr=&quot;//field[@name='address']/tree/field[@name='email']&quot;
+                position=&quot;after&quot;&gt;
+                &lt;field name=&quot;age&quot;/&gt;
+            &lt;/xpath&gt;
+        &lt;/data&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Will add the <code>age</code> field after the <code>email</code> field in both the form and tree view of the address list.</p>
+<h3 id="replacing-attributes">Replacing Attributes</h3>
+<p>The <code>attributes</code> position lets you change an element's attributes without completely replacing it and its children. A common example is changing the colours in a tree view.</p>
+<pre><code class="xml">&lt;record id=&quot;mrp_production_tree_view&quot; model=&quot;ir.ui.view&quot;&gt;
+  &lt;field name=&quot;name&quot;&gt;mrp.production.mycompany.tree.view&lt;/field&gt;
+  &lt;field name=&quot;model&quot;&gt;mrp.production&lt;/field&gt;
+  &lt;field name=&quot;type&quot;&gt;tree&lt;/field&gt;
+  &lt;field name=&quot;inherit_id&quot; ref=&quot;mrp.mrp_production_tree_view&quot;/&gt;
+  &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+    &lt;xpath expr=&quot;//tree&quot; position=&quot;attributes&quot;&gt;
+      &lt;attribute name=&quot;colors&quot;&gt;blue:state=='draft'&lt;/attribute&gt;
+    &lt;/xpath&gt;
+  &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<h2 id="specify-the-views-you-want-to-use">Specify the views you want to use</h2>
+<p>There are some cases where you would like to specify a view other than the default:</p>
+<ul>
+<li>If there are several form or tree views for an object.</li>
+<li>If you want to change the form or tree view used by a relational field (one2many for example).</li>
+</ul>
+<h3 id="using-the-priority-field">Using the priority field</h3>
+<p>This field is available in the view definition, and is 16 by default. By default, OpenERP will display a model using the view with the highest priority (the smallest number). For example, imagine we have two views for a simple model. The model <em>client</em> with two fields : <strong>firstname</strong> and <strong>lastname</strong>. We will define two views, one which shows the firstname first, and the other one which shows the lastname first.</p>
+<pre><code class="xml">&lt;!--
+    Here is the first view for the model 'client'.
+    We don't specify a priority field, which means 
+    by default 16.
+--&gt;
+&lt;record model=&quot;ir.ui.view&quot; id=&quot;client_form_view_1&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;client.form.view1&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;client&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/fiel&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;firstname&quot;/&gt;
+        &lt;field name=&quot;lastname&quot;/&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+
+&lt;!--
+    A second view, which show fields in an other order.
+    We specify a priority of 15.
+--&gt;
+&lt;record model=&quot;ir.ui.view&quot; id=&quot;client_form_view_2&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;client.form.view2&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;client&lt;/field&gt;
+    &lt;field name=&quot;priority&quot; eval=&quot;15&quot;/&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/fiel&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;lastname&quot;/&gt;
+        &lt;field name=&quot;firstname&quot;/&gt;
+    &lt;/field&gt;
+&lt;/record&gt;
+</code></pre>
+
+<p>Now, each time OpenERP will have to show a form view for our object <em>client</em>, it will have the choice between two views. <strong>It will always use the second one, because it has a higher priority !</strong> Unless you tell it to use the first one !</p>
+<h3 id="specify-per-action-view">Specify per-action view</h3>
+<p>To illustrate this point, we will create 2 menus which show a form view for this <em>client</em> object :</p>
+<pre><code class="xml">&lt;!--
+    This action open the default view (in our case,
+    the view with the highest priority, the second one)
+--&gt;
+&lt;record 
+    model=&quot;ir.actions.act_window&quot; 
+    id=&quot;client_form_action&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;client.form.action&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;client&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;form&lt;/field&gt;
+&lt;/record&gt;
+
+&lt;!--
+    This action open the view we specify.
+--&gt;
+&lt;record 
+    model=&quot;ir.actions.act_window&quot; 
+    id=&quot;client_form_action1&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;client.form.action1&lt;/field&gt;
+    &lt;field name=&quot;res_model&quot;&gt;client&lt;/field&gt;
+    &lt;field name=&quot;view_type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_mode&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;view_id&quot; ref=&quot;client_form_view_1&quot;/&gt;
+&lt;/record&gt;
+
+&lt;menuitem id=&quot;menu_id&quot; name=&quot;Client main menu&quot;/&gt;
+&lt;menuitem 
+    id=&quot;menu_id_1&quot; 
+    name=&quot;Here we don't specify the view&quot;
+    action=&quot;client_form_action&quot; parent=&quot;menu_id&quot;/&gt;
+&lt;menuitem 
+    id=&quot;menu_id_1&quot; 
+    name=&quot;Here we specify the view&quot;
+    action=&quot;client_form_action1&quot; parent=&quot;menu_id&quot;/&gt;
+</code></pre>
+
+<p>As you can see on line <em>19</em>, we can specify a view. That means that when we open the second menu, OpenERP will use the form view <em>client_form_view_1</em>, regardless of its priority.</p>
+<div class="admonition note">
+
+Remember to use the module name (*module.view\_id*) in the *ref* attribute if you are referring to a view defined in another module.
+
+</div>
+
+<h3 id="specify-views-for-related-fields">Specify views for related fields</h3>
+<h4 id="using-the-context">Using the context</h4>
+<p>The <em>view_id</em> method works very well for menus/actions, but how can you specify the view to use for a one2many field, for example? When you have a one2many field, two views are used, a tree view (<strong>in blue</strong>), and a form view when you click on the add button (<strong>in red</strong>).</p>
+<p><img alt="" src="../images/one2many_views.png" /></p>
+<p>When you add a one2many field in a form view, you do something like this :</p>
+<pre><code class="xml">&lt;field name=&quot;order_line&quot; colspan=&quot;4&quot; nolabel=&quot;1&quot;/&gt;
+</code></pre>
+
+<p>If you want to specify the views to use, you can add a <em>context</em> attribute, and specify a view id for each type of view supported, exactly like the action's <em>view_id</em> attribute:</p>
+<pre><code class="xml">&lt;field name=&quot;order_line&quot; colspan=&quot;4&quot; nolabel=&quot;1&quot;
+       context=&quot;{'form_view_ref' : 'module.view_id', 'tree_view_ref' : 'module.view_id'}&quot;/&gt;
+</code></pre>
+
+<p>If you don't specify the views, OpenERP will choose one in this order :</p>
+<ol>
+<li>It will use the &lt;form&gt; or &lt;tree&gt; view defined <strong>inside</strong> the field (see below)</li>
+<li>Else, it will use the views with the highest priority for this object.</li>
+<li>Finally, it will generate default empty views, with all fields.</li>
+</ol>
+<div class="admonition note">
+
+The context keys are named &lt;view\_type&gt;\_view\_ref.
+
+</div>
+
+<div class="admonition note">
+
+By default, OpenERP will never use a view that is not defined for your object. If you have two models, with the same fields, but a different model name, OpenERP will never use the view of one for the other, even if one model inherit an other.
+
+You can force this by manually specifying the view, either in the action or in the context.
+
+</div>
+
+<h4 id="using-subviews">Using subviews</h4>
+<p>In the case of relational fields, you can create a view directly inside a field :</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;some_view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;some.view&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;some.model.with.one2many&lt;/field&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;field name=&quot;...&quot;/&gt;
+
+        &lt;!-- &lt;=== order_line is a one2many field --&gt;
+        &lt;field name=&quot;order_line&quot; colspan=&quot;4&quot; nolabel=&quot;1&quot;&gt;
+            &lt;form&gt;
+                &lt;field name=&quot;qty&quot;/&gt;
+                ...
+            &lt;/form&gt;
+            &lt;tree&gt;
+                &lt;field name=&quot;qty&quot;/&gt;
+                ...
+            &lt;/tree&gt;
+        &lt;/field&gt;
+&lt;/field&gt;
+</code></pre>
+
+<p>If you or another developer want to inherit from this view in another module, you need to inherit from the parent view and then modify the child fields. With child views, you'll often need to use an xpath-element-inheritance to describe exactly where to place your new fields.</p>
+<pre><code class="xml">&lt;record model=&quot;ir.ui.view&quot; id=&quot;some_inherited_view&quot;&gt;
+    &lt;field name=&quot;name&quot;&gt;some.inherited.view&lt;/field&gt;
+    &lt;field name=&quot;type&quot;&gt;form&lt;/field&gt;
+    &lt;field name=&quot;model&quot;&gt;some.model.with.one2many&lt;/field&gt;
+    &lt;field name=&quot;inherit_id&quot; ref=&quot;core_module.some_view&quot;/&gt;
+    &lt;field name=&quot;arch&quot; type=&quot;xml&quot;&gt;
+        &lt;data&gt;
+            &lt;xpath 
+               expr=&quot;//field[@name='order_line']/form/field[@name='qty']&quot;
+               position=&quot;after&quot;&gt;
+               &lt;field name=&quot;size&quot;/&gt;
+            &lt;/xpath&gt;
+            &lt;xpath 
+               expr=&quot;//field[@name='order_line']/tree/field[@name='qty']&quot;
+               position=&quot;after&quot;&gt;
+               &lt;field name=&quot;size&quot;/&gt;
+            &lt;/xpath&gt;
+        &lt;/data&gt;
+&lt;/field&gt;
+</code></pre>
+
+<p>One down side of defining a subview like this is that it can't be inherited on its own, it can only be inherited with the parent view. Your views will be more flexible if you define the child views separately and then specify which child view to use as part of the one2many field.</p>
+<h2 id="events">Events</h2>
+<h3 id="on-change">On Change</h3>
+<p>The on_change attribute defines a method that is called when the content of a view field has changed.</p>
+<p>This method takes at least arguments: cr, uid, ids, which are the three classical arguments and also the context dictionary. You can add parameters to the method. They must correspond to other fields defined in the view, and must also be defined in the XML with fields defined this way:</p>
+<pre><code class="xml">&lt;field 
+    name=&quot;name_of_field&quot; 
+    on_change=&quot;name_of_method(other_field_1, ..., other_field_n)&quot;/&gt; 
+</code></pre>
+
+<p>The example below is from the sale order view.</p>
+<p>You can use the 'context' keyword to access data in the context that can be used as params of the function.:</p>
+<pre><code class="xml">&lt;field name=&quot;shop_id&quot; on_change=&quot;onchange_shop_id(shop_id)&quot;/&gt;
+</code></pre>
+
+<p>Python:</p>
+<pre><code class="python">def onchange_shop_id(self, cr, uid, ids, shop_id):
+    v={} 
+    if shop_id:
+        shop=self.pool.get('sale.shop').browse(cr,uid,shop_id) 
+        v['project_id']=shop.project_id.id 
+        if shop.pricelist_id.id:
+            v['pricelist_id']=shop.pricelist_id.id 
+        v['payment_default_id']=shop.payment_default_id.id 
+    return {'value':v} 
+</code></pre>
+
+<p>When editing the shop_id form field, the onchange_shop_id method of the sale_order object is called and returns a dictionary where the 'value' key contains a dictionary of the new value to use in the 'project_id', 'pricelist_id' and 'payment_default_id' fields.</p>
+<p>Note that it is possible to change more than just the values of fields. For example, it is possible to change the value of some fields and the domain of other fields by returning a value of the form: return {'domain': d, 'value': value}</p>
+<p>returns:   a dictionary with any mix of the following keys:</p>
+<p><code>domain</code>:   A mapping of <code>{field: domain}</code>.  The returned domains should be set on the fields instead of the default ones.</p>
+<p><code>value</code>:   A mapping of <code>{field: value}}</code>, the values will be set on the corresponding fields and may trigger new onchanges or attrs changes</p>
+<p><code>warning</code> A dict with the keys <code>title</code> and <code>message</code>. Both are mandatory. Indicate that an error message should be displayed to the user.</p>
+<p>[^1]: via <code>exec_workflow</code> on the <code>object</code> rpc endpoint</p>
+<p>[^2]: in form view, in list view buttons have no label</p>
+<p>[^3]: behavior in list view is undefined, as list view buttons don't have labels.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    {%- if config.site_author %}
+    <meta name="author" content="{{ config.site_author }}">
+    {%- endif %} 
+    {%- if config.site_description %}
+    <meta name="description" content="{{ config.site_description }}">
+    {%- endif %} 
+    <link rel="shortcut icon" href="{%- if config.site_url %}{{ config.site_url }} {%- else %}{{ base_url }}{%- endif %}/img/favicon.ico">
+
+    <title>{%- if page.title %}{{ page.title }} - {%- endif %}{{ config.site_name }}</title>
+    
+    <!-- jquery -->
+    <script src="{{ 'js/jquery-3.3.1.js'|url }}"></script>
+    <!-- ./jquery -->
+
+    <!-- semantic-ui -->
+    <link rel="stylesheet" href="{{ 'css/semantic.css'|url }}">
+    <script src="{{ 'js/semantic.js'|url }}"></script>
+    <!-- ./semantic-ui -->
+
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="{{ 'css/atom-one-light.css'|url }}">
+    <link rel="stylesheet" href="{{ 'css/atom-one-light.css'|url }}">
+    <script src="{{ 'js/highlight.min.js'|url }}"></script>
+    <!-- ./highlight.js -->
+
+    <!-- mkdocs-semantic -->
+    <link rel="stylesheet" href="{{ 'css/base.css'|url }}">
+    <script src="{{ 'js/base.js'|url }}"></script>
+    <!-- ./mkdocs-semantic -->
+    
+    <!-- css-header -->
+    {%- block css_header %}
+    {%- endblock css_header %}
+    {%- for src in extra_css %}
+        <link rel="stylesheet" href="{{ src }}">
+    {%- endfor %}
+    <!-- ./css-header -->
+
+    <script>var base_url = '{{ base_url }}';</script>
+
+    <!-- js-header -->
+    {%- block js_header %}
+    {%- endblock js_header %}
+    <!-- ./js-header -->
+</head>
+<body>
+    <!-- navbar -->
+    {%- include "includes/navbar.html" %}
+    <!-- ./navbar -->
+
+    <!-- sidebar -->
+    {%- include "includes/sidebar.html" %}
+    <!-- ./sidebar -->
+
+    <div class="pusher">
+        <div id="content" class="ui container">
+            <!-- content -->
+            {% block content %}
+            {{ page.content }}
+            {% endblock content %}
+            <!-- ./content -->
+        </div>
+    </div>
+
+    <!-- search-modal -->
+    {%- include "includes/search.html" %}
+    <!-- ./search-modal -->
+
+    <footer>
+        <!-- attributions -->
+        <div id="footer-attribution" class="ui container">
+            <h4 class="ui horizontal divider header">
+                <div class="icons">
+                    Made with <i class="fitted violet heart icon"></i> using 
+                    <a class="ui tiny violet header" href="https://www.mkdocs.org/" target="_blank">
+                    MkDocs
+                    </a> & 
+                    <a href="https://www.python.org/" target="_blank">
+                        <i class="fitted link violet python icon"></i>
+                    </a>
+                </div>
+            </h4>
+        </div>
+        <!-- ./attributions -->
+
+        <!-- css-footer -->
+        {%- block css_footer %}
+        {%- endblock css_footer %}
+        <!-- ./css-footer -->
+        <!-- js-footer -->
+        {%- block js_footer %}
+        {%- endblock js_footer %}
+        {%- for src in extra_javascript %}
+            <script src="{{ src }}"></script>
+        {%- endfor %}
+        <!-- ./js-footer -->
+
+        {%- if page and page.is_homepage %}
+        <!--
+        MkDocs version : {{ mkdocs_version }}
+        Build Date UTC : {{ build_date_utc }}
+        -->
+        {%- endif %}
+    </footer>
+</body>
+</html>

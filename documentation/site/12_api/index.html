@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>12 api - Zerp Documentation</title>
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+            <div class="container">
+
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="..">Zerp Documentation</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#api">API</a></li>
+            <li><a href="#working-with-web-services">Working with Web Services</a></li>
+            <li><a href="#xml-rpc-web-services">XML-RPC Web services</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<h1 id="api">API</h1>
+<h2 id="working-with-web-services">Working with Web Services</h2>
+<p>Given the architecture of OpenERP, it is not possible to reliably access the database with the PostgreSQL client or through a direct connection method such as ODBC. Fortunately, OpenERP provides a very comprehensive set of web services that allow you to do everything through standard protocols.</p>
+<div class="admonition note">
+
+Though it is technically possible, you must be aware that this can have disastrous consequences for your data, unless you know exactly what you are doing. You are advised to shut down the OpenERP server when accessing the database to avoid caching and concurrency issues.
+
+</div>
+
+<h3 id="supported-web-services-protocols">Supported Web Services Protocols</h3>
+<p>The currently supported protocols are XML-RPC and Net-RPC. XML-RPC is one of the first standard for web services, and can be used in almost any language. It is a pretty verbose protocol, which may sometimes introduce a bit of latency. Net-RPC, on the other hand, is an optimized protocol particularly designed for use between applications written in Python.</p>
+<p>Support for REST-style webservices is planned for future releases of OpenERP.</p>
+<p>Support for the SOAP protocol is deprecated at the moment, but could maybe be revived if sufficient interest is found in the community.</p>
+<h3 id="available-web-services">Available Web Services</h3>
+<p>The OpenERP server provides you with the following web services.</p>
+<div class="admonition note">
+
+You may find out the details of each service in the corresponding class in the server sources, in bin/service/web\_services.py .
+
+</div>
+
+<p>db:   Provides functions to create, drop, backup and restore databases. Use with caution!</p>
+<p>common:   Lets you log in and out of OpenERP, and provides various utility functions. You will need to call the function "login" before you can use most of the other web services.</p>
+<p>object:   The most useful web service, as it provides access to the OpenERP Objects. Most notably, the function "execute" lets you call methods of the Objects, such as moste of the ORM methods to search, read and write records. It can also be used to call any other method of the object, such as computing a price for example.</p>
+<div class="admonition note">
+
+Here is a quick reminder of the main ORM methods:
+
+**`create({'field':'value'})`**
+
+-   Creates a new record with the specified value
+-   Returns: id of the new record
+
+**`search([('arg1','=','value1')...], offset=0, limit=1000)`**
+
+-   arg1, arg2, .. ,argN: list of tuples specifying search criteria
+-   offset: optional number of records to skip
+-   limit: optional max number of records to return
+-   Returns: list of IDS of records matching the given criteria
+
+**`read([IDS], ['field1','field2',...])`**
+
+-   fields: optional list of field names to return (default: all fields)
+-   Returns: the id of each record and the values of the requested field
+
+**`write([IDS], {'field1':'value1','field2':3})`**
+
+-   values: dictionary of field values to update
+-   Updates records with given ids with the given values
+-   Returns: True
+
+**`unlink([IDS])`**
+
+-   Deletes records with the given ids
+-   Returns: True
+
+browse() can't be used through web services.
+
+</div>
+
+<p>Another useful function is "exec_workflow", which lets you make a record progress through a workflow.</p>
+<p><strong><code>wizard</code></strong>:   Provides access to the old-style wizards. Please note that the new-style wizards are based on the ORM, and as such they can be accessed though the "object" web service.</p>
+<p><strong><code>report</code></strong>:   Lets you generate and retrieve reports.</p>
+<h3 id="example-writing-data-through-the-web-services">Example : writing data through the Web Services</h3>
+<p>Here is an example process that you could follow to write data. You will find more detailed examples for XML-RPC in various programming languages in the next chapter.</p>
+<ol>
+<li>
+<p>login: call "login" in the web service "common" with the following parameters:</p>
+<ul>
+<li>database</li>
+<li>user name</li>
+<li>password</li>
+</ul>
+</li>
+<li>
+<p>create a new partner: call "execute" in the web service "object" with the following parameters:</p>
+<ul>
+<li>database</li>
+<li>user id provided by "login" in step 1.</li>
+<li>the object name : 'res.partner'</li>
+<li>the name of the ORM method : "create"</li>
+<li>some data to be recorded</li>
+</ul>
+</li>
+</ol>
+<p>The data mentioned above is a dictionary of keys and values, for example:</p>
+<ul>
+<li>name: Fabien Pinckaers</li>
+<li>lang: fr_FR</li>
+</ul>
+<p>But more complex data structures can also be sent - for example you could record a partner and their addresses, all in a single call to the web service. In that case, all the data is processed by the server during the same database transaction - meaning you are sure to keep a consistent state for your data - a critical requirement for all ERP applications.</p>
+<h2 id="xml-rpc-web-services">XML-RPC Web services</h2>
+<p>XML-RPC is known as a web service. Web services are a set of tools that let one build distributed applications on top of existing web infrastructures. These applications use the Web as a kind of "transport layer" but don't offer a direct human interface via the browser.[1] Extensible Markup Language (XML) provides a vocabulary for describing Remote Procedure Calls (RPC), which is then transmitted between computers using the HyperText Transfer Protocol (HTTP). Effectively, RPC gives developers a mechanism for defining interfaces that can be called over a network. These interfaces can be as simple as a single function call or as complex as a large API.</p>
+<p>XML-RPC therefore allows two or more computers running different operating systems and programs written in different languages to share processing. For example, a Java application could talk with a Perl program, which in turn talks with Python application that talks with ASP, and so on. System integrators often build custom connections between different systems, creating their own formats and protocols to make communications possible, but one can often end up with a large number of poorly documented single-use protocols. The RPC approach spares programmers the trouble of having to learn about underlying protocols, networking, and various implementation details.</p>
+<p>XML-RPC can be used with Python, Java, Perl, PHP, C, C++, Ruby, Microsoft’s .NET and many other programming languages. Implementations are widely available for platforms such as Unix, Linux, Windows and the Macintosh.</p>
+<p>An XML-RPC call is conducted between two parties: the client (the calling process) and the server (the called process). A server is made available at a particular URL (such as <a href="http://example.org:8080/rpcserv/">http://example.org:8080/rpcserv/</a>).</p>
+<p>The above text just touches the surface of XML-RPC. I recommend O'Reilly's "Programming Web Service with XML-RPC" for further reading. One may also wish to review the following links:</p>
+<h3 id="interfaces">Interfaces</h3>
+<h4 id="xml-rpc">XML-RPC</h4>
+<h5 id="xml-rpc-architecture">XML-RPC Architecture</h5>
+<p>OpenERP is a based on a client/server architecture. The server and the client(s) communicate using the XML-RPC protocol. XML-RPC is a very simple protocol which allows the client to do remote procedure calls. The called function, its arguments, and the result of the call are transported using HTTP and encoded using XML. For more information on XML-RPC, please see: <a href="http://www.xml-rpc.com">http://www.xml-rpc.com</a>.</p>
+<h5 id="architecture">Architecture</h5>
+<p>The diagram below synthesizes the client server architecture of OpenERP. OpenERP server and OpenERP clients communicate using XML-RPC.</p>
+<p><img alt="" src="../images/tech_arch.png" /></p>
+<p><strong>Client</strong></p>
+<p>The logic of OpenERP is configured on the server side. The client is very simple; it is only used to post data (forms, lists, trees) and to send back the result to the server. The updates and the addition of new functionality don't need the clients to be frequently upgraded. This makes OpenERP easier to maintain.</p>
+<p>The client doesn't understand what it posts. Even actions like 'Click on the print icon' are sent to the server to ask how to react.</p>
+<p>The client operation is very simple; when a user makes an action (save a form, open a menu, print, ...) it sends this action to the server. The server then sends the new action to execute to the client.</p>
+<p>There are three types of action;</p>
+<ul>
+<li>Open a window (form or tree)</li>
+<li>Print a document</li>
+<li>Execute a wizard</li>
+</ul>
+<h4 id="python">Python</h4>
+<h5 id="access-tiny-server-using-xml-rpc">Access tiny-server using xml-rpc</h5>
+<h6 id="demo-script">Demo script</h6>
+<ul>
+<li><strong>Create a partner and their address</strong></li>
+</ul>
+<pre><code class="python">import xmlrpclib
+
+username = 'admin' #the user
+pwd = 'admin'      #the password of the user
+dbname = 'terp'    #the database
+
+# Get the uid
+sock_common = xmlrpclib.ServerProxy ('http://localhost:8069/xmlrpc/common')
+uid = sock_common.login(dbname, username, pwd)
+
+#replace localhost with the address of the server
+sock = xmlrpclib.ServerProxy('http://localhost:8069/xmlrpc/object')
+
+partner = {
+   'name': 'Fabien Pinckaers',
+   'lang': 'fr_FR',
+}
+
+partner_id = sock.execute(dbname, uid, pwd, 'res.partner', 'create', partner)
+
+address = {
+   'partner_id': partner_id,
+   'type' : 'default',
+   'street': 'Chaussée de Namur 40',
+   'zip': '1367',
+   'city': 'Grand-Rosière',
+   'phone': '+3281813700',
+   'fax': '+3281733501',
+}
+
+address_id = sock.execute(dbname, uid, pwd, 'res.partner.address', 'create', address)
+</code></pre>
+
+<ul>
+<li><strong>Search a partner</strong> :</li>
+</ul>
+<pre><code class="python">args = [('vat', '=', 'ZZZZZZ')] #query clause
+ids = sock.execute(dbname, uid, pwd, 'res.partner', 'search', args)
+</code></pre>
+
+<ul>
+<li><strong>Read partner data</strong> :</li>
+</ul>
+<pre><code class="python">fields = ['name', 'active', 'vat', 'ref'] #fields to read
+data = sock.execute(dbname, uid, pwd, 'res.partner', 'read', ids, fields) #ids is a list of id
+</code></pre>
+
+<ul>
+<li><strong>Update partner data</strong> :</li>
+</ul>
+<pre><code class="python">values = {'vat': 'ZZ1ZZZ'} #data to update
+result = sock.execute(dbname, uid, pwd, 'res.partner', 'write', ids, values)
+</code></pre>
+
+<ul>
+<li><strong>Delete partner</strong> :</li>
+</ul>
+<pre><code class="python"># ids : list of id
+result = sock.execute(dbname, uid, pwd, 'res.partner', 'unlink', ids)
+</code></pre>
+
+<h4 id="php">PHP</h4>
+<h5 id="access-open-server-using-xml-rpc">Access Open-server using xml-rpc</h5>
+<p><strong>Download the XML-RPC framework for PHP</strong></p>
+<p>windows / linux: download the xml-rpc framework for php from <a href="http://phpxmlrpc.sourceforge.net/">http://phpxmlrpc.sourceforge.net/</a> The latest stable release is version 2.2 released on February 25, 2007</p>
+<p><strong>Setup the XML-RPC for PHP</strong></p>
+<p>extract file xmlrpc-2.2.tar.gz and take the file xmlrpc.inc from lib directory place the xmlrpc.inc in the php library folder restart the apache/iis server</p>
+<p><strong>Demo script</strong></p>
+<ul>
+<li><strong>Login</strong></li>
+</ul>
+<pre><code class="php">function connect() {
+   var $user = 'admin';
+   var $password = 'admin';
+   var $dbname = 'db_name';
+   var $server_url = 'http://localhost:8069/xmlrpc/';
+
+
+   if(isset($_COOKIE[&quot;user_id&quot;]) == true)  {
+       if($_COOKIE[&quot;user_id&quot;]&gt;0) {
+       return $_COOKIE[&quot;user_id&quot;];
+       }
+   }
+
+   $sock = new xmlrpc_client($server_url.'common');
+   $msg = new xmlrpcmsg('login');
+   $msg-&gt;addParam(new xmlrpcval($dbname, &quot;string&quot;));
+   $msg-&gt;addParam(new xmlrpcval($user, &quot;string&quot;));
+   $msg-&gt;addParam(new xmlrpcval($password, &quot;string&quot;));
+   $resp =  $sock-&gt;send($msg);
+   $val = $resp-&gt;value();
+   $id = $val-&gt;scalarval();
+   setcookie(&quot;user_id&quot;,$id,time()+3600);
+   if($id &gt; 0) {
+       return $id;
+   }else{
+       return -1;
+   }
+ }
+</code></pre>
+
+<ul>
+<li><strong>Search</strong></li>
+</ul>
+<pre><code class="php">/**
+ * $client = xml-rpc handler
+ * $relation = name of the relation ex: res.partner
+ * $attribute = name of the attribute ex:code
+ * $operator = search term operator ex: ilike, =, !=
+ * $key=search for
+ */
+
+function search($client,$relation,$attribute,$operator,$keys) {
+     var $user = 'admin';
+     var $password = 'admin';
+     var $userId = -1;
+     var $dbname = 'db_name';
+     var $server_url = 'http://localhost:8069/xmlrpc/';
+
+     $key = array(new xmlrpcval(array(new xmlrpcval($attribute , &quot;string&quot;),
+              new xmlrpcval($operator,&quot;string&quot;),
+              new xmlrpcval($keys,&quot;string&quot;)),&quot;array&quot;),
+        );
+
+     if($userId&lt;=0) {
+     connect();
+     }
+
+     $msg = new xmlrpcmsg('execute');
+     $msg-&gt;addParam(new xmlrpcval($dbname, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($userId, &quot;int&quot;));
+     $msg-&gt;addParam(new xmlrpcval($password, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($relation, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval(&quot;search&quot;, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($key, &quot;array&quot;));
+
+     $resp = $client-&gt;send($msg);
+     $val = $resp-&gt;value();
+     $ids = $val-&gt;scalarval();
+
+     return $ids;
+}
+</code></pre>
+
+<ul>
+<li><strong>Create</strong></li>
+</ul>
+<pre><code class="php">&lt;?
+
+include('xmlrpc.inc');
+
+$arrayVal = array(
+'name'=&gt;new xmlrpcval('Fabien Pinckaers', &quot;string&quot;) ,
+'vat'=&gt;new xmlrpcval('BE477472701' , &quot;string&quot;)
+);
+
+$client = new xmlrpc_client(&quot;http://localhost:8069/xmlrpc/object&quot;);
+
+$msg = new xmlrpcmsg('execute');
+$msg-&gt;addParam(new xmlrpcval(&quot;dbname&quot;, &quot;string&quot;));
+$msg-&gt;addParam(new xmlrpcval(&quot;3&quot;, &quot;int&quot;));
+$msg-&gt;addParam(new xmlrpcval(&quot;demo&quot;, &quot;string&quot;));
+$msg-&gt;addParam(new xmlrpcval(&quot;res.partner&quot;, &quot;string&quot;));
+$msg-&gt;addParam(new xmlrpcval(&quot;create&quot;, &quot;string&quot;));
+$msg-&gt;addParam(new xmlrpcval($arrayVal, &quot;struct&quot;));
+
+$resp = $client-&gt;send($msg);
+
+if ($resp-&gt;faultCode())
+
+    echo 'Error: '.$resp-&gt;faultString();
+
+else
+
+    echo 'Partner '.$resp-&gt;value()-&gt;scalarval().' created !';
+
+?&gt;
+</code></pre>
+
+<ul>
+<li><strong>Write</strong></li>
+</ul>
+<pre><code class="php">/**
+ * $client = xml-rpc handler
+ * $relation = name of the relation ex: res.partner
+ * $attribute = name of the attribute ex:code
+ * $operator = search term operator ex: ilike, =, !=
+ * $id = id of the record to be updated
+ * $data = data to be updated
+ */
+
+function write($client,$relation,$attribute,$operator,$data,$id) {
+     var $user = 'admin';
+     var $password = 'admin';
+     var $userId = -1;
+     var $dbname = 'db_name';
+     var $server_url = 'http://localhost:8069/xmlrpc/';
+
+     $id_val = array();
+ $id_val[0] = new xmlrpcval($id, &quot;int&quot;);
+
+     if($userId&lt;=0) {
+     connect();
+     }
+
+     $msg = new xmlrpcmsg('execute');
+     $msg-&gt;addParam(new xmlrpcval($dbname, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($userId, &quot;int&quot;));
+     $msg-&gt;addParam(new xmlrpcval($password, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($relation, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval(&quot;write&quot;, &quot;string&quot;));
+     $msg-&gt;addParam(new xmlrpcval($id, &quot;array&quot;));
+     $msg-&gt;addParam(new xmlrpcval($data, &quot;struct&quot;));
+
+     $resp = $client-&gt;send($msg);
+     $val = $resp-&gt;value();
+     $record = $val-&gt;scalarval();
+
+     return $record;
+
+}
+</code></pre>
+
+<h4 id="java">JAVA</h4>
+<h5 id="access-open-server-using-xml-rpc_1">Access Open-server using xml-rpc</h5>
+<p><strong>Download the apache XML-RPC framework for JAVA</strong></p>
+<p>Download the xml-rpc framework for java from <a href="http://ws.apache.org/xmlrpc/">http://ws.apache.org/xmlrpc/</a> The latest stable release is version 3.1 released on August 12, 2007. All OpenERP errors throw exceptions because the framework allows only an int as the error code where OpenERP returns a string.</p>
+<p><strong>Demo script</strong></p>
+<ul>
+<li><strong>Find Databases</strong></li>
+</ul>
+<pre><code class="java">import java.net.URL;
+import java.util.Vector;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.client.XmlRpcClient;
+import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
+
+public Vector&lt;String&gt; getDatabaseList(String host, int port)
+{
+  XmlRpcClient xmlrpcDb = new XmlRpcClient();
+
+  XmlRpcClientConfigImpl xmlrpcConfigDb = new XmlRpcClientConfigImpl();
+  xmlrpcConfigDb.setEnabledForExtensions(true);
+  xmlrpcConfigDb.setServerURL(new URL(&quot;http&quot;,host,port,&quot;/xmlrpc/db&quot;));
+
+  xmlrpcDb.setConfig(xmlrpcConfigDb);
+
+  try {
+    //Retrieve databases
+    Vector&lt;Object&gt; params = new Vector&lt;Object&gt;();
+    Object result = xmlrpcDb.execute(&quot;list&quot;, params);
+    Object[] a = (Object[]) result;
+
+    Vector&lt;String&gt; res = new Vector&lt;String&gt;();
+    for (int i = 0; i &lt; a.length; i++) {
+    if (a[i] instanceof String)
+    {
+      res.addElement((String)a[i]);
+    }
+  }
+  catch (XmlRpcException e) {
+    logger.warn(&quot;XmlException Error while retrieving OpenERP Databases: &quot;,e);
+    return -2;
+  }
+  catch (Exception e)
+  {
+    logger.warn(&quot;Error while retrieving OpenERP Databases: &quot;,e);
+    return -3;
+  }
+}
+</code></pre>
+
+<ul>
+<li><strong>Login</strong></li>
+</ul>
+<pre><code class="java">import java.net.URL;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.client.XmlRpcClient;
+import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
+
+public int Connect(String host, int port, String tinydb, String login, String password)
+{
+  XmlRpcClient xmlrpcLogin = new XmlRpcClient();
+
+  XmlRpcClientConfigImpl xmlrpcConfigLogin = new XmlRpcClientConfigImpl();
+  xmlrpcConfigLogin.setEnabledForExtensions(true);
+  xmlrpcConfigLogin.setServerURL(new URL(&quot;http&quot;,host,port,&quot;/xmlrpc/common&quot;));
+
+  xmlrpcLogin.setConfig(xmlrpcConfigLogin);
+
+  try {
+    //Connect
+    params = new Object[] {tinydb,login,password};
+    Object id = xmlrpcLogin.execute(&quot;login&quot;, params);
+    if (id instanceof Integer)
+      return (Integer)id;
+    return -1;
+  }
+  catch (XmlRpcException e) {
+    logger.warn(&quot;XmlException Error while logging to OpenERP: &quot;,e);
+    return -2;
+  }
+  catch (Exception e)
+  {
+    logger.warn(&quot;Error while logging to OpenERP: &quot;,e);
+    return -3;
+  }
+}
+</code></pre>
+
+<ul>
+<li>
+<p><strong>Search</strong> :</p>
+<pre><code>TODO
+</code></pre>
+</li>
+<li>
+<p><strong>Create</strong> :</p>
+<pre><code>TODO
+</code></pre>
+</li>
+<li>
+<p><strong>Write</strong> :</p>
+<pre><code>TODO
+</code></pre>
+</li>
+</ul>
+<h3 id="python-example">Python Example</h3>
+<p>Example of creation of a partner and their address.</p>
+<pre><code class="python">import xmlrpclib
+
+sock = xmlrpclib.ServerProxy('http://localhost:8069/xmlrpc/object')
+uid = 1
+pwd = 'demo'
+
+partner = {
+    'title': 'Monsieur',
+    'name': 'Fabien Pinckaers',
+    'lang': 'fr',
+    'active': True,
+}
+
+partner_id = sock.execute(dbname, uid, pwd, 'res.partner', 'create', partner)
+
+address = {
+    'partner_id': partner_id,
+    'type': 'default',
+    'street': 'Rue du vieux chateau, 21',
+    'zip': '1457',
+    'city': 'Walhain',
+    'phone': '(+32)10.68.94.39',
+    'fax': '(+32)10.68.94.39',
+}
+
+sock.execute(dbname, uid, pwd, 'res.partner.address', 'create', address)
+</code></pre>
+
+<p>To get the UID of a user, you can use the following script:</p>
+<pre><code class="python">sock = xmlrpclib.ServerProxy('http://localhost:8069/xmlrpc/common')
+ UID = sock.login('terp3', 'admin', 'admin')
+</code></pre>
+
+<p>CRUD example:</p>
+<pre><code class="python">&quot;&quot;&quot;
+:The login function is under
+::    http://localhost:8069/xmlrpc/common
+:For object retrieval use:
+::    http://localhost:8069/xmlrpc/object
+&quot;&quot;&quot;
+import xmlrpclib
+
+user = 'admin'
+pwd = 'admin'
+dbname = 'terp3'
+model = 'res.partner'
+
+sock = xmlrpclib.ServerProxy('http://localhost:8069/xmlrpc/common')
+uid = sock.login(dbname ,user ,pwd)
+
+sock = xmlrpclib.ServerProxy('http://localhost:8069/xmlrpc/object')
+
+# CREATE A PARTNER
+partner_data = {'name'.. code-block:: php:'Tiny', 'active':True, 'vat':'ZZZZZ'}
+partner_id = sock.execute(dbname, uid, pwd, model, 'create', partner_data)
+
+# The relation between res.partner and res.partner.category is of type many2many
+# To add  categories to a partner use the following format:
+partner_data = {'name':'Provider2', 'category_id': [(6,0,[3, 2, 1])]}
+# Where [3, 2, 1] are id fields of lines in res.partner.category
+
+# SEARCH PARTNERS
+args = [('vat', '=', 'ZZZZZ'),]
+ids = sock.execute(dbname, uid, pwd, model, 'search', args)
+
+# READ PARTNER DATA
+fields = ['name', 'active', 'vat', 'ref']
+results = sock.execute(dbname, uid, pwd, model, 'read', ids, fields)
+print results
+
+# EDIT PARTNER DATA
+values = {'vat':'ZZ1ZZ'}
+results = sock.execute(dbname, uid, pwd, model, 'write', ids, values)
+
+# DELETE PARTNER DATA
+results = sock.execute(dbname, uid, pwd, model, 'unlink', ids)
+</code></pre>
+
+<p>PRINT example:</p>
+<ol>
+<li>PRINT INVOICE</li>
+<li>IDS is the invoice ID, as returned by:</li>
+<li>ids = sock.execute(dbname, uid, pwd, 'account.invoice', 'search', [('number', 'ilike', invoicenumber), ('type', '=', 'out_invoice')])</li>
+</ol>
+<pre><code class="python">import time
+import base64
+printsock = xmlrpclib.ServerProxy('http://server:8069/xmlrpc/report')
+model = 'account.invoice'
+id_report = printsock.report(dbname, uid, pwd, model, ids, {'model': model, 'id': ids[0], 'report_type':'pdf'})
+time.sleep(5)
+state = False
+attempt = 0
+while not state:
+    report = printsock.report_get(dbname, uid, pwd, id_report)
+    state = report['state']
+    if not state:
+    time.sleep(1)
+    attempt += 1
+    if attempt&gt;200:
+    print 'Printing aborted, too long delay !'
+
+    string_pdf = base64.decodestring(report['result'])
+    file_pdf = open('/tmp/file.pdf','w')
+    file_pdf.write(string_pdf)
+    file_pdf.close()
+</code></pre>
+
+<h3 id="php-example">PHP Example</h3>
+<p>Here is an example on how to insert a new partner using PHP. This example makes use the phpxmlrpc library, available on sourceforge.</p>
+<pre><code class="php">&lt;?
+
+    include('xmlrpc.inc');
+
+    $arrayVal = array(
+    'name'=&gt;new xmlrpcval('Fabien Pinckaers', &quot;string&quot;) ,
+    'vat'=&gt;new xmlrpcval('BE477472701' , &quot;string&quot;)
+    );
+
+    $client = new xmlrpc_client(&quot;http://localhost:8069/xmlrpc/object&quot;);
+
+    $msg = new xmlrpcmsg('execute');
+    $msg-&gt;addParam(new xmlrpcval(&quot;dbname&quot;, &quot;string&quot;));
+    $msg-&gt;addParam(new xmlrpcval(&quot;3&quot;, &quot;int&quot;));
+    $msg-&gt;addParam(new xmlrpcval(&quot;demo&quot;, &quot;string&quot;));
+    $msg-&gt;addParam(new xmlrpcval(&quot;res.partner&quot;, &quot;string&quot;));
+    $msg-&gt;addParam(new xmlrpcval(&quot;create&quot;, &quot;string&quot;));
+    $msg-&gt;addParam(new xmlrpcval($arrayVal, &quot;struct&quot;));
+
+    $resp = $client-&gt;send($msg);
+
+    if ($resp-&gt;faultCode())
+
+        echo 'Error: '.$resp-&gt;faultString();
+
+    else
+
+        echo 'Partner '.$resp-&gt;value()-&gt;scalarval().' created !';
+
+    ?&gt;
+</code></pre>
+
+<h3 id="perl-example">Perl Example</h3>
+<p>Here is an example in Perl for creating, searching and deleting a partner.</p>
+<pre><code class="perl">#!c:/perl/bin/perl
+# 17-02-2010
+# OpenERP XML RPC communication example
+# Todor Todorov &lt;todorov@hp.com&gt; &lt;tttodorov@yahoo.com&gt;
+
+use strict;
+use Frontier::Client;
+use Data::Dumper;
+
+my($user) = 'admin';
+my($pw) = 'admin';
+my($db) = 'put_your_dbname_here';
+my($model) = 'res.partner';
+
+#login
+my $server_url = 'http://localhost:8069/xmlrpc/common';
+my $server = Frontier::Client-&gt;new('url' =&gt; $server_url);
+my $uid = $server-&gt;call('login',$db,$user,$pw);
+
+print Dumper($uid);
+
+my $server_url = 'http://localhost:8069/xmlrpc/object';
+my $server = Frontier::Client-&gt;new('url' =&gt; $server_url);
+
+print Dumper($server);
+
+#
+# CREATE A PARTNER
+#
+my $partner_data = {'name'=&gt;'MyNewPartnerName',
+                  'active'=&gt; 'True',
+          'vat'=&gt;'ZZZZZ'};
+my $partner_id = $server-&gt;call('execute',$db, $uid, $pw, $model, 'create', $partner_data);
+
+print Dumper($partner_id);
+
+#
+# SEARCH PARTNERS
+#
+my $query = [['vat', '=', 'ZZZZZ']];
+
+print Dumper($query);
+
+my $ids = $server-&gt;call('execute',$db, $uid, $pw, $model, 'search', $query);
+
+print Dumper($ids);
+
+
+#Here waiting for user input
+#OpenERP interface my be checked if partner is shown there
+
+print $/.&quot;Check OpenERP if partner is inserted. Press ENTER&quot;.$/;
+&lt;STDIN&gt;;
+
+#
+# DELETE PARTNER DATA
+#
+my $results = $server-&gt;call('execute',$db, $uid, $pw, $model, 'unlink', $ids);
+
+print Dumper($results);
+</code></pre>
+
+<p>Everything done in the GTK or web client in OpenERP is through XML/RPC webservices. Start openERP GTK client using ./openerp-client.py -l debug_rpc (or debug_rpc_answer) then do what you want in the GTK client and watch your client logs, you will find out the webservice signatures. By creating indents in the logs will help you to spot which webservice you want.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
